@@ -1,13 +1,18 @@
 site_name: ShopVirge Backend
 site_description: FastAPI REST API for managing shop pricelists, products, categories, orders, and attributes.
 site_author: René Dohmen
-site_url: https://shopvirge.readthedocs.io/
+# Use Read the Docs' canonical URL when available so generated <link rel="canonical">
+# tags point at the configured canonical domain/default version instead of a hardcoded root.
+site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://shopvirge.readthedocs.io/en/latest/"]
 
 repo_url: https://github.com/acidjunk/shop-backend
 repo_name: acidjunk/shop-backend
 edit_uri: edit/main/docs/
 
 docs_dir: docs
+
+extra_javascript:
+  - javascripts/mermaid.mjs
 
 theme:
   name: material
@@ -102,6 +107,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - Request flow: architecture/request-flow.md
+      - Checkout flow: architecture/checkout.md
       - Database & models: architecture/database.md
       - Migrations: architecture/migrations.md
       - C4 diagrams: architecture/diagrams.md

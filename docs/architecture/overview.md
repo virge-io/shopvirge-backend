@@ -20,13 +20,14 @@ ShopVirge is a FastAPI REST API backed by PostgreSQL via SQLAlchemy 2.0, with a 
 Almost every resource is scoped to a shop. Shop-scoped endpoints live under `/shops/{shop_id}/...`:
 
 - `/shops/{shop_id}/products`
-- `/shops/{shop_id}/orders`
 - `/shops/{shop_id}/categories`
 - `/shops/{shop_id}/attributes`
 - `/shops/{shop_id}/prices`
 - `/shops/{shop_id}/accounts`
 - `/shops/{shop_id}/stripe`
 - …
+
+Checkout orders are the main exception: they currently live at `/orders`, while still carrying `shop_id` in the payload and database row.
 
 See [Shop-scoped endpoints](../api/shop-scoped.md) for the pattern and the full list.
 
@@ -55,5 +56,6 @@ Four domain tables have companion translation tables that carry per-language nam
 - `server/api/api.py` — every router the API exposes.
 - `server/db/database.py` — session management (`WrappedSession`, `@transactional`).
 - `server/crud/base.py` — common CRUD pattern used throughout.
+- `server/api/endpoints/shop_endpoints/orders.py` + `server/api/endpoints/shop_endpoints/stripe.py` — checkout persistence and Stripe orchestration; see [Checkout flow](checkout.md).
 
 See [Request flow](request-flow.md) for a sequence diagram of a typical request.

@@ -1,3 +1,8 @@
+---
+title: Admin Accounts & Stripe Reconciliation
+description: Cross-shop account inspection endpoints for linking and syncing Stripe customer state.
+---
+
 # Admin accounts
 
 Cross-shop endpoints for **investigating local `Account` records and reconciling them with Stripe**. Mounted under `/admin/accounts` (`server/api/endpoints/admin_accounts.py`).
@@ -23,6 +28,24 @@ All routes require `Depends(deps.get_current_active_superuser)` — a user whose
 There is no schema migration — everything piggybacks on the existing JSON column.
 
 ## Endpoints
+
+## Common workflows
+
+### Find accounts that are missing Stripe linkage
+
+```bash
+curl -H "Authorization: Bearer $T" \
+  'https://api.example.com/admin/accounts?missing_stripe=true&limit=50'
+```
+
+### Link an existing Stripe customer manually
+
+1. Call `POST /admin/accounts/{id}/link-stripe` with a known `cus_...` ID.
+2. Call `POST /admin/accounts/{id}/sync-stripe` to persist the current Stripe snapshot.
+
+### Inspect live Stripe state without persisting it
+
+Use `GET /admin/accounts/{id}/stripe-customer` when you want a one-off read-through to Stripe before deciding whether to sync.
 
 ### `GET /admin/accounts`
 

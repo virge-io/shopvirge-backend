@@ -2,6 +2,13 @@
 
 Authentication lives in `server/security.py` and is built on [AWS Cognito](https://aws.amazon.com/cognito/) via [`fastapi-cognito`](https://pypi.org/project/fastapi-cognito/).
 
+## Summary
+
+- `auth_required` is the main dependency for Cognito-backed API access.
+- Two token shapes are accepted: user tokens and M2M client-credentials tokens.
+- A second, older local JWT system still exists for endpoints that authenticate against the local `UserTable`.
+- Authentication and shop authorization are separate checks.
+
 ## Token model
 
 Three credential shapes are accepted:
@@ -63,3 +70,9 @@ def protected_route(principal = Depends(auth_required_any)):
 ## Shop access checks
 
 Authentication proves *who* is calling; authorisation proves *what shop* they can touch. Shop-scoped handlers resolve the caller's `UserTable` row and check `ShopUserTable` for a link to the `shop_id` path parameter. M2M tokens with `/api` scope bypass the per-shop check (they're trusted server credentials).
+
+## Troubleshooting
+
+- **401 on every Cognito-protected route:** verify `AWS_COGNITO_USERPOOL_ID`, region, and client IDs in the environment. Placeholder defaults in `server/settings.py` will not work against real tokens.
+- **Password login works but `auth_required` does not:** you are probably mixing the local JWT system with Cognito-backed dependencies. They return different token/user shapes.
+- **403 on a shop route:** the user authenticated successfully, but there is no matching `ShopUserTable` association for the requested `shop_id`.

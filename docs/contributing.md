@@ -1,3 +1,8 @@
+---
+title: Contributing
+description: Branching, CI, docs workflow, and Read the Docs publishing notes for ShopVirge Backend.
+---
+
 # Contributing
 
 ## Branching
@@ -64,3 +69,13 @@ Use <https://readthedocs.com> (Read the Docs for Business) instead of the `.org`
 ### After merge
 
 Once the `docs/mkdocs` branch merges into `main`, RTD rebuilds and publishes automatically. The URL will be of the form `https://<project-slug>.readthedocs.io/`. Add it to the repo's GitHub **About** box so it's discoverable.
+
+## Versions and canonical URLs
+
+- The repo currently builds docs with **MkDocs**, not Sphinx.
+- `mkdocs.yml` uses `READTHEDOCS_CANONICAL_URL` as `site_url`, so canonical tags follow the domain/version chosen by Read the Docs.
+- Read the Docs redirects the root docs URL to the project's **default version**.
+- With no semver release tags, `latest` is the only practical canonical landing path.
+- Once semver tags exist and a real `stable` version is built, prefer setting **stable** as the RTD default version for user-facing links.
+- Hide obsolete versions in Read the Docs rather than keeping every old version indexable; RTD's generated `robots.txt` already disallows hidden versions.
+- Keep the default RTD-generated `robots.txt` unless you have a strong reason to replace it. A custom file is served from the default version only and can accidentally drop RTD's hidden-version `Disallow` rules if you do not recreate them yourself.

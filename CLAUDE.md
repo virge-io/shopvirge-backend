@@ -67,6 +67,30 @@ PYTHONPATH=. alembic revision --message "Description"
 - Python 3.11, type hints required on function signatures
 - `PYTHONPATH=.` required for all CLI commands
 
+## Documentation / Read the Docs
+
+- The backend docs use **MkDocs Material on Read the Docs**, not Sphinx.
+- Build config lives in `.readthedocs.yaml`; site/navigation config lives in `mkdocs.yml`; docs content lives under `docs/`.
+- Preview docs locally with:
+
+```bash
+./.venv/bin/python -m mkdocs serve
+./.venv/bin/python -m mkdocs build --strict
+```
+
+- `mkdocs.yml` should use `READTHEDOCS_CANONICAL_URL` for `site_url`. Do not hardcode canonical URLs to the bare docs domain, because RTD builds multiple versions.
+- Current canonical landing path is `/en/latest/` because the repo does not yet have semver release tags. Once RTD `stable` exists, prefer `/en/stable/` for user-facing links and set `stable` as the RTD default version.
+- `docs/llms.txt` is the curated machine-readable docs index. Keep it short, high-signal, and aligned with the most important docs pages and current routing behavior.
+- Prefer the default RTD-generated `robots.txt`. If a custom one is ever added, preserve RTD hidden-version exclusions; otherwise old/hidden versions may become indexable again.
+- If crawler exclusions are needed, the first low-value candidates are `/search/` and `/404.html`, but only via a deliberate custom `robots.txt`.
+- Use RTD dashboard redirects only when a public docs page actually moved or was removed. Do not add speculative redirects.
+- Important docs pages should have:
+  - front matter `title` and `description`
+  - exactly one H1
+  - a short summary / “at a glance” section near the top
+  - examples and troubleshooting entries where they remove ambiguity
+- When documenting versions or canonical behavior, verify against current Read the Docs docs instead of relying on memory.
+
 ## Testing
 
 - Tests in `tests/unit_tests/` — shared fixtures in `conftest.py`, test data factories in `tests/unit_tests/factories/`

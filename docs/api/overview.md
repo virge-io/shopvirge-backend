@@ -1,3 +1,8 @@
+---
+title: API Overview
+description: Route families, handler locations, and the main API entry points in ShopVirge Backend.
+---
+
 # API overview
 
 The live API is self-documenting via FastAPI's built-in OpenAPI UI:
@@ -7,6 +12,14 @@ The live API is self-documenting via FastAPI's built-in OpenAPI UI:
 - **Raw spec:** `/openapi.json`
 
 Use those for exact parameter shapes, status codes, and example payloads. This page covers the structure of the API and is a pointer to the files that implement it.
+
+## At a glance
+
+- `server/api/api.py` is the router aggregation point.
+- Most tenant-owned resources live under `/shops/{shop_id}/...`.
+- Checkout orders are the main exception: they are mounted at `/orders`, while still remaining shop-owned in the database.
+- For authentication details, see [Authentication](authentication.md).
+- For Stripe and checkout-specific routes, see [Stripe](stripe.md) and [Checkout flow](../architecture/checkout.md).
 
 ## Router aggregation
 
@@ -32,7 +45,9 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
 
 === "Shop-scoped"
 
-    Everything under `/shops/{shop_id}/...` — see [Shop-scoped endpoints](shop-scoped.md) for the full list.
+    Most tenant-owned resources live under `/shops/{shop_id}/...`.
+    The main checkout exception is `orders.py`, which is currently mounted at `/orders` even though orders still belong to a shop.
+    See [Shop-scoped endpoints](shop-scoped.md) for the full list and the exception notes.
 
 === "MCP"
 

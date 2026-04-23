@@ -1,6 +1,8 @@
 # Shop-scoped endpoints
 
-Almost every resource in ShopVirge belongs to a specific shop. These endpoints are implemented in `server/api/endpoints/shop_endpoints/` and nested under the `/shops/{shop_id}/...` prefix when registered in `server/api/api.py`.
+Almost every resource in ShopVirge belongs to a specific shop. Most of those endpoints are implemented in `server/api/endpoints/shop_endpoints/` and mounted under the `/shops/{shop_id}/...` prefix when registered in `server/api/api.py`.
+
+The important checkout exception is `orders.py`: it still lives in `shop_endpoints/`, but the router is mounted globally at `/orders`. Orders remain shop-owned through `OrderTable.shop_id` and the posted payload, not through the path prefix.
 
 ## The pattern
 
@@ -25,7 +27,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 
 | File | Resource |
 |------|----------|
-| `orders.py` | Orders — create, complete, list, email confirmation on completion. |
+| `orders.py` | Orders — checkout-facing order creation and completion. Implemented in `shop_endpoints/`, but mounted at `/orders` instead of `/shops/{shop_id}/orders`. |
 | `products.py` | Products (public router split out for unauthenticated catalog browsing). |
 | `categories.py` | Categories (public router split out similarly). |
 | `tags.py` | Tags. |
@@ -35,7 +37,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | `products_to_tags.py` | Product ↔ tag links. |
 | `prices.py` | Price management. |
 | `accounts.py` | Shop-level customer/vendor accounts. |
-| `stripe.py` | Stripe integration (payment intents, webhooks). |
+| `stripe.py` | Stripe integration for one-time PaymentIntents and subscription create/cancel. |
 | `category_images.py` | Category image uploads. |
 | `images.py` | Generic shop image uploads. |
 | `info_request.py` | Incoming info requests. |

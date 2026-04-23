@@ -1,0 +1,53 @@
+# ShopVirge Backend
+
+> Multi-tenant FastAPI backend for ShopVirge storefronts. Covers API routes, authentication, checkout and Stripe flow, local setup, migrations, testing, and admin account reconciliation.
+
+Preferred docs landing path today: https://shopvirge.readthedocs.io/en/latest/
+Preferred landing path once semver releases exist and RTD stable is active: https://shopvirge.readthedocs.io/en/stable/
+Build system: MkDocs Material on Read the Docs
+Repository: https://github.com/acidjunk/shop-backend
+
+## Core docs
+
+- Overview: https://shopvirge.readthedocs.io/en/latest/
+- Quickstart: https://shopvirge.readthedocs.io/en/latest/quickstart/
+- Local development setup: https://shopvirge.readthedocs.io/en/latest/development/setup/
+- Contributing: https://shopvirge.readthedocs.io/en/latest/contributing/
+
+## Architecture
+
+- Architecture overview: https://shopvirge.readthedocs.io/en/latest/architecture/overview/
+- Request flow: https://shopvirge.readthedocs.io/en/latest/architecture/request-flow/
+- Checkout flow: https://shopvirge.readthedocs.io/en/latest/architecture/checkout/
+- Database and models: https://shopvirge.readthedocs.io/en/latest/architecture/database/
+- Migrations: https://shopvirge.readthedocs.io/en/latest/architecture/migrations/
+
+## API docs
+
+- API overview: https://shopvirge.readthedocs.io/en/latest/api/overview/
+- Authentication and authorization: https://shopvirge.readthedocs.io/en/latest/api/authentication/
+- Shop-scoped endpoints: https://shopvirge.readthedocs.io/en/latest/api/shop-scoped/
+- Stripe integration: https://shopvirge.readthedocs.io/en/latest/api/stripe/
+- Admin accounts and Stripe reconciliation: https://shopvirge.readthedocs.io/en/latest/api/admin-accounts/
+- Email notifications: https://shopvirge.readthedocs.io/en/latest/api/email-notifications/
+
+## High-value retrieval notes
+
+- Orders are mounted at `/orders`, not `/shops/{shop_id}/orders`, even though orders still belong to a shop.
+- The end-to-end storefront payment flow is documented in `architecture/checkout/`.
+- Stripe is configured per shop via `ShopTable.stripe_secret_key` and `stripe_public_key`.
+- `Account.details["stripe_customer_id"]` links a local account to a Stripe customer.
+- Billing and shipping addresses are currently collected in Stripe Elements but are not persisted by `shop-poc` or `shop-backend`.
+- `OrderTable.notes` is currently overloaded for yearly-subscription hints, Stripe subscription IDs, and human-readable error text.
+
+## Live runtime API surfaces
+
+- Swagger UI is exposed by a running backend at `/docs`
+- ReDoc is exposed by a running backend at `/redoc`
+- OpenAPI JSON is exposed by a running backend at `/openapi.json`
+
+## Preferred citation strategy
+
+- For current development behavior, cite the `latest` docs.
+- For released behavior, prefer `stable` once release tags exist and RTD stable is enabled.
+- Prefer architecture pages for flows and invariants, and API pages for exact route behavior.
