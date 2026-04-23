@@ -19,6 +19,7 @@ Use those for exact parameter shapes, status codes, and example payloads. This p
 - Most tenant-owned resources live under `/shops/{shop_id}/...`.
 - Checkout orders are the main exception: they are mounted at `/orders`, while still remaining shop-owned in the database.
 - For authentication details, see [Authentication](authentication.md).
+- For `pydantic-forms` endpoints, see [Forms](forms.md).
 - For Stripe and checkout-specific routes, see [Stripe](stripe.md) and [Checkout flow](../architecture/checkout.md).
 
 ## Router aggregation
@@ -34,12 +35,12 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
 
     - `health` — `server/api/endpoints/health.py`
     - `sentry_test` — probe Sentry integration
-    - `forms` / `test_forms` — pydantic-forms support
+    - `forms` / `test_forms` — `pydantic-forms` support; see [Forms](forms.md)
 
 === "Global resources"
 
     - `images`, `licenses`, `downloads` — asset endpoints
-    - `faq`, `early_access`, `info_request` — marketing/content
+    - `faq`, `early_access`, `info_request` — marketing/content, including the public info-request form endpoint
     - `shops` — shop CRUD (not nested under another shop)
     - `admin_accounts` — superuser cross-shop view of accounts and Stripe linkage (`server/api/endpoints/admin_accounts.py`); see [Admin accounts](admin-accounts.md)
 

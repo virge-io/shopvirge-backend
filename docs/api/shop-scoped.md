@@ -40,7 +40,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | `stripe.py` | Stripe integration for one-time PaymentIntents and subscription create/cancel. |
 | `category_images.py` | Category image uploads. |
 | `images.py` | Generic shop image uploads. |
-| `info_request.py` | Incoming info requests. |
+| `info_request.py` | Incoming info requests. The file also exposes the public `POST /info-request/form` endpoint, which uses `pydantic-forms`; see [Forms](forms.md). |
 
 ## Public sub-routers
 

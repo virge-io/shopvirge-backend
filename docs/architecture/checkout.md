@@ -35,56 +35,6 @@ It also calls out the gaps that still exist, because several checkout concerns a
 
 This is the highest-level diagram of the current checkout implementation. It starts in the front-end storefront, shows the split between one-time and subscription checkout, and ends on the completion page updating the backend order.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Customer
-    participant FE as Front-end
-    participant Orders as Orders API
-    participant StripeAPI as Stripe API
-    participant Stripe as Stripe
-
-    Customer->>FE: Start checkout
-    FE->>FE: Validate cart email terms and stock
-
-    FE->>Orders: Create order
-    Orders->>Orders: Find or create account
-    Orders->>Orders: Store pending order
-    Orders-->>FE: Return order and account
-
-    FE->>Orders: Load order
-    FE->>FE: Load prices tax and shipping flags
-
-    alt One-time checkout
-        FE->>StripeAPI: Create payment intent
-        StripeAPI->>Stripe: Create payment intent
-        Stripe-->>StripeAPI: Return client secret
-        StripeAPI-->>FE: Return client secret
-        FE->>Stripe: Confirm payment
-    else Subscription checkout
-        FE->>StripeAPI: Create subscription
-        StripeAPI->>Stripe: Resolve prices and create subscription
-        Stripe-->>StripeAPI: Return subscription and client secret
-        StripeAPI-->>FE: Return client secret and subscription id
-        FE->>Stripe: Confirm first payment
-    end
-
-    Stripe-->>Customer: Redirect to completion page
-    FE->>Orders: Update order status
-
-    alt Successful checkout
-        Orders->>Orders: Mark complete and update stock if needed
-        FE->>FE: Clear cart and show success
-    else Failed or cancelled checkout
-        Orders->>Orders: Mark order cancelled
-        opt Subscription flow
-            FE->>StripeAPI: Cancel subscription
-            StripeAPI->>Stripe: Cancel subscription
-        end
-        FE->>FE: Show failure
-    end
-```
-
 ## Required data by system
 
 ### Front-end
@@ -96,32 +46,38 @@ The storefront or front-end needs:
 - Cart contents from local storage, including `product_id`, `quantity`, and selected plan (`onetime`, `monthly`, or `yearly`).
 - Product pricing data from `/shops/{shop_id}/prices`, especially `price`, `recurring_price_monthly`, `recurring_price_yearly`, `tax_percentage`, and `shippable`.
 - Customer email from the cart form.
-- An external approval token from local storage when the front-end implements an approval-gated flow.
 - `order.id`, `order.account_id`, Stripe `clientSecret`, and optionally `subscriptionId` to continue payment.
 
-### `shop-backend`
+### shop-backend
 
 The backend needs:
 
-- A `ShopTable` row with:
-  - `stripe_secret_key`
-  - `stripe_public_key`
-  - `vat_standard`, `vat_lower_*`, `vat_special`, `vat_zero`
-  - `config["toggles"]`
-- Product rows with:
-  - one-time and recurring prices
-  - `tax_category`
-  - `shippable`
-  - `stock`
-- An `Account` row per checkout email, where:
-  - `name` is currently the customer email
-  - `details["stripe_customer_id"]` links to Stripe when available
-- An `OrderTable` row containing:
-  - `order_info`
-  - `total`
-  - `status`
-  - `customer_order_id`
-  - `notes`
+A `ShopTable` row with:
+
+- `stripe_secret_key`
+- `stripe_public_key`
+- `vat_standard`, `vat_lower_*`, `vat_special`, `vat_zero`
+- `config["toggles"]`
+
+Product rows with:
+
+- one-time/recurring prices
+- `tax_category`
+- `shippable`
+- `stock`
+ 
+An `Account` row per checkout email, where:
+
+- `name` is currently the customer email
+- `details["stripe_customer_id"]` links to Stripe when available
+
+An `OrderTable` row containing:
+
+- `order_info`
+- `total`
+- `status`
+- `customer_order_id`
+- `notes`
 
 ### Stripe
 
@@ -130,9 +86,11 @@ Stripe needs:
 - The per-shop secret key from `ShopTable.stripe_secret_key`.
 - A Stripe customer ID for the account when available.
 - For one-time payments: the final amount in euro cents.
-- For subscriptions: Stripe price lookup keys derived from product IDs:
-  - `monthly-{product_id}`
-  - `yearly-{product_id}`
+
+For subscriptions: Stripe price lookup keys derived from product IDs:
+
+- `monthly-{product_id}`
+- `yearly-{product_id}`
 - Payment details, and optionally address data, collected inside Stripe Elements.
 
 ## End-to-end sequences

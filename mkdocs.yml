@@ -115,6 +115,7 @@ nav:
       - Overview: api/overview.md
       - Shop-scoped endpoints: api/shop-scoped.md
       - Authentication: api/authentication.md
+      - Forms: api/forms.md
       - MCP server: api/mcp.md
       - Admin accounts: api/admin-accounts.md
       - Stripe: api/stripe.md
