@@ -17,7 +17,12 @@ from server.schemas.license import LicenseCreate, LicenseSchema, LicenseUpdate
 router = APIRouter()
 
 
-@router.get("", response_model=List[LicenseSchema])
+@router.get(
+    "",
+    response_model=List[LicenseSchema],
+    summary="List licenses",
+    description="Returns all licenses. Requires superuser privileges.",
+)
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
@@ -30,7 +35,12 @@ def get_multi(
     return licenses
 
 
-@router.get("/{id}", response_model=LicenseSchema)
+@router.get(
+    "/{id}",
+    response_model=LicenseSchema,
+    summary="Get license",
+    description="Retrieve a single license by its UUID. Requires superuser privileges.",
+)
 def get_by_id(id: UUID, current_user: UserTable = Depends(deps.get_current_active_superuser)) -> LicenseSchema:
     license = license_crud.get(id)
     if not license:
@@ -38,7 +48,12 @@ def get_by_id(id: UUID, current_user: UserTable = Depends(deps.get_current_activ
     return license
 
 
-@router.get("/improviser/{improviser_user_id}", response_model=LicenseSchema)
+@router.get(
+    "/improviser/{improviser_user_id}",
+    response_model=LicenseSchema,
+    summary="Get license by improviser user ID",
+    description="Retrieve the license associated with an external improviser user ID.",
+)
 def get_by_improviser_user_id(improviser_user_id: str) -> LicenseSchema:
     license = license_crud.get_by_improviser_user_id(improviser_user_id=improviser_user_id)
 
@@ -47,7 +62,13 @@ def get_by_improviser_user_id(improviser_user_id: str) -> LicenseSchema:
     return license
 
 
-@router.post("", response_model=LicenseSchema, status_code=HTTPStatus.CREATED)
+@router.post(
+    "",
+    response_model=LicenseSchema,
+    status_code=HTTPStatus.CREATED,
+    summary="Create license",
+    description="Create a new license. Recurring licenses must not have an `end_date`. Requires superuser privileges.",
+)
 def create(data: LicenseCreate, current_user: UserTable = Depends(deps.get_current_active_superuser)) -> None:
     if data.is_recurring and data.end_date is not None:
         raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, f"Recurring licenses cannot have an end_date")
@@ -56,7 +77,13 @@ def create(data: LicenseCreate, current_user: UserTable = Depends(deps.get_curre
     return license
 
 
-@router.put("/{id}", response_model=LicenseSchema, status_code=HTTPStatus.OK)
+@router.put(
+    "/{id}",
+    response_model=LicenseSchema,
+    status_code=HTTPStatus.OK,
+    summary="Update license",
+    description="Update an existing license. Recurring licenses may not be given an `end_date`. Requires superuser privileges.",
+)
 def edit(id: UUID, data: LicenseUpdate, current_user: UserTable = Depends(deps.get_current_active_superuser)) -> Any:
     license = license_crud.get(id)
     if not license:
@@ -67,6 +94,12 @@ def edit(id: UUID, data: LicenseUpdate, current_user: UserTable = Depends(deps.g
     return license
 
 
-@router.delete("/{id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.delete(
+    "/{id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Delete license",
+    description="Permanently remove a license. Requires superuser privileges.",
+)
 def delete(id: UUID, current_user: UserTable = Depends(deps.get_current_active_superuser)) -> None:
     return license_crud.delete(id=id)

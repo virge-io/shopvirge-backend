@@ -16,15 +16,16 @@ from server.utils.auth import send_new_account_email
 router = APIRouter()
 
 
-@router.get("/")
+@router.get(
+    "/",
+    summary="List users",
+    description="Retrieve all users. Requires superuser privileges. Supports pagination, filtering, and sorting.",
+)
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
     current_user: UserTable = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Retrieve users.
-    """
     users, header_range = user_crud.get_multi(
         skip=common["skip"],
         limit=common["limit"],
@@ -35,15 +36,17 @@ def get_multi(
     return users
 
 
-@router.post("/", response_model=User)
+@router.post(
+    "/",
+    response_model=User,
+    summary="Create user",
+    description="Create a new user account. Returns 400 if a user with the same email already exists. Sends a welcome email when SMTP is configured.",
+)
 def create(
     *,
     user_in: UserCreate,
     current_user: UserTable = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Create new user.
-    """
     user = user_crud.get_by_email(email=user_in.email)
     if user:
         raise HTTPException(
@@ -56,7 +59,12 @@ def create(
     return user
 
 
-@router.put("/me", response_model=User)
+@router.put(
+    "/me",
+    response_model=User,
+    summary="Update current user",
+    description="Update the currently authenticated user's own password, full name, or email address.",
+)
 def update_user_me(
     *,
     password: str = Body(None),
@@ -64,9 +72,6 @@ def update_user_me(
     email: EmailStr = Body(None),
     current_user: UserTable = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Update own user.
-    """
     current_user_data = jsonable_encoder(current_user)
     user_in = UserUpdate(**current_user_data)
     if password is not None:
@@ -80,16 +85,18 @@ def update_user_me(
 
 
 # @router.get("/me", response_model=UserTable)
-@router.get("/me", response_model=User)
+@router.get(
+    "/me",
+    response_model=User,
+    summary="Get current user",
+    description="Returns the profile of the currently authenticated user.",
+)
 def get_user_me(
     current_user: UserTable = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Get current user.
-    """
     return current_user
 
-
+# TODO remove me?
 # @router.post("/open", response_model=schemas.User)
 # def create_user_open(
 #     *,
@@ -117,14 +124,16 @@ def get_user_me(
 #     return user
 
 
-@router.get("/{user_id}", response_model=User)
+@router.get(
+    "/{user_id}",
+    response_model=User,
+    summary="Get user",
+    description="Retrieve a specific user by their integer ID. Regular users can only retrieve their own record; superusers can retrieve any user.",
+)
 def get_by_id(
     user_id: int,
     current_user: UserTable = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Get a specific user by id.
-    """
     user = user_crud.get(id=user_id)
     if user == current_user:
         return user
@@ -133,16 +142,18 @@ def get_by_id(
     return user
 
 
-@router.put("/{user_id}", response_model=User)
+@router.put(
+    "/{user_id}",
+    response_model=User,
+    summary="Update user",
+    description="Update a user by their integer ID. Requires superuser privileges.",
+)
 def update(
     *,
     user_id: int,
     user_in: UserUpdate,
     current_user: UserTable = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Update a user.
-    """
     user = user_crud.get(id=user_id)
     if not user:
         raise HTTPException(

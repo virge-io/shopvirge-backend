@@ -74,6 +74,12 @@ def _require_linked_shop(account: Account) -> None:
 @router.get(
     "",
     response_model=List[AdminAccountSchema],
+    summary="List accounts (admin)",
+    description=(
+        "List all customer accounts across every shop. Optionally filter by `shop_id` or "
+        "by Stripe linkage status (`missing_stripe=true` returns accounts without a Stripe customer ID). "
+        "Requires membership of the Cognito Admins group."
+    ),
     responses={HTTPStatus.FORBIDDEN.value: {"description": "Not a member of the Admins group"}},
 )
 def list_accounts(
@@ -118,6 +124,8 @@ def list_accounts(
 @router.get(
     "/{id}",
     response_model=AdminAccountSchema,
+    summary="Get account (admin)",
+    description="Retrieve a single account by UUID, including its Stripe metadata. Requires Admins group membership.",
     responses={
         HTTPStatus.FORBIDDEN.value: {"description": "Not a member of the Admins group"},
         HTTPStatus.NOT_FOUND.value: {"description": "Account not found"},
@@ -133,6 +141,8 @@ def get_account(
 
 @router.get(
     "/{id}/stripe-customer",
+    summary="Fetch Stripe customer (admin)",
+    description="Read-through to Stripe: returns the live Stripe Customer object for this account. Does not persist anything — use POST /sync-stripe to save the snapshot.",
     responses={
         HTTPStatus.FORBIDDEN.value: {"description": "Not a member of the Admins group"},
         HTTPStatus.NOT_FOUND.value: {"description": "Account not found"},
@@ -175,6 +185,8 @@ def get_stripe_customer(
 @router.post(
     "/{id}/sync-stripe",
     response_model=SyncStripeResponse,
+    summary="Sync Stripe customer snapshot (admin)",
+    description="Fetch the Stripe Customer and persist it in `Account.details` (`stripe_customer` + `stripe_synced_at`). Existing details keys are preserved.",
     responses={
         HTTPStatus.FORBIDDEN.value: {"description": "Not a member of the Admins group"},
         HTTPStatus.NOT_FOUND.value: {"description": "Account not found"},
@@ -231,6 +243,8 @@ def sync_stripe(
 @router.post(
     "/{id}/link-stripe",
     response_model=AdminAccountSchema,
+    summary="Link Stripe customer ID (admin)",
+    description="Manually associate an existing Stripe customer ID with a local account. Follow up with POST /sync-stripe to pull the full snapshot.",
     responses={
         HTTPStatus.FORBIDDEN.value: {"description": "Not a member of the Admins group"},
         HTTPStatus.NOT_FOUND.value: {"description": "Account not found"},

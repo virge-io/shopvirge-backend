@@ -23,6 +23,8 @@ router = APIRouter()
     response_model=List[TagSchema],
     tags=[AgentTag.EXPOSED, AgentTag.LARGE],
     operation_id="list_tags",
+    summary="List tags",
+    description="Returns all tags defined for a shop. Tags can be attached to products for flexible grouping and filtering.",
 )
 def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_parameters)) -> List[TagSchema]:
     tags, header_range = tag_crud.get_multi_by_shop_id(
@@ -41,6 +43,8 @@ def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_p
     response_model=TagSchema,
     tags=[AgentTag.EXPOSED],
     operation_id="get_tag",
+    summary="Get tag",
+    description="Retrieve a single tag by its UUID within a shop.",
 )
 def get_by_id(tag_id: UUID, shop_id: UUID) -> TagSchema:
     tag = tag_crud.get_id_by_shop_id(shop_id, tag_id)
@@ -49,7 +53,12 @@ def get_by_id(tag_id: UUID, shop_id: UUID) -> TagSchema:
     return tag
 
 
-@router.get("/name/{name}", response_model=TagSchema)
+@router.get(
+    "/name/{name}",
+    response_model=TagSchema,
+    summary="Get tag by name",
+    description="Retrieve a tag by its exact name within a shop.",
+)
 def get_by_name(name: str, shop_id: UUID) -> TagSchema:
     tag = tag_crud.get_by_name(name=name, shop_id=shop_id)
 
@@ -64,6 +73,8 @@ def get_by_name(name: str, shop_id: UUID) -> TagSchema:
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="create_tag",
+    summary="Create tag",
+    description="Create a new tag for a shop. Tags are attached to products via the `products-to-tags` resource.",
 )
 def create(shop_id: UUID, data: TagCreate = Body(...)) -> None:
     logger.info("Saving tag", data=data)
@@ -77,6 +88,8 @@ def create(shop_id: UUID, data: TagCreate = Body(...)) -> None:
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="update_tag",
+    summary="Update tag",
+    description="Update an existing tag's name or translations.",
 )
 def update(*, tag_id: UUID, shop_id: UUID, item_in: TagUpdate) -> Any:
     tag = tag_crud.get_id_by_shop_id(shop_id, tag_id)
@@ -97,6 +110,8 @@ def update(*, tag_id: UUID, shop_id: UUID, item_in: TagUpdate) -> Any:
     status_code=HTTPStatus.NO_CONTENT,
     tags=[AgentTag.EXPOSED],
     operation_id="delete_tag",
+    summary="Delete tag",
+    description="Remove a tag from a shop. Fails with 400 if products still reference this tag.",
 )
 def delete(tag_id: UUID, shop_id: UUID) -> None:
     try:

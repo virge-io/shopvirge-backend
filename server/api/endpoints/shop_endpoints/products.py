@@ -45,6 +45,8 @@ def get_shop(shop_id: UUID):
     response_model=List[ProductWithDefaultPrice],
     tags=[AgentTag.EXPOSED, AgentTag.LARGE],
     operation_id="list_products",
+    summary="List products",
+    description="Returns paginated products for a shop, each with its default price. Supports filtering (e.g. `featured:true`, `category_id:<uuid>`) and sorting via common query parameters.",
 )
 def get_multi(
     shop_id: UUID,
@@ -198,7 +200,12 @@ def get_multi_with_attributes(
     return out
 
 
-@public_router.get("/{product_id}/with_attributes", response_model=ProductWithAttributes)
+@public_router.get(
+    "/{product_id}/with_attributes",
+    response_model=ProductWithAttributes,
+    summary="Get product with attributes",
+    description="Retrieve a single product together with its assigned attribute values (e.g. size, color). Public endpoint — no authentication required.",
+)
 def get_by_id_with_attributes(product_id: UUID, shop_id: UUID) -> ProductWithAttributes:
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
     if not product:
@@ -235,12 +242,15 @@ def get_by_id_with_attributes(product_id: UUID, shop_id: UUID) -> ProductWithAtt
     response_model=ProductWithDetailsAndPrices,
     tags=[AgentTag.EXPOSED],
     operation_id="get_product",
+    summary="Get product",
+    description="Retrieve full product details including all active prices, translations, and images. Public endpoint — no authentication required.",
 )
 def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
     if not product:
         raise_status(HTTPStatus.NOT_FOUND, f"Product with id {product_id} not found")
 
+    # TODO remove me?
     # product.prices = []
     # for price_relation in product.shop_to_price:
     #     if price_relation.shop_id == shop_id:
@@ -276,6 +286,8 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="create_product",
+    summary="Create product",
+    description="Add a new product to a shop category. The `order_number` is automatically set to the next available value within the category.",
 )
 def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     product = (
@@ -297,6 +309,8 @@ def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="update_product",
+    summary="Update product",
+    description="Update an existing product's details, including name, description, pricing, stock, and feature flags.",
 )
 def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
@@ -313,7 +327,13 @@ def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
     return product
 
 
-@router.put("/{product_id}/swap", response_model=None, status_code=HTTPStatus.CREATED)
+@router.put(
+    "/{product_id}/swap",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    summary="Reorder product",
+    description="Move a product up (`move_up=true`) or down (`move_up=false`) in the display order within its category. Swaps `order_number` with the adjacent product.",
+)
 def swap(shop_id: UUID, product_id: UUID, move_up: bool):
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
     if not product:
@@ -366,6 +386,8 @@ def swap(shop_id: UUID, product_id: UUID, move_up: bool):
     status_code=HTTPStatus.NO_CONTENT,
     tags=[AgentTag.EXPOSED],
     operation_id="delete_product",
+    summary="Delete product",
+    description="Permanently remove a product from the shop.",
 )
 def delete(product_id: UUID, shop_id: UUID) -> None:
     return product_crud.delete_by_shop_id(shop_id=shop_id, id=product_id)

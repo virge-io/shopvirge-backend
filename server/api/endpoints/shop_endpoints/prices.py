@@ -163,7 +163,16 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
     return product_response
 
 
-@router.get("/", response_model=list[ProductResponse])
+@router.get(
+    "/",
+    response_model=list[ProductResponse],
+    summary="List products (pricelist)",
+    description=(
+        "Returns the full product catalogue for a shop in the requested language (`main`, `alt1`, or `alt2`). "
+        "Products with missing translations for the requested language are excluded. "
+        "When stock tracking is enabled, out-of-stock products are also filtered out."
+    ),
+)
 def get_products(
     shop_id: UUID,
     lang: Lang,
@@ -206,7 +215,15 @@ def get_products(
     return products
 
 
-@router.post("/", response_model=list[ProductResponse])
+@router.post(
+    "/",
+    response_model=list[ProductResponse],
+    summary="Get cart products",
+    description=(
+        "Retrieve product details for a list of product IDs (a cart). "
+        "Falls back to the `main` language for any product missing a translation in the requested language."
+    ),
+)
 def get_cart_products(
     shop_id: UUID,
     lang: Lang,

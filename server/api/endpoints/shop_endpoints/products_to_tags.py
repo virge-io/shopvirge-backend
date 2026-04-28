@@ -19,9 +19,13 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ProductToTagSchema])
+@router.get(
+    "/",
+    response_model=List[ProductToTagSchema],
+    summary="List product-tag associations",
+    description="Returns all product-to-tag relationship records for a shop.",
+)
 def get_multi(response: Response, common: dict = Depends(common_parameters)) -> List[ProductToTagSchema]:
-    """List prices for a product_to_tag"""
     query_result, content_range = product_to_tag_crud.get_multi(
         skip=common["skip"],
         limit=common["limit"],
@@ -32,7 +36,11 @@ def get_multi(response: Response, common: dict = Depends(common_parameters)) -> 
     return query_result
 
 
-@router.get("/get_relation_id")
+@router.get(
+    "/get_relation_id",
+    summary="Get product-tag relation ID",
+    description="Find the UUID of the association record between a specific product and tag. Returns 400 if the relation does not exist.",
+)
 def get_relation_id(tag_id: UUID, product_id: UUID) -> None:
     tag = tag_crud.get(tag_id)
     product = product_crud.get(product_id)
@@ -48,7 +56,12 @@ def get_relation_id(tag_id: UUID, product_id: UUID) -> None:
     return relation.id
 
 
-@router.get("/{id}", response_model=ProductToTagSchema)
+@router.get(
+    "/{id}",
+    response_model=ProductToTagSchema,
+    summary="Get product-tag association",
+    description="Retrieve a single product-to-tag association by its UUID.",
+)
 def get_by_id(id: UUID) -> ProductToTagSchema:
     product_to_tag = product_to_tag_crud.get(id)
     if not product_to_tag:
@@ -56,7 +69,13 @@ def get_by_id(id: UUID) -> ProductToTagSchema:
     return product_to_tag
 
 
-@router.post("/", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.post(
+    "/",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Add tag to product",
+    description="Create an association between a product and a tag. Both must exist within the shop.",
+)
 def create(data: ProductToTagCreate = Body(...)) -> None:
     tag = tag_crud.get(data.tag_id)
     product = product_crud.get(data.product_id)
@@ -68,7 +87,13 @@ def create(data: ProductToTagCreate = Body(...)) -> None:
     return product_to_tag_crud.create(obj_in=data)
 
 
-@router.put("/{product_to_tag_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.put(
+    "/{product_to_tag_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Update product-tag association",
+    description="Update an existing product-tag association record.",
+)
 def update(*, product_to_tag_id: UUID, item_in: ProductToTagUpdate) -> Any:
     product_to_tag = product_to_tag_crud.get(id=product_to_tag_id)
     logger.info("Updating product_to_tag", data=product_to_tag)
@@ -82,6 +107,12 @@ def update(*, product_to_tag_id: UUID, item_in: ProductToTagUpdate) -> Any:
     return product_to_tag
 
 
-@router.delete("/{product_to_tag_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.delete(
+    "/{product_to_tag_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Remove tag from product",
+    description="Delete the association between a product and a tag.",
+)
 def delete(product_to_tag_id: UUID) -> None:
     return product_to_tag_crud.delete(id=product_to_tag_id)
