@@ -96,6 +96,7 @@ def get_user_me(
 ) -> Any:
     return current_user
 
+
 # TODO remove me?
 # @router.post("/open", response_model=schemas.User)
 # def create_user_open(

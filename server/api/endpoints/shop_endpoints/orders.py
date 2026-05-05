@@ -374,6 +374,7 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         invalidatePendingOrdersCache(created_order.id)
     return created_order
 
+
 # TODO mention discord in documentation?
 @router.patch(
     "/{order_id}",
