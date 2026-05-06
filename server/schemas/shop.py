@@ -168,6 +168,14 @@ class Toggles(BoilerplateBaseModel):
     enable_attributes_for_categories: bool = False
 
 
+class ConfigurationShipping(BoilerplateBaseModel):
+    enabled: bool = False
+    method: str = "fixed"
+    fixed_fee: float = 0.0
+    free_shipping_above_enabled: bool = False
+    free_shipping_above_amount: float = 0.0
+
+
 class ConfigurationV1(BoilerplateBaseModel):
     short_shop_name: str
     logo: str
@@ -180,6 +188,7 @@ class ConfigurationV1(BoilerplateBaseModel):
     contact: ConfigurationContact
     toggles: Toggles
     legal: ConfigurationLegal | None = None
+    shipping: ConfigurationShipping | None = None
 
 
 class ShopTypeName(str, Enum):

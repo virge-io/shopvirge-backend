@@ -304,6 +304,7 @@ class OrderTable(BaseModel):
     account_id = Column(UUIDType, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True)
     order_info = Column(postgresql.JSONB())
     total = Column(Float())
+    shipping_fee_inc_btw = Column(Float(), nullable=True)
     status = Column(String(), default="pending")
     created_at = Column(DateTime, server_default=func.now())
     completed_by = Column("completed_by", UUIDType, ForeignKey("users.id"), nullable=True)

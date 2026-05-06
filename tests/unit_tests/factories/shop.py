@@ -10,6 +10,7 @@ from server.schemas.shop import (
     ConfigurationLanguageFields,
     ConfigurationLanguageFieldStaticTexts,
     ConfigurationLanguages,
+    ConfigurationShipping,
     ConfigurationV1,
     ShopConfig,
     ShopConfigUpdate,
@@ -113,6 +114,79 @@ def make_shop(with_config=False, random_shop_name=False):
             config="{}",
             shop_type="{}",
         )
+    db.session.add(shop)
+    db.session.commit()
+    return shop.id
+
+
+def make_shop_with_shipping(
+    fixed_fee: float = 4.95,
+    free_shipping_above_enabled: bool = False,
+    free_shipping_above_amount: float = 0.0,
+    enabled: bool = True,
+    method: str = "fixed",
+):
+    """Create a shop with a populated config and a shipping block."""
+    menu_items = ConfigurationLanguageFieldMenuItems(
+        about="string",
+        cart="string",
+        checkout="string",
+        products="string",
+        contact="string",
+        policies="string",
+        terms="string",
+        privacy_policy="string",
+        return_policy="string",
+        website="string",
+        phone="string",
+        email="string",
+        address="string",
+    )
+    static_texts = ConfigurationLanguageFieldStaticTexts(
+        about="string", terms="string", privacy_policy="string", return_policy="string"
+    )
+    language_fields = ConfigurationLanguageFields(
+        language_name="string", menu_items=menu_items, static_texts=static_texts
+    )
+    toggles = Toggles()
+    config_languages = ConfigurationLanguages(main=language_fields)
+    config_contact = ConfigurationContact(
+        company="string",
+        phone="+31 6 12345678",
+        email="user@example.com",
+        address="string",
+        zip_code="string",
+        city="string",
+    )
+    shipping = ConfigurationShipping(
+        enabled=enabled,
+        method=method,
+        fixed_fee=fixed_fee,
+        free_shipping_above_enabled=free_shipping_above_enabled,
+        free_shipping_above_amount=free_shipping_above_amount,
+    )
+    config = ConfigurationV1(
+        languages=config_languages,
+        short_shop_name="string",
+        main_banner="string",
+        logo="string",
+        contact=config_contact,
+        toggles=toggles,
+        shipping=shipping,
+    )
+    shop = ShopTable(
+        name=f"Test Shop with shipping - {uuid4()}",
+        description=f"Test Shop Description with shipping - {uuid4()}",
+        config=config.model_dump(),
+        shop_type="{}",
+        vat_standard=21,
+        vat_lower_1=9,
+        vat_lower_2=10,
+        vat_lower_3=5,
+        vat_special=2,
+        vat_zero=0,
+        stripe_public_key="string",
+    )
     db.session.add(shop)
     db.session.commit()
     return shop.id

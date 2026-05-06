@@ -60,6 +60,22 @@
             {% endfor %}
         </tbody>
         <tfoot>
+            {% if shipping_lines %}
+            {% for s in shipping_lines %}
+            <tr style="border-top: 2px solid #ddd;">
+                <td colspan="2" style="padding: 10px;"><strong>Shipping</strong></td>
+                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(s.amount_ex_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">{{ "%.0f"|format(s.btw_rate) }}%</td>
+                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(s.amount_inc_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(s.amount_inc_btw) }}</td>
+            </tr>
+            {% endfor %}
+            {% elif shipping_fee_inc_btw is not none and shipping_fee_inc_btw == 0 %}
+            <tr style="border-top: 2px solid #ddd;">
+                <td colspan="5" style="text-align: right; padding: 10px;"><strong>Shipping:</strong></td>
+                <td style="text-align: right; padding: 10px;">Free</td>
+            </tr>
+            {% endif %}
             <tr style="border-top: 2px solid #ddd;">
                 <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold;">Total ex VAT:</td>
                 <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(total_ex_btw) }}</td>

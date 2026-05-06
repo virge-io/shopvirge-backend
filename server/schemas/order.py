@@ -50,6 +50,7 @@ class OrderBase(BoilerplateBaseModel):
     notes: Optional[str]
     customer_order_id: Optional[int]  # Optional or required ?
     status: Optional[str]
+    shipping_fee_inc_btw: Optional[float] = None
 
 
 # Properties to receive via API on creation

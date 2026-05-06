@@ -385,15 +385,13 @@ def _map_language(language_name: str) -> str:
 def _compute_order_lines_for_email(order_info: list[dict], shop: Any) -> list[dict]:
     """Build enriched order line dicts with VAT and attribute info for email templates."""
     from server.crud.crud_product import product_crud
+    from server.services.shipping import resolve_vat_rate
 
     lines = []
     for item in order_info:
         product = product_crud.get_id_by_shop_id(shop.id, item["product_id"])
 
-        # Determine VAT rate from product's tax_category mapped to shop column
-        vat_rate = shop.vat_standard
-        if product and product.tax_category:
-            vat_rate = getattr(shop, product.tax_category, shop.vat_standard)
+        vat_rate = resolve_vat_rate(product, shop)
 
         # order_info prices are VAT-inclusive (they match the catalog price the
         # customer sees in the shop). Derive the ex-VAT figures by dividing out
@@ -456,9 +454,35 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
         # Build order lines with VAT and attribute data
         order_lines = _compute_order_lines_for_email(order.order_info, shop)
 
-        # Compute totals
-        total_ex_btw = round(sum(line["line_total_ex_btw"] for line in order_lines), 2)
-        total_inc_btw = round(sum(line["line_total_inc_btw"] for line in order_lines), 2)
+        # Compute item totals
+        items_total_ex_btw = round(sum(line["line_total_ex_btw"] for line in order_lines), 2)
+        items_total_inc_btw = round(sum(line["line_total_inc_btw"] for line in order_lines), 2)
+
+        # Build shipping lines (one per VAT rate) using the same allocation logic
+        # the order create endpoint used. Persisted on the order as a single
+        # inc-VAT figure; we re-derive the per-rate split for display.
+        shipping_fee_inc_btw = getattr(order, "shipping_fee_inc_btw", None)
+        shipping_lines: list[dict] = []
+        shipping_total_ex_btw = 0.0
+        shipping_total_inc_btw = 0.0
+        if shipping_fee_inc_btw is not None and shipping_fee_inc_btw > 0:
+            from server.services.shipping import allocate_shipping_lines, build_rate_subtotals
+
+            rate_subtotals = build_rate_subtotals(order.order_info, shop)
+            for sl in allocate_shipping_lines(shipping_fee_inc_btw, rate_subtotals):
+                shipping_lines.append(
+                    {
+                        "btw_rate": sl.btw_rate,
+                        "amount_ex_btw": sl.amount_ex_btw,
+                        "amount_inc_btw": sl.amount_inc_btw,
+                        "amount_btw": sl.amount_btw,
+                    }
+                )
+            shipping_total_ex_btw = round(sum(line["amount_ex_btw"] for line in shipping_lines), 2)
+            shipping_total_inc_btw = round(shipping_fee_inc_btw, 2)
+
+        total_ex_btw = round(items_total_ex_btw + shipping_total_ex_btw, 2)
+        total_inc_btw = round(items_total_inc_btw + shipping_total_inc_btw, 2)
         total_btw = round(total_inc_btw - total_ex_btw, 2)
 
         # Extract business info from account details
@@ -483,6 +507,8 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
             "customer_order_id": order.customer_order_id,
             "customer_email": account.name,
             "order_lines": order_lines,
+            "shipping_lines": shipping_lines,
+            "shipping_fee_inc_btw": shipping_fee_inc_btw,
             "total_ex_btw": total_ex_btw,
             "total_inc_btw": total_inc_btw,
             "total_btw": total_btw,
