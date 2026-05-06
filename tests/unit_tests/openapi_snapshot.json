@@ -1999,67 +1999,6 @@
         "title": "LinkStripeBody",
         "type": "object"
       },
-      "MailTestRequest": {
-        "properties": {
-          "owner_email": {
-            "anyOf": [
-              {
-                "format": "email",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Email"
-          },
-          "shop_name": {
-            "default": "ShopVirge Dev",
-            "title": "Shop Name",
-            "type": "string"
-          },
-          "to": {
-            "default": "customer@example.com",
-            "format": "email",
-            "title": "To",
-            "type": "string"
-          }
-        },
-        "title": "MailTestRequest",
-        "type": "object"
-      },
-      "MailTestResponse": {
-        "properties": {
-          "customer_order_id": {
-            "title": "Customer Order Id",
-            "type": "integer"
-          },
-          "sent_to_customer": {
-            "format": "email",
-            "title": "Sent To Customer",
-            "type": "string"
-          },
-          "sent_to_owner": {
-            "anyOf": [
-              {
-                "format": "email",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sent To Owner"
-          }
-        },
-        "required": [
-          "sent_to_customer",
-          "sent_to_owner",
-          "customer_order_id"
-        ],
-        "title": "MailTestResponse",
-        "type": "object"
-      },
       "Msg": {
         "properties": {
           "msg": {
@@ -6884,56 +6823,6 @@
         "summary": "Test Token",
         "tags": [
           "login"
-        ]
-      }
-    },
-    "/mail-test/send-order-confirmation": {
-      "post": {
-        "description": "Send a synthetic order confirmation mail through the configured SMTP.\n\nIntended for local testing against Mailpit. Gated by settings.MAIL_TEST_ENDPOINT_ENABLED.",
-        "operationId": "send_test_order_confirmation_mail_test_send_order_confirmation_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/MailTestRequest"
-                  }
-                ],
-                "default": {
-                  "shop_name": "ShopVirge Dev",
-                  "to": "customer@example.com"
-                },
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MailTestResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Send Test Order Confirmation",
-        "tags": [
-          "mail-test"
         ]
       }
     },

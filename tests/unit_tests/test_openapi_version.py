@@ -7,7 +7,7 @@ to the API surface — new endpoint, schema field, response shape — requires:
   1. Bumping ``APP_VERSION`` in ``server/main.py``.
   2. Regenerating the snapshot at that new version:
 
-         PYTHONPATH=. python -c "import json; \\
+         MAIL_TEST_ENDPOINT_ENABLED=false PYTHONPATH=. python -c "import json; \\
          from fastapi import FastAPI; from starlette.responses import JSONResponse; \\
          from server.api.api import api_router; \\
          app = FastAPI(title='ShopVirge API', description='Backend for ShopVirge Shops.', \\
@@ -16,6 +16,12 @@ to the API surface — new endpoint, schema field, response shape — requires:
          app.include_router(api_router); \\
          json.dump(app.openapi(), open('tests/unit_tests/openapi_snapshot.json', 'w'), indent=2, sort_keys=True)"
 
+The test generates the live spec in a subprocess with
+``MAIL_TEST_ENDPOINT_ENABLED=false`` so its result is independent of the
+local ``.env``. The ``/mail-test/*`` route (and its request/response schemas)
+is a dev-only convenience, never part of the prod API surface, so excluding
+it from this comparison is intentional.
+
 The previous version of this guard only fired when ``current_version !=
 snapshot_version``. Since the snapshot was committed at one version while
 APP_VERSION had already been bumped, that condition was permanently true and
@@ -23,13 +29,11 @@ the assert passed for any schema change. Strict equality closes that gap.
 """
 
 import json
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
-
-from fastapi import FastAPI
-from starlette.responses import JSONResponse
-
-from server.api.api import api_router
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAIN_PY = REPO_ROOT / "server" / "main.py"
@@ -42,18 +46,58 @@ def _app_version_from_main() -> str:
     return match.group(1)
 
 
+# Generate the OpenAPI spec in a subprocess with MAIL_TEST_ENDPOINT_ENABLED
+# forced off so the result is independent of the local .env (which often turns
+# the dev-only mail-test route on). The router's conditional ``include_router``
+# is evaluated at import time, so once the module is loaded with the wrong env
+# it can't be re-evaluated cleanly inside the same pytest process. The script
+# writes its JSON output to a file path passed on argv so structlog/stdout
+# noise during import doesn't pollute the spec.
+_OPENAPI_GEN_SCRIPT = """
+import json, sys
+from fastapi import FastAPI
+from starlette.responses import JSONResponse
+from server.api.api import api_router
+
+app = FastAPI(
+    title="ShopVirge API",
+    description="Backend for ShopVirge Shops.",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    version=sys.argv[1],
+    default_response_class=JSONResponse,
+)
+app.include_router(api_router)
+with open(sys.argv[2], "w") as fh:
+    json.dump(app.openapi(), fh)
+"""
+
+
 def _current_openapi(version: str) -> dict:
-    app = FastAPI(
-        title="ShopVirge API",
-        description="Backend for ShopVirge Shops.",
-        openapi_url="/openapi.json",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        version=version,
-        default_response_class=JSONResponse,
-    )
-    app.include_router(api_router)
-    return app.openapi()
+    import tempfile
+
+    env = {**os.environ, "MAIL_TEST_ENDPOINT_ENABLED": "false", "PYTHONPATH": str(REPO_ROOT)}
+    with tempfile.NamedTemporaryFile("r", suffix=".json", delete=False) as out:
+        out_path = out.name
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", _OPENAPI_GEN_SCRIPT, version, out_path],
+            env=env,
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"OpenAPI generation subprocess failed (rc={result.returncode}):\n"
+                f"--- stderr ---\n{result.stderr}\n--- stdout ---\n{result.stdout}"
+            )
+        with open(out_path) as fh:
+            return json.load(fh)
+    finally:
+        Path(out_path).unlink(missing_ok=True)
 
 
 def _strip_version(spec: dict) -> dict:
