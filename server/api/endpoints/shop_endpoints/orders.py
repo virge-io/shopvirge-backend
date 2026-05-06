@@ -28,6 +28,7 @@ from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSche
 from server.schemas.product import ProductTranslationBase
 from server.security import auth_required
 from server.services import stripe_client
+from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
 from server.settings import mail_settings
 from server.utils.discord.discord import post_discord_order_complete
@@ -306,6 +307,13 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         data.status = "complete"
         data.completed_at = datetime.now()
 
+    # Compute shipping fee from shop config and recompute the persisted total
+    # server-side so it can't be manipulated by the client.
+    shipping_calc = compute_shipping_for_cart(data.order_info, shop)
+    data.shipping_fee_inc_btw = shipping_calc.fee_inc_btw if shipping_calc is not None else None
+    items_total = sum(item.price * item.quantity for item in data.order_info)
+    data.total = round(items_total + (data.shipping_fee_inc_btw or 0.0), 2)
+
     order = order_crud.create(obj_in=data)
 
     created_order = OrderCreated(
@@ -319,6 +327,7 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         created_at=order.created_at,
         completed_at=order.completed_at,
         account_name=order.account.name,
+        shipping_fee_inc_btw=order.shipping_fee_inc_btw,
     )
     if str(data.account_id) == "0999fbcd-a72b-4cc2-abbe-41ccd466cdaf":
         # Test table -> invalidate completed orders

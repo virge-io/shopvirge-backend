@@ -44,6 +44,7 @@ from server.api.endpoints.shop_endpoints import (
     product_attribute_values,
     products,
     products_to_tags,
+    shipping,
     stripe,
     tags,
 )
@@ -90,6 +91,11 @@ api_router.include_router(
     orders.router,
     prefix="/orders",
     tags=["orders"],
+)
+api_router.include_router(
+    shipping.router,
+    prefix="/shipping",
+    tags=["shipping"],
 )
 api_router.include_router(
     categories.router,

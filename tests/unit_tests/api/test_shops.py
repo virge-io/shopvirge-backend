@@ -292,6 +292,7 @@ def test_shop_create_config(test_client, shop):
                 "kvk_number": "string",
                 "btw_number": "string",
             },
+            "shipping": None,
         },
         "config_version": 0,
     }
@@ -416,6 +417,7 @@ def test_shop_update_config(test_client, shop_with_config):
                 "kvk_number": "string",
                 "btw_number": "string",
             },
+            "shipping": None,
         },
         "config_version": 0,
     }
@@ -423,3 +425,79 @@ def test_shop_update_config(test_client, shop_with_config):
     assert 201 == response.status_code
     config = response.json()
     assert config == body
+
+
+def test_shop_update_config_with_shipping(test_client, shop_with_config):
+    body = {
+        "config": {
+            "short_shop_name": "Test",
+            "main_banner": "string",
+            "alt1_banner": "string",
+            "alt2_banner": "string",
+            "google_analytics_id": "string",
+            "gradient_percentage": 0,
+            "logo": "string",
+            "languages": {
+                "main": {
+                    "language_name": "string",
+                    "menu_items": {
+                        "about": "string",
+                        "cart": "string",
+                        "checkout": "string",
+                        "products": "string",
+                        "contact": "string",
+                        "policies": "string",
+                        "terms": "string",
+                        "privacy_policy": "string",
+                        "return_policy": "string",
+                        "website": "string",
+                        "phone": "string",
+                        "email": "string",
+                        "address": "string",
+                    },
+                    "static_texts": {
+                        "about": "string",
+                        "terms": "string",
+                        "privacy_policy": "string",
+                        "return_policy": "string",
+                    },
+                },
+            },
+            "contact": {
+                "company": "string",
+                "phone": "+31 6 12345678",
+                "email": "user@example.com",
+                "address": "string",
+                "zip_code": "string",
+                "city": "string",
+            },
+            "toggles": {
+                "show_new_products": True,
+                "show_featured_products": True,
+                "show_categories": True,
+                "show_shop_name": True,
+                "show_nav_categories": False,
+                "language_alt1_enabled": False,
+                "language_alt2_enabled": False,
+                "product_call_to_action_enabled": False,
+                "enable_stock_on_products": True,
+                "enable_attributes_for_categories": False,
+            },
+            "legal": None,
+            "shipping": {
+                "enabled": True,
+                "method": "fixed",
+                "fixed_fee": 4.95,
+                "free_shipping_above_enabled": True,
+                "free_shipping_above_amount": 50.0,
+            },
+        },
+        "config_version": 1,
+    }
+    response = test_client.put(f"/shops/config/{shop_with_config}", data=json_dumps(body))
+    assert 201 == response.status_code
+    config = response.json()
+    assert config["config"]["shipping"]["enabled"] is True
+    assert config["config"]["shipping"]["method"] == "fixed"
+    assert config["config"]["shipping"]["fixed_fee"] == 4.95
+    assert config["config"]["shipping"]["free_shipping_above_amount"] == 50.0

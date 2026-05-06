@@ -15,8 +15,15 @@ def make_product(
     main_description_short="Test Product Short Description",
     main_description="Test Product Description",
     price=1.0,
+    tax_category="vat_standard",
 ):
-    product = ProductTable(shop_id=shop_id, category_id=category_id, price=price, stock=1)
+    product = ProductTable(
+        shop_id=shop_id,
+        category_id=category_id,
+        price=price,
+        stock=1,
+        tax_category=tax_category,
+    )
     db.session.add(product)
     db.session.commit()
 
