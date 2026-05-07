@@ -82,7 +82,7 @@ mcp_app = None
 
 app = FastAPI(
     title="ShopVirge API",
-    description="Backend for ShopVirge Shops.\n\n**Login tip:** client_id and client_secret fields in the Authorize dialog can be left empty.",
+    description="Backend for ShopVirge Shops.",
     openapi_url="/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
