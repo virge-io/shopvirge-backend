@@ -639,102 +639,6 @@
         "title": "AvailableOptionSchema",
         "type": "object"
       },
-      "Body_login_access_token_login_access_token_post": {
-        "properties": {
-          "client_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Client Id"
-          },
-          "client_secret": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "format": "password",
-            "title": "Client Secret"
-          },
-          "grant_type": {
-            "anyOf": [
-              {
-                "pattern": "^password$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grant Type"
-          },
-          "password": {
-            "format": "password",
-            "title": "Password",
-            "type": "string"
-          },
-          "scope": {
-            "default": "",
-            "title": "Scope",
-            "type": "string"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "username",
-          "password"
-        ],
-        "title": "Body_login_access_token_login_access_token_post",
-        "type": "object"
-      },
-      "Body_reset_password_reset_password__post": {
-        "properties": {
-          "new_password": {
-            "title": "New Password",
-            "type": "string"
-          },
-          "token": {
-            "title": "Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token",
-          "new_password"
-        ],
-        "title": "Body_reset_password_reset_password__post",
-        "type": "object"
-      },
-      "Body_update_user_me_users_me_put": {
-        "properties": {
-          "email": {
-            "format": "email",
-            "title": "Email",
-            "type": "string"
-          },
-          "full_name": {
-            "title": "Full Name",
-            "type": "string"
-          },
-          "password": {
-            "title": "Password",
-            "type": "string"
-          }
-        },
-        "title": "Body_update_user_me_users_me_put",
-        "type": "object"
-      },
       "Cart": {
         "properties": {
           "products": {
@@ -1166,8 +1070,6 @@
           },
           "phone": {
             "format": "phone",
-            "maxLength": 64,
-            "minLength": 7,
             "title": "Phone",
             "type": "string"
           },
@@ -1530,7 +1432,7 @@
         "title": "ConfigurationShipping",
         "type": "object"
       },
-      "ConfigurationV1-Input": {
+      "ConfigurationV1": {
         "properties": {
           "alt1_banner": {
             "anyOf": [
@@ -2224,45 +2126,6 @@
           "stripe_customer_id"
         ],
         "title": "LinkStripeBody",
-        "type": "object"
-      },
-      "Msg": {
-        "properties": {
-          "msg": {
-            "title": "Msg",
-            "type": "string"
-          }
-        },
-        "required": [
-          "msg"
-        ],
-        "title": "Msg",
-        "type": "object"
-      },
-      "MyShopsResponse": {
-        "properties": {
-          "can_write": {
-            "title": "Can Write",
-            "type": "boolean"
-          },
-          "is_admin": {
-            "title": "Is Admin",
-            "type": "boolean"
-          },
-          "shops": {
-            "items": {
-              "$ref": "#/components/schemas/ShopSchema"
-            },
-            "title": "Shops",
-            "type": "array"
-          }
-        },
-        "required": [
-          "shops",
-          "is_admin",
-          "can_write"
-        ],
-        "title": "MyShopsResponse",
         "type": "object"
       },
       "OrderBase": {
@@ -4912,7 +4775,7 @@
       "ShopConfig": {
         "properties": {
           "config": {
-            "$ref": "#/components/schemas/ConfigurationV1-Output"
+            "$ref": "#/components/schemas/ConfigurationV1"
           },
           "config_version": {
             "title": "Config Version",
@@ -4942,27 +4805,10 @@
         "title": "ShopConfig",
         "type": "object"
       },
-      "ShopConfigUpdate-Input": {
+      "ShopConfigUpdate": {
         "properties": {
           "config": {
-            "$ref": "#/components/schemas/ConfigurationV1-Input"
-          },
-          "config_version": {
-            "title": "Config Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "config",
-          "config_version"
-        ],
-        "title": "ShopConfigUpdate",
-        "type": "object"
-      },
-      "ShopConfigUpdate-Output": {
-        "properties": {
-          "config": {
-            "$ref": "#/components/schemas/ConfigurationV1-Output"
+            "$ref": "#/components/schemas/ConfigurationV1"
           },
           "config_version": {
             "title": "Config Version",
@@ -5693,172 +5539,15 @@
         "title": "Toggles",
         "type": "object"
       },
-      "User": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "format": "email",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": true,
-            "title": "Is Active"
-          },
-          "is_superuser": {
-            "default": false,
-            "title": "Is Superuser",
-            "type": "boolean"
-          },
-          "username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Username"
-          }
-        },
-        "required": [
-          "id",
-          "created_at"
-        ],
-        "title": "User",
-        "type": "object"
-      },
-      "UserCreate": {
-        "properties": {
-          "email": {
-            "format": "email",
-            "title": "Email",
-            "type": "string"
-          },
-          "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": true,
-            "title": "Is Active"
-          },
-          "is_superuser": {
-            "default": false,
-            "title": "Is Superuser",
-            "type": "boolean"
-          },
-          "password": {
-            "title": "Password",
-            "type": "string"
-          },
-          "username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Username"
-          }
-        },
-        "required": [
-          "email",
-          "password"
-        ],
-        "title": "UserCreate",
-        "type": "object"
-      },
-      "UserUpdate": {
-        "properties": {
-          "email": {
-            "anyOf": [
-              {
-                "format": "email",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": true,
-            "title": "Is Active"
-          },
-          "is_superuser": {
-            "default": false,
-            "title": "Is Superuser",
-            "type": "boolean"
-          },
-          "password": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Password"
-          },
-          "username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Username"
-          }
-        },
-        "title": "UserUpdate",
-        "type": "object"
-      },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -5890,17 +5579,6 @@
         "title": "ValidationError",
         "type": "object"
       }
-    },
-    "securitySchemes": {
-      "OAuth2PasswordBearer": {
-        "flows": {
-          "password": {
-            "scopes": {},
-            "tokenUrl": "/login/access-token"
-          }
-        },
-        "type": "oauth2"
-      }
     }
   },
   "info": {
@@ -5912,6 +5590,7 @@
   "paths": {
     "/admin/accounts": {
       "get": {
+        "description": "List all customer accounts across every shop. Optionally filter by `shop_id` or by Stripe linkage status (`missing_stripe=true` returns accounts without a Stripe customer ID). Requires membership of the Cognito Admins group.",
         "operationId": "list_accounts_admin_accounts_get",
         "parameters": [
           {
@@ -6029,7 +5708,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Accounts",
+        "summary": "List accounts (admin)",
         "tags": [
           "admin",
           "accounts"
@@ -6038,6 +5717,7 @@
     },
     "/admin/accounts/{id}": {
       "get": {
+        "description": "Retrieve a single account by UUID, including its Stripe metadata. Requires Admins group membership.",
         "operationId": "get_account_admin_accounts__id__get",
         "parameters": [
           {
@@ -6079,7 +5759,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Account",
+        "summary": "Get account (admin)",
         "tags": [
           "admin",
           "accounts"
@@ -6088,7 +5768,7 @@
     },
     "/admin/accounts/{id}/link-stripe": {
       "post": {
-        "description": "Manually associate a Stripe customer id with an account.\n\nUseful for reconciling local records that pre-date the\nauto-customer-create flow. This does NOT call Stripe; follow up\nwith ``POST /sync-stripe`` to pull the snapshot.",
+        "description": "Manually associate an existing Stripe customer ID with a local account. Follow up with POST /sync-stripe to pull the full snapshot.",
         "operationId": "link_stripe_admin_accounts__id__link_stripe_post",
         "parameters": [
           {
@@ -6140,7 +5820,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Link Stripe",
+        "summary": "Link Stripe customer ID (admin)",
         "tags": [
           "admin",
           "accounts"
@@ -6149,7 +5829,7 @@
     },
     "/admin/accounts/{id}/stripe-customer": {
       "get": {
-        "description": "Read-through: fetch the Stripe customer for this account.\n\nDoes NOT persist anything; use ``POST /sync-stripe`` to write the\nsnapshot back into the account's ``details`` column.",
+        "description": "Read-through to Stripe: returns the live Stripe Customer object for this account. Does not persist anything \u2014 use POST /sync-stripe to save the snapshot.",
         "operationId": "get_stripe_customer_admin_accounts__id__stripe_customer_get",
         "parameters": [
           {
@@ -6199,7 +5879,7 @@
             "description": "Stripe API error"
           }
         },
-        "summary": "Get Stripe Customer",
+        "summary": "Fetch Stripe customer (admin)",
         "tags": [
           "admin",
           "accounts"
@@ -6208,7 +5888,7 @@
     },
     "/admin/accounts/{id}/sync-stripe": {
       "post": {
-        "description": "Pull the Stripe customer snapshot and persist it on the account.\n\nWrites ``details[\"stripe_customer\"]`` (the full Stripe payload) and\n``details[\"stripe_synced_at\"]`` (ISO timestamp). Existing keys in\n``details`` are preserved.",
+        "description": "Fetch the Stripe Customer and persist it in `Account.details` (`stripe_customer` + `stripe_synced_at`). Existing details keys are preserved.",
         "operationId": "sync_stripe_admin_accounts__id__sync_stripe_post",
         "parameters": [
           {
@@ -6256,7 +5936,7 @@
             "description": "Stripe API error"
           }
         },
-        "summary": "Sync Stripe",
+        "summary": "Sync Stripe customer snapshot (admin)",
         "tags": [
           "admin",
           "accounts"
@@ -6402,6 +6082,7 @@
     },
     "/faq/": {
       "get": {
+        "description": "Returns all FAQ question/answer entries. Supports pagination, filtering, and sorting.",
         "operationId": "get_multi_faq__get",
         "parameters": [
           {
@@ -6479,12 +6160,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List FAQ entries",
         "tags": [
           "faq"
         ]
       },
       "post": {
+        "description": "Add a new FAQ question and answer. Requires authentication. Returns 409 if a FAQ with the same question already exists.",
         "operationId": "create_faq__post",
         "requestBody": {
           "content": {
@@ -6518,7 +6200,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create FAQ entry",
         "tags": [
           "faq"
         ]
@@ -6526,6 +6208,7 @@
     },
     "/faq/{faq_id}": {
       "delete": {
+        "description": "Remove a FAQ entry. Requires authentication.",
         "operationId": "delete_faq__faq_id__delete",
         "parameters": [
           {
@@ -6554,12 +6237,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete FAQ entry",
         "tags": [
           "faq"
         ]
       },
       "put": {
+        "description": "Update an existing FAQ entry's question, answer, or category. Returns 409 if another entry already uses the same question.",
         "operationId": "update_faq__faq_id__put",
         "parameters": [
           {
@@ -6605,7 +6289,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update FAQ entry",
         "tags": [
           "faq"
         ]
@@ -6613,6 +6297,7 @@
     },
     "/faq/{id}": {
       "get": {
+        "description": "Retrieve a single FAQ entry by its UUID.",
         "operationId": "get_by_id_faq__id__get",
         "parameters": [
           {
@@ -6648,7 +6333,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get FAQ entry",
         "tags": [
           "faq"
         ]
@@ -6924,6 +6609,7 @@
     },
     "/licenses": {
       "get": {
+        "description": "Returns all licenses. Requires superuser privileges.",
         "operationId": "get_multi_licenses_get",
         "parameters": [
           {
@@ -7001,17 +6687,13 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get Multi",
+        "summary": "List licenses",
         "tags": [
           "licenses"
         ]
       },
       "post": {
+        "description": "Create a new license. Recurring licenses must not have an `end_date`. Requires superuser privileges.",
         "operationId": "create_licenses_post",
         "requestBody": {
           "content": {
@@ -7045,12 +6727,7 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Create",
+        "summary": "Create license",
         "tags": [
           "licenses"
         ]
@@ -7058,6 +6735,7 @@
     },
     "/licenses/improviser/{improviser_user_id}": {
       "get": {
+        "description": "Retrieve the license associated with an external improviser user ID.",
         "operationId": "get_by_improviser_user_id_licenses_improviser__improviser_user_id__get",
         "parameters": [
           {
@@ -7092,7 +6770,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Improviser User Id",
+        "summary": "Get license by improviser user ID",
         "tags": [
           "licenses"
         ]
@@ -7100,6 +6778,7 @@
     },
     "/licenses/{id}": {
       "delete": {
+        "description": "Permanently remove a license. Requires superuser privileges.",
         "operationId": "delete_licenses__id__delete",
         "parameters": [
           {
@@ -7128,17 +6807,13 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Delete",
+        "summary": "Delete license",
         "tags": [
           "licenses"
         ]
       },
       "get": {
+        "description": "Retrieve a single license by its UUID. Requires superuser privileges.",
         "operationId": "get_by_id_licenses__id__get",
         "parameters": [
           {
@@ -7174,17 +6849,13 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get By Id",
+        "summary": "Get license",
         "tags": [
           "licenses"
         ]
       },
       "put": {
+        "description": "Update an existing license. Recurring licenses may not be given an `end_date`. Requires superuser privileges.",
         "operationId": "edit_licenses__id__put",
         "parameters": [
           {
@@ -7230,88 +6901,15 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Edit",
+        "summary": "Update license",
         "tags": [
           "licenses"
         ]
       }
     },
-    "/login/access-token": {
-      "post": {
-        "description": "OAuth2 compatible token login, get an access token for future requests",
-        "operationId": "login_access_token_login_access_token_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_login_access_token_login_access_token_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Login Access Token Login Access Token Post"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Login Access Token",
-        "tags": [
-          "login"
-        ]
-      }
-    },
-    "/login/test-token": {
-      "post": {
-        "description": "Test access token",
-        "operationId": "test_token_login_test_token_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Test Token",
-        "tags": [
-          "login"
-        ]
-      }
-    },
     "/orders/": {
       "get": {
+        "description": "Returns all orders across all shops. Requires authentication. Supports pagination, filtering (e.g. `status:pending`), and sorting.",
         "operationId": "get_multi_orders__get",
         "parameters": [
           {
@@ -7389,12 +6987,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List all orders",
         "tags": [
           "orders"
         ]
       },
       "post": {
+        "description": "Submit a new customer order. The caller's IP is validated against the shop's allowlist. Cannabis orders are capped at 5 grams total. If stock tracking is enabled the product availability is verified before the order is created. A Stripe customer is auto-created for new account names when the shop has Stripe configured.",
         "operationId": "create_orders__post",
         "requestBody": {
           "content": {
@@ -7428,7 +7027,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create order",
         "tags": [
           "orders"
         ]
@@ -7436,6 +7035,7 @@
     },
     "/orders/check/{ids}": {
       "get": {
+        "description": "Retrieve the status and totals of up to 10 orders by passing a comma-separated list of UUIDs. All orders must belong to the same shop. Used by the checkout confirmation page.",
         "operationId": "check_orders_check__ids__get",
         "parameters": [
           {
@@ -7474,7 +7074,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Check",
+        "summary": "Check order statuses",
         "tags": [
           "orders"
         ]
@@ -7482,6 +7082,7 @@
     },
     "/orders/shop/{shop_id}/complete": {
       "get": {
+        "description": "Returns all orders with status `complete` or `cancelled` for the given shop. Used for order history and reporting.",
         "operationId": "show_all_complete_orders_per_shop_orders_shop__shop_id__complete_get",
         "parameters": [
           {
@@ -7569,7 +7170,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Show All Complete Orders Per Shop",
+        "summary": "List completed orders for a shop",
         "tags": [
           "orders"
         ]
@@ -7577,6 +7178,7 @@
     },
     "/orders/shop/{shop_id}/pending": {
       "get": {
+        "description": "Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment. Used by POS/kitchen displays.",
         "operationId": "show_all_pending_orders_per_shop_orders_shop__shop_id__pending_get",
         "parameters": [
           {
@@ -7664,7 +7266,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Show All Pending Orders Per Shop",
+        "summary": "List pending orders for a shop",
         "tags": [
           "orders"
         ]
@@ -7672,6 +7274,7 @@
     },
     "/orders/stock/{order_id}": {
       "get": {
+        "description": "Returns `true` if all products in the order have sufficient stock, `false` otherwise. Only meaningful when the shop has stock tracking enabled.",
         "operationId": "get_order_products_in_stock_orders_stock__order_id__get",
         "parameters": [
           {
@@ -7708,7 +7311,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Order Products In Stock",
+        "summary": "Check order stock availability",
         "tags": [
           "orders"
         ]
@@ -7716,6 +7319,7 @@
     },
     "/orders/{id}": {
       "get": {
+        "description": "Retrieve a single order by its UUID, including line items, account name, and shop name.",
         "operationId": "get_by_id_orders__id__get",
         "parameters": [
           {
@@ -7751,7 +7355,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get order",
         "tags": [
           "orders"
         ]
@@ -7759,6 +7363,7 @@
     },
     "/orders/{order_id}": {
       "delete": {
+        "description": "Permanently remove an order record. Requires authentication.",
         "operationId": "delete_orders__order_id__delete",
         "parameters": [
           {
@@ -7787,12 +7392,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete order",
         "tags": [
           "orders"
         ]
       },
       "patch": {
+        "description": "Partially update an order \u2014 typically to mark it `complete` or `cancelled`. Setting status to `complete` triggers stock deduction (if enabled), a Discord webhook notification, and an order confirmation email. Idempotent: setting the same status twice is a no-op.",
         "operationId": "patch_orders__order_id__patch",
         "parameters": [
           {
@@ -7838,12 +7444,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Patch",
+        "summary": "Update order status",
         "tags": [
           "orders"
         ]
       },
       "put": {
+        "description": "Fully replace an order's fields. Requires authentication. Also sets `completed_at` when transitioning to `complete` or `cancelled`.",
         "operationId": "update_orders__order_id__put",
         "parameters": [
           {
@@ -7889,94 +7496,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Full order update",
         "tags": [
           "orders"
-        ]
-      }
-    },
-    "/password-recovery/{email}": {
-      "post": {
-        "description": "Password Recovery",
-        "operationId": "recover_password_password_recovery__email__post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "email",
-            "required": true,
-            "schema": {
-              "title": "Email",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Msg"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Recover Password",
-        "tags": [
-          "login"
-        ]
-      }
-    },
-    "/reset-password/": {
-      "post": {
-        "description": "Reset password",
-        "operationId": "reset_password_reset_password__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_reset_password_reset_password__post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Msg"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Reset Password",
-        "tags": [
-          "login"
         ]
       }
     },
@@ -8063,6 +7585,7 @@
     },
     "/shops/": {
       "get": {
+        "description": "Returns all shops on the platform. Supports pagination, filtering, and sorting via common query parameters.",
         "operationId": "get_multi_shops__get",
         "parameters": [
           {
@@ -8140,12 +7663,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List shops",
         "tags": [
           "shops"
         ]
       },
       "post": {
+        "description": "Create a new shop on the platform. Returns the created shop record.",
         "operationId": "create_shops__post",
         "requestBody": {
           "content": {
@@ -8179,7 +7703,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create shop",
         "tags": [
           "shops"
         ]
@@ -8187,6 +7711,7 @@
     },
     "/shops/allowed-ips/{id}": {
       "get": {
+        "description": "Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
         "operationId": "get_allowed_ips_shops_allowed_ips__id__get",
         "parameters": [
           {
@@ -8226,12 +7751,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Allowed Ips",
+        "summary": "List allowed IPs",
         "tags": [
           "shops"
         ]
       },
       "post": {
+        "description": "Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
         "operationId": "add_new_ip_shops_allowed_ips__id__post",
         "parameters": [
           {
@@ -8281,7 +7807,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Add New Ip",
+        "summary": "Add allowed IP",
         "tags": [
           "shops"
         ]
@@ -8289,6 +7815,7 @@
     },
     "/shops/allowed-ips/{id}/remove": {
       "post": {
+        "description": "Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
         "operationId": "remove_ip_shops_allowed_ips__id__remove_post",
         "parameters": [
           {
@@ -8338,7 +7865,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Remove Ip",
+        "summary": "Remove allowed IP",
         "tags": [
           "shops"
         ]
@@ -8346,7 +7873,7 @@
     },
     "/shops/cache-status/{id}": {
       "get": {
-        "description": "Show date of last change in data that could be visible in this shop",
+        "description": "Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
         "operationId": "get_cache_status_shops_cache_status__id__get",
         "parameters": [
           {
@@ -8382,7 +7909,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Cache Status",
+        "summary": "Get shop cache status",
         "tags": [
           "shops"
         ]
@@ -8390,6 +7917,7 @@
     },
     "/shops/config/{id}": {
       "get": {
+        "description": "Retrieve the shop's full configuration object, including feature toggles (e.g. stock tracking, checkout behaviour) and payment settings.",
         "operationId": "get_config_shops_config__id__get",
         "parameters": [
           {
@@ -8425,12 +7953,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Config",
+        "summary": "Get shop configuration",
         "tags": [
           "shops"
         ]
       },
       "put": {
+        "description": "Update the shop's configuration. Partial updates are supported \u2014 only provided fields are changed.",
         "operationId": "update_config_shops_config__id__put",
         "parameters": [
           {
@@ -8448,7 +7977,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ShopConfigUpdate-Input"
+                "$ref": "#/components/schemas/ShopConfigUpdate"
               }
             }
           },
@@ -8459,7 +7988,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShopConfigUpdate-Output"
+                  "$ref": "#/components/schemas/ShopConfigUpdate"
                 }
               }
             },
@@ -8476,7 +8005,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Config",
+        "summary": "Update shop configuration",
         "tags": [
           "shops"
         ]
@@ -8484,7 +8013,7 @@
     },
     "/shops/last-completed-order/{id}": {
       "get": {
-        "description": "Show date of last change in data that could be visible in this shop",
+        "description": "Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
         "operationId": "get_last_completed_order_shops_last_completed_order__id__get",
         "parameters": [
           {
@@ -8520,7 +8049,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Last Completed Order",
+        "summary": "Get timestamp of last completed order",
         "tags": [
           "shops"
         ]
@@ -8528,7 +8057,7 @@
     },
     "/shops/last-pending-order/{id}": {
       "get": {
-        "description": "Show date of last change in data that could be visible in this shop",
+        "description": "Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
         "operationId": "get_last_pending_order_shops_last_pending_order__id__get",
         "parameters": [
           {
@@ -8564,7 +8093,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Last Pending Order",
+        "summary": "Get timestamp of last pending order",
         "tags": [
           "shops"
         ]
@@ -8595,7 +8124,7 @@
     },
     "/shops/{id}": {
       "get": {
-        "description": "List Shop",
+        "description": "Retrieve a shop by its UUID, including all associated price records.",
         "operationId": "get_by_id_shops__id__get",
         "parameters": [
           {
@@ -8631,7 +8160,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get shop",
         "tags": [
           "shops"
         ]
@@ -8639,6 +8168,7 @@
     },
     "/shops/{shop_id}": {
       "delete": {
+        "description": "Permanently remove a shop from the platform.",
         "operationId": "delete_shops__shop_id__delete",
         "parameters": [
           {
@@ -8667,12 +8197,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete shop",
         "tags": [
           "shops"
         ]
       },
       "put": {
+        "description": "Update shop details such as name, description, and VAT rates.",
         "operationId": "update_shops__shop_id__put",
         "parameters": [
           {
@@ -8718,7 +8249,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update shop",
         "tags": [
           "shops"
         ]
@@ -8726,6 +8257,7 @@
     },
     "/shops/{shop_id}/accounts/": {
       "get": {
+        "description": "Returns all customer accounts for a shop. Accounts are created automatically when an order is placed with a new customer name.",
         "operationId": "get_multi_shops__shop_id__accounts__get",
         "parameters": [
           {
@@ -8803,13 +8335,14 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List accounts",
         "tags": [
           "shops",
           "accounts"
         ]
       },
       "post": {
+        "description": "Manually create a new customer account for a shop.",
         "operationId": "create_shops__shop_id__accounts__post",
         "requestBody": {
           "content": {
@@ -8841,7 +8374,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create account",
         "tags": [
           "shops",
           "accounts"
@@ -8850,6 +8383,7 @@
     },
     "/shops/{shop_id}/accounts/{account_id}": {
       "delete": {
+        "description": "Remove a customer account from a shop.",
         "operationId": "delete_shops__shop_id__accounts__account_id__delete",
         "parameters": [
           {
@@ -8878,13 +8412,14 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete account",
         "tags": [
           "shops",
           "accounts"
         ]
       },
       "put": {
+        "description": "Update an existing customer account's details.",
         "operationId": "update_shops__shop_id__accounts__account_id__put",
         "parameters": [
           {
@@ -8928,7 +8463,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update account",
         "tags": [
           "shops",
           "accounts"
@@ -8937,6 +8472,7 @@
     },
     "/shops/{shop_id}/accounts/{id}": {
       "get": {
+        "description": "Retrieve a single customer account by its UUID.",
         "operationId": "get_by_id_shops__shop_id__accounts__id__get",
         "parameters": [
           {
@@ -8972,7 +8508,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get account",
         "tags": [
           "shops",
           "accounts"
@@ -10795,7 +10331,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List categories",
         "tags": [
           "categories",
           "agent-exposed",
@@ -10862,7 +10398,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create category",
         "tags": [
           "categories",
           "agent-exposed"
@@ -10871,6 +10407,7 @@
     },
     "/shops/{shop_id}/categories/name/{name}": {
       "get": {
+        "description": "Retrieve a category using its human-readable name (exact match, case-sensitive).",
         "operationId": "get_by_name_shops__shop_id__categories_name__name__get",
         "parameters": [
           {
@@ -10931,7 +10468,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Name",
+        "summary": "Get category by name",
         "tags": [
           "categories"
         ]
@@ -10993,7 +10530,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete category",
         "tags": [
           "categories",
           "agent-exposed"
@@ -11061,7 +10598,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get category",
         "tags": [
           "categories",
           "agent-exposed"
@@ -11137,7 +10674,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update category",
         "tags": [
           "categories",
           "agent-exposed"
@@ -11381,6 +10918,7 @@
     },
     "/shops/{shop_id}/categories/{category_id}/swap": {
       "put": {
+        "description": "Move a category up (`move_up=true`) or down (`move_up=false`) in the display order. Swaps `order_number` with the adjacent category.",
         "operationId": "swap_shops__shop_id__categories__category_id__swap_put",
         "parameters": [
           {
@@ -11449,7 +10987,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Swap",
+        "summary": "Reorder category",
         "tags": [
           "categories"
         ]
@@ -11508,6 +11046,7 @@
     },
     "/shops/{shop_id}/prices/": {
       "get": {
+        "description": "Returns the full product catalogue for a shop in the requested language (`main`, `alt1`, or `alt2`). Products with missing translations for the requested language are excluded. When stock tracking is enabled, out-of-stock products are also filtered out.",
         "operationId": "get_products_shops__shop_id__prices__get",
         "parameters": [
           {
@@ -11555,12 +11094,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Products",
+        "summary": "List products (pricelist)",
         "tags": [
           "shops"
         ]
       },
       "post": {
+        "description": "Retrieve product details for a list of product IDs (a cart). Falls back to the `main` language for any product missing a translation in the requested language.",
         "operationId": "get_cart_products_shops__shop_id__prices__post",
         "parameters": [
           {
@@ -11618,7 +11158,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Cart Products",
+        "summary": "Get cart products",
         "tags": [
           "shops"
         ]
@@ -12001,7 +11541,7 @@
     },
     "/shops/{shop_id}/products-to-tags/": {
       "get": {
-        "description": "List prices for a product_to_tag",
+        "description": "Returns all product-to-tag relationship records for a shop.",
         "operationId": "get_multi_shops__shop_id__products_to_tags__get",
         "parameters": [
           {
@@ -12079,13 +11619,14 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List product-tag associations",
         "tags": [
           "shops",
           "products"
         ]
       },
       "post": {
+        "description": "Create an association between a product and a tag. Both must exist within the shop.",
         "operationId": "create_shops__shop_id__products_to_tags__post",
         "requestBody": {
           "content": {
@@ -12112,7 +11653,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Add tag to product",
         "tags": [
           "shops",
           "products"
@@ -12121,6 +11662,7 @@
     },
     "/shops/{shop_id}/products-to-tags/get_relation_id": {
       "get": {
+        "description": "Find the UUID of the association record between a specific product and tag. Returns 400 if the relation does not exist.",
         "operationId": "get_relation_id_shops__shop_id__products_to_tags_get_relation_id_get",
         "parameters": [
           {
@@ -12164,7 +11706,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Relation Id",
+        "summary": "Get product-tag relation ID",
         "tags": [
           "shops",
           "products"
@@ -12173,6 +11715,7 @@
     },
     "/shops/{shop_id}/products-to-tags/{id}": {
       "get": {
+        "description": "Retrieve a single product-to-tag association by its UUID.",
         "operationId": "get_by_id_shops__shop_id__products_to_tags__id__get",
         "parameters": [
           {
@@ -12208,7 +11751,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get product-tag association",
         "tags": [
           "shops",
           "products"
@@ -12217,6 +11760,7 @@
     },
     "/shops/{shop_id}/products-to-tags/{product_to_tag_id}": {
       "delete": {
+        "description": "Delete the association between a product and a tag.",
         "operationId": "delete_shops__shop_id__products_to_tags__product_to_tag_id__delete",
         "parameters": [
           {
@@ -12245,13 +11789,14 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Remove tag from product",
         "tags": [
           "shops",
           "products"
         ]
       },
       "put": {
+        "description": "Update an existing product-tag association record.",
         "operationId": "update_shops__shop_id__products_to_tags__product_to_tag_id__put",
         "parameters": [
           {
@@ -12290,7 +11835,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update product-tag association",
         "tags": [
           "shops",
           "products"
@@ -12419,7 +11964,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List products",
         "tags": [
           "shops",
           "products",
@@ -12487,7 +12032,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create product",
         "tags": [
           "shops",
           "products",
@@ -12725,7 +12270,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete product",
         "tags": [
           "shops",
           "products",
@@ -12778,7 +12323,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get product",
         "tags": [
           "shops",
           "products",
@@ -12855,7 +12400,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update product",
         "tags": [
           "shops",
           "products",
@@ -12865,6 +12410,7 @@
     },
     "/shops/{shop_id}/products/{product_id}/swap": {
       "put": {
+        "description": "Move a product up (`move_up=true`) or down (`move_up=false`) in the display order within its category. Swaps `order_number` with the adjacent product.",
         "operationId": "swap_shops__shop_id__products__product_id__swap_put",
         "parameters": [
           {
@@ -12933,7 +12479,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Swap",
+        "summary": "Reorder product",
         "tags": [
           "shops",
           "products"
@@ -12942,6 +12488,7 @@
     },
     "/shops/{shop_id}/products/{product_id}/with_attributes": {
       "get": {
+        "description": "Retrieve a single product together with its assigned attribute values (e.g. size, color). Public endpoint \u2014 no authentication required.",
         "operationId": "get_by_id_with_attributes_shops__shop_id__products__product_id__with_attributes_get",
         "parameters": [
           {
@@ -12987,7 +12534,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id With Attributes",
+        "summary": "Get product with attributes",
         "tags": [
           "shops",
           "products"
@@ -12996,6 +12543,7 @@
     },
     "/shops/{shop_id}/stripe/": {
       "post": {
+        "description": "Create a Stripe PaymentIntent for a one-time purchase. Uses the shop's own `stripe_secret_key`. The `price` is in euro cents. Returns a `clientSecret` to complete the payment on the frontend.",
         "operationId": "create_payment_intent_shops__shop_id__stripe__post",
         "parameters": [
           {
@@ -13048,7 +12596,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Payment Intent",
+        "summary": "Create payment intent",
         "tags": [
           "stripe"
         ]
@@ -13056,6 +12604,7 @@
     },
     "/shops/{shop_id}/stripe/subscription": {
       "post": {
+        "description": "Create a Stripe Subscription for one or more products. Price lookup keys are resolved as `monthly-<product_id>` or `yearly-<product_id>`. Returns `clientSecret` and `subscriptionId` to confirm payment on the frontend.",
         "operationId": "create_subscription_intent_shops__shop_id__stripe_subscription_post",
         "parameters": [
           {
@@ -13124,7 +12673,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Subscription Intent",
+        "summary": "Create subscription",
         "tags": [
           "stripe"
         ]
@@ -13132,6 +12681,7 @@
     },
     "/shops/{shop_id}/stripe/subscription/{subscription_id}": {
       "delete": {
+        "description": "Immediately cancel a Stripe Subscription. Uses the shop's `stripe_secret_key`.",
         "operationId": "cancel_subscription_shops__shop_id__stripe_subscription__subscription_id__delete",
         "parameters": [
           {
@@ -13169,7 +12719,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cancel Subscription",
+        "summary": "Cancel subscription",
         "tags": [
           "stripe"
         ]
@@ -13280,7 +12830,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Multi",
+        "summary": "List tags",
         "tags": [
           "shops",
           "products",
@@ -13348,7 +12898,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create",
+        "summary": "Create tag",
         "tags": [
           "shops",
           "products",
@@ -13358,6 +12908,7 @@
     },
     "/shops/{shop_id}/tags/name/{name}": {
       "get": {
+        "description": "Retrieve a tag by its exact name within a shop.",
         "operationId": "get_by_name_shops__shop_id__tags_name__name__get",
         "parameters": [
           {
@@ -13418,7 +12969,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Name",
+        "summary": "Get tag by name",
         "tags": [
           "shops",
           "products"
@@ -13481,7 +13032,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete",
+        "summary": "Delete tag",
         "tags": [
           "shops",
           "products",
@@ -13550,7 +13101,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get By Id",
+        "summary": "Get tag",
         "tags": [
           "shops",
           "products",
@@ -13627,7 +13178,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update",
+        "summary": "Update tag",
         "tags": [
           "shops",
           "products",
@@ -13676,313 +13227,6 @@
         "summary": "Form",
         "tags": [
           "test-forms"
-        ]
-      }
-    },
-    "/users/": {
-      "get": {
-        "description": "Retrieve users.",
-        "operationId": "get_multi_users__get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "skip",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "title": "Skip",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 100,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
-            "in": "query",
-            "name": "filter",
-            "required": false,
-            "schema": {
-              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
-              "items": {
-                "type": "string"
-              },
-              "title": "Filter",
-              "type": "array"
-            }
-          },
-          {
-            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
-            "in": "query",
-            "name": "sort",
-            "required": false,
-            "schema": {
-              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
-              "items": {
-                "type": "string"
-              },
-              "title": "Sort",
-              "type": "array"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Get Multi Users  Get"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get Multi",
-        "tags": [
-          "users"
-        ]
-      },
-      "post": {
-        "description": "Create new user.",
-        "operationId": "create_users__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Create",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/users/me": {
-      "get": {
-        "description": "Get current user.",
-        "operationId": "get_user_me_users_me_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get User Me",
-        "tags": [
-          "users"
-        ]
-      },
-      "put": {
-        "description": "Update own user.",
-        "operationId": "update_user_me_users_me_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_update_user_me_users_me_put"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Update User Me",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/users/{user_id}": {
-      "get": {
-        "description": "Get a specific user by id.",
-        "operationId": "get_by_id_users__user_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get By Id",
-        "tags": [
-          "users"
-        ]
-      },
-      "put": {
-        "description": "Update a user.",
-        "operationId": "update_users__user_id__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Update",
-        "tags": [
-          "users"
         ]
       }
     }
