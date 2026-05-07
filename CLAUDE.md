@@ -69,7 +69,7 @@ PYTHONPATH=. alembic revision --message "Description"
 
 ## Documentation / Read the Docs
 
-- The backend docs use **MkDocs Material on Read the Docs**, not Sphinx.
+- The backend docs use **MkDocs Material on Read the Docs**.
 - Build config lives in `.readthedocs.yaml`; site/navigation config lives in `mkdocs.yml`; docs content lives under `docs/`.
 - Preview docs locally with:
 

@@ -11,7 +11,6 @@ It also calls out the gaps that still exist, because several checkout concerns a
 | One-time checkout | `src/pages/[lang]/checkout/[id].tsx` | `PaymentIntent` | Implemented |
 | Subscription checkout | `src/pages/[lang]/checkout/subscription/[id].tsx` | `Subscription` + `latest_invoice.payment_intent` | Implemented |
 | Express checkout | `src/components/checkout/StripeExpressCheckout.tsx` | `PaymentIntent` | Implemented for one-time checkout only |
-| Approval-gated checkout | Front-end approval check before order creation | Same as normal checkout after approval | Supported when the front-end implements the approval step |
 | Business / B2B checkout | N/A | N/A | Not implemented yet |
 | Billing-address persistence | Stripe Elements only | Stripe-managed during payment | Not implemented in the front-end or `shop-backend` |
 
@@ -30,10 +29,6 @@ It also calls out the gaps that still exist, because several checkout concerns a
 
 !!! info "Important current behavior"
     The front-end calculates tax-inclusive line totals client-side from the `/shops/{shop_id}/prices` response. The backend validates stock and account linkage, but it does not recalculate the checkout total before creating the Stripe `PaymentIntent` or `Subscription`.
-
-## Whole checkout flow overview
-
-This is the highest-level diagram of the current checkout implementation. It starts in the front-end storefront, shows the split between one-time and subscription checkout, and ends on the completion page updating the backend order.
 
 ## Required data by system
 

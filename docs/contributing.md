@@ -72,7 +72,7 @@ Once the `docs/mkdocs` branch merges into `main`, RTD rebuilds and publishes aut
 
 ## Versions and canonical URLs
 
-- The repo currently builds docs with **MkDocs**, not Sphinx.
+- The repo currently builds docs with **MkDocs**.
 - `mkdocs.yml` uses `READTHEDOCS_CANONICAL_URL` as `site_url`, so canonical tags follow the domain/version chosen by Read the Docs.
 - Read the Docs redirects the root docs URL to the project's **default version**.
 - With no semver release tags, `latest` is the only practical canonical landing path.
