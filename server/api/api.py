@@ -31,7 +31,6 @@ from server.api.endpoints import (
     sentry_test,
     shops,
     test_forms,
-    users,
 )
 from server.api.endpoints.shop_endpoints import (
     accounts,
@@ -59,7 +58,6 @@ api_router = APIRouter()
 api_router.include_router(login.router, tags=["login"])
 api_router.include_router(oauth_discovery.router, tags=["oauth"])
 api_router.include_router(health.router, prefix="/health", tags=["system"])
-api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(
     forms.router,
     prefix="/forms",
@@ -124,12 +122,6 @@ api_router.include_router(
     dependencies=[Depends(auth_required)],
 )
 
-# api_router.include_router(
-#     product_images.router,
-#     prefix="/shops/{shop_id}/products-images",
-#     tags=["products-images"],
-#     dependencies=[Depends(deps.get_current_active_superuser)],
-# )
 api_router.include_router(
     products.router,
     prefix="/shops/{shop_id}/products",
@@ -192,7 +184,6 @@ api_router.include_router(
     stripe.router,
     prefix="/shops/{shop_id}/stripe",
     tags=["stripe"],
-    # dependencies=[Depends(deps.get_current_active_superuser)],
 )
 
 api_router.include_router(

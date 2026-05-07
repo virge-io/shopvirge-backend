@@ -10,7 +10,7 @@ See the [Quickstart](../quickstart.md) for the canonical setup instructions (sou
 ## Summary
 
 - Use this page after Quickstart when you need local dev ergonomics rather than just first boot.
-- The most common local blockers are missing Postgres databases, placeholder Cognito settings, and bcrypt/passlib mismatches.
+- The most common local blockers are missing Postgres databases and placeholder Cognito settings.
 - If you are changing docs as well as code, the same local venv can also serve the MkDocs site.
 
 ## Prerequisites
@@ -47,9 +47,9 @@ AWS_COGNITO_M2M_CLIENT_ID=<m2m client id>
 AWS_COGNITO_M2M_CLIENT_SECRET=<m2m client secret>
 ```
 
-You can derive these from another project's `AUTH_COGNITO_ISSUER` variable: the issuer URL is `https://cognito-idp.<region>.amazonaws.com/<userpool_id>`, so the last path segment is the `userpool_id` and the subdomain part is the region.
+The `AWS_COGNITO_USERPOOL_ID` is the last path segment of the Cognito issuer URL (`https://cognito-idp.<region>.amazonaws.com/<userpool_id>`); the region subdomain gives you `AWS_COGNITO_REGION`.
 
-For the full list of knobs (Cognito, Sentry, Stripe, SMTP, S3 buckets, CORS), inspect `server/settings.py` directly — the pydantic model is the source of truth.
+For the full list of settings (Cognito, Sentry, Stripe, SMTP, S3 buckets, CORS), inspect `server/settings.py` directly — the pydantic model is the source of truth.
 
 ## Running the server
 
@@ -65,51 +65,6 @@ Visit:
 - <http://127.0.0.1:8080/redoc> — ReDoc.
 - <http://127.0.0.1:8080/> — the tiny info root route.
 
-## Creating an initial user
-
-Set your credentials in `.env` (or export them), then run:
-
-```bash
-FIRST_SUPERUSER=you@example.com
-FIRST_SUPERUSER_PASSWORD=yourpassword
-```
-
-```bash
-PYTHONPATH=. python server/initial_data.py
-```
-
-This is idempotent — it skips creation if the user already exists.
-
-### Resetting a forgotten local password
-
-If a user already exists in the DB but you don't know the password, reset it directly:
-
-```bash
-python -c "
-import bcrypt
-hash = bcrypt.hashpw(b'newpassword', bcrypt.gensalt()).decode()
-print(hash)
-"
-```
-
-Then apply it:
-
-```bash
-psql postgresql://shop:shop@localhost/shop \
-  -c "UPDATE users SET password = 'PASTE_HASH' WHERE email = 'you@example.com';"
-```
-
-> **Note:** Use `bcrypt` directly rather than going through `passlib` — `passlib` crashes with `bcrypt >= 4.x`. If you see `ValueError: password cannot be longer than 72 bytes` during login, pin bcrypt: `pip install "bcrypt==4.0.1"`.
-
-## Getting a local API token
-
-```bash
-curl -X POST http://localhost:8080/login/access-token \
-  -d "username=you@example.com&password=yourpassword"
-```
-
-The `client_id` and `client_secret` fields in the Swagger UI Authorize dialog can be left empty for password-flow login.
-
 ## Docs preview
 
 ```bash
@@ -123,5 +78,4 @@ Then open <http://127.0.0.1:8000>.
 
 - **`psycopg` / database connection errors on startup:** verify that both `shop` and `shop-test` exist and that `DATABASE_URI` points at the main `shop` database.
 - **401s from protected routes in local dev:** the server is up, but Cognito-related env vars are still placeholders. See the Cognito block above.
-- **Password hashing/login failures mentioning passlib or bcrypt length limits:** pin `bcrypt==4.0.1` in your local environment.
 - **`mkdocs serve` fails because plugins are missing:** install the docs-only dependencies with `pip install -r requirements/docs.txt` or the full toolchain with `pip install -r requirements/all.txt`.

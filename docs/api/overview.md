@@ -26,11 +26,6 @@ Use those for exact parameter shapes, status codes, and example payloads. This p
 
 All routers are composed in `server/api/api.py` into a single `api_router`, which `server/main.py` mounts. The main groupings:
 
-=== "Authentication & users"
-
-    - `login` — `server/api/endpoints/login.py`
-    - `users` — `server/api/endpoints/users.py`
-
 === "System"
 
     - `health` — `server/api/endpoints/health.py`

@@ -11,8 +11,6 @@ fastmcp~=2.14.7  # >=2.14 fixes transitive $defs pruning that broke list_* MCP t
 #fastapi-mail~=0.3.5.0
 gunicorn~=20.0.4
 more-itertools==10.2.0
-passlib[bcrypt]==1.7.4
-bcrypt<4.1  # passlib 1.7.4's bcrypt backend init fails against bcrypt >=4.1 (uses removed `__about__`)
 psycopg2-binary==2.9.12
 pydantic[email]>=2.11.7
 python-jose[cryptography]==3.2.0

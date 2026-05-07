@@ -2,8 +2,6 @@
 
 Almost every resource in ShopVirge belongs to a specific shop. Most of those endpoints are implemented in `server/api/endpoints/shop_endpoints/` and mounted under the `/shops/{shop_id}/...` prefix when registered in `server/api/api.py`.
 
-The important checkout exception is `orders.py`: it still lives in `shop_endpoints/`, but the router is mounted globally at `/orders`. Orders remain shop-owned through `OrderTable.shop_id` and the posted payload, not through the path prefix.
-
 ## The pattern
 
 ```text

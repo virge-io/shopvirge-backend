@@ -2,7 +2,6 @@ import os
 from contextlib import closing
 from pathlib import Path
 from typing import cast
-from uuid import uuid4
 
 import pytest
 from alembic import command
@@ -17,7 +16,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
 
 from server.api.api import api_router
-from server.api.deps import get_current_active_superuser
 from server.api.error_handling import ProblemDetailException
 from server.db import db, init_database
 from server.db.database import (
@@ -28,7 +26,7 @@ from server.db.database import (
     DBSessionMiddleware,
     SearchQuery,
 )
-from server.db.models import ProductTable, UserTable
+from server.db.models import ProductTable
 from server.exception_handlers.generic_exception_handlers import problem_detail_handler
 from server.security import CustomCognitoToken, auth_required, auth_required_any
 from server.settings import app_settings
@@ -214,23 +212,6 @@ def fastapi_app(database, db_uri):
 
     app.dependency_overrides[auth_required] = get_current_active_superuser_override
     app.dependency_overrides[auth_required_any] = get_current_active_superuser_override
-
-    # Admin endpoints (e.g. /admin/accounts) gate on get_current_active_superuser
-    # which validates a real JWT and inspects role membership. Tests don't
-    # carry a JWT, so override with a stub user object — the handlers only
-    # use this dep to gate access; they don't read fields off ``current_user``.
-    def superuser_override():
-        from types import SimpleNamespace
-
-        return SimpleNamespace(
-            id=uuid4(),
-            email="admin@test",
-            username="admin",
-            active=True,
-            is_superuser=True,
-        )
-
-    app.dependency_overrides[get_current_active_superuser] = superuser_override
 
     return app
 

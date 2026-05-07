@@ -1,3 +1,8 @@
+---
+title: Authentication & Authorization
+description: Cognito token handling and shop access via AWS Cognito.
+---
+
 # Authentication
 
 Authentication lives in `server/security.py` and is built on [AWS Cognito](https://aws.amazon.com/cognito/) via [`fastapi-cognito`](https://pypi.org/project/fastapi-cognito/).
@@ -6,7 +11,6 @@ Authentication lives in `server/security.py` and is built on [AWS Cognito](https
 
 - `auth_required` is the main dependency for Cognito-backed API access.
 - Two token shapes are accepted: user tokens and M2M client-credentials tokens.
-- A second, older local JWT system still exists for endpoints that authenticate against the local `UserTable`.
 - Authentication and shop authorization are separate checks.
 
 ## Token model
@@ -19,9 +23,6 @@ Three credential shapes are accepted:
 
 The `CustomCognitoToken` model wraps the jose-decoded JWT and exposes the subject, scopes, and groups in a uniform shape.
 
-- **Algorithm:** HS256 via [`python-jose`](https://pypi.org/project/python-jose/).
-- **Password hashing** (for user records we store locally): bcrypt via `passlib[bcrypt]`.
-
 ## Configuration
 
 All auth settings come from environment variables loaded by `server/settings.py`:
@@ -32,9 +33,6 @@ All auth settings come from environment variables loaded by `server/settings.py`
 | `AWS_COGNITO_REGION` | AWS region of the user pool. |
 | `AWS_COGNITO_CLIENT_ID` | Expected `aud` for user tokens. |
 | `AWS_COGNITO_M2M_CLIENT_ID` | Expected `client_id` for M2M tokens. |
-| `JWT_ALGORITHM` | Default `HS256`. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Default `120`. |
-| `SESSION_SECRET` | Signing key for `SessionMiddleware` cookies. |
 | `MCP_ENABLED` | Default `false`. Mount the [MCP server](mcp.md) at `/mcp`. |
 
 Cognito itself — user pool, app clients, domain, groups — is managed outside this repo.
@@ -52,7 +50,17 @@ def protected_route(token = Depends(auth_required)):
     ...
 ```
 
-`auth_required` accepts both user and M2M tokens. For M2M-only endpoints, the handler can assert on `token.scopes` inside the body.
+`auth_required` accepts both user and M2M tokens. For M2M-only endpoints, the handler can assert on `token.scope` inside the body.
+
+For endpoints that require membership of the Cognito `Admins` group, use `admin_required` instead:
+
+```python
+from server.security import admin_required
+
+@router.get("/admin-only")
+def admin_route(_ = Depends(admin_required)):
+    ...
+```
 
 For endpoints that should also accept API keys (currently the MCP-exposed shop CRUD routes), use `auth_required_any` instead:
 
@@ -74,5 +82,4 @@ Authentication proves *who* is calling; authorisation proves *what shop* they ca
 ## Troubleshooting
 
 - **401 on every Cognito-protected route:** verify `AWS_COGNITO_USERPOOL_ID`, region, and client IDs in the environment. Placeholder defaults in `server/settings.py` will not work against real tokens.
-- **Password login works but `auth_required` does not:** you are probably mixing the local JWT system with Cognito-backed dependencies. They return different token/user shapes.
-- **403 on a shop route:** the user authenticated successfully, but there is no matching `ShopUserTable` association for the requested `shop_id`.
+- **403 on an admin route:** the user authenticated successfully but is not a member of the Cognito `Admins` group.
