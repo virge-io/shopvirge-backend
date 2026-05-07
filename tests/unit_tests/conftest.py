@@ -8,12 +8,33 @@ from alembic import command
 from alembic.config import Config
 from fastapi import HTTPException
 from fastapi.applications import FastAPI
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as _TestClient
 from sqlalchemy import create_engine, make_url, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
+
+_JSON_CT = {"Content-Type": "application/json"}
+
+
+class TestClient(_TestClient):
+    """TestClient that auto-sets Content-Type: application/json when content= is used."""
+
+    def _inject_json_ct(self, kwargs: dict) -> dict:
+        if "content" in kwargs and "headers" not in kwargs:
+            return {**kwargs, "headers": _JSON_CT}
+        return kwargs
+
+    def post(self, *args, **kwargs):
+        return super().post(*args, **self._inject_json_ct(kwargs))
+
+    def put(self, *args, **kwargs):
+        return super().put(*args, **self._inject_json_ct(kwargs))
+
+    def patch(self, *args, **kwargs):
+        return super().patch(*args, **self._inject_json_ct(kwargs))
+
 
 from server.api.api import api_router
 from server.api.error_handling import ProblemDetailException

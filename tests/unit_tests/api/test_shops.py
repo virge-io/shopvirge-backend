@@ -34,7 +34,7 @@ def test_shop_with_categories(shop_with_categories):
 # def test_shop_save(test_client, superuser_token_headers):
 #     body = {"name": "New Test Shop", "description": "New Test Shop description"}
 #
-#     response = test_client.post("/api/shop_endpoints/", data=json_dumps(body), headers=superuser_token_headers)
+#     response = test_client.post("/api/shop_endpoints/", content=json_dumps(body), headers=superuser_token_headers)
 #     assert HTTPStatus.CREATED == response.status_code
 #     shops = test_client.get("/api/shop_endpoints").json()
 #     assert 1 == len(shops)
@@ -43,7 +43,7 @@ def test_shop_with_categories(shop_with_categories):
 # def test_shop_update(shop_1, test_client, superuser_token_headers):
 #     body = {"name": "Updated Shop", "description": "Shop description"}
 #     response = test_client.put(
-#         f"/api/shop_endpoints/{shop_1.id}", data=json_dumps(body), headers=superuser_token_headers
+#         f"/api/shop_endpoints/{shop_1.id}", content=json_dumps(body), headers=superuser_token_headers
 #     )
 #     assert HTTPStatus.CREATED == response.status_code
 #
@@ -63,7 +63,7 @@ def test_shop_create(test_client):
         "vat_special": 12,
         "vat_zero": 0,
     }
-    response = test_client.post("/shops", data=json_dumps(body))
+    response = test_client.post("/shops", content=json_dumps(body))
     assert HTTPStatus.CREATED == response.status_code, f"No 201 status code: full response {response.json()}"
     item = ShopTable.query.filter_by(id=response.json()["id"]).first()
     assert item.name == "Test Shop"
@@ -298,7 +298,7 @@ def test_shop_create_config(test_client, shop):
         "config_version": 0,
     }
 
-    response = test_client.put(f"/shops/config/{shop}", data=json.dumps(body))
+    response = test_client.put(f"/shops/config/{shop}", content=json.dumps(body))
     assert 201 == response.status_code
     config = response.json()
     assert config == body
@@ -423,7 +423,7 @@ def test_shop_update_config(test_client, shop_with_config):
         },
         "config_version": 0,
     }
-    response = test_client.put(f"/shops/config/{shop_with_config}", data=json_dumps(body))
+    response = test_client.put(f"/shops/config/{shop_with_config}", content=json_dumps(body))
     assert 201 == response.status_code
     config = response.json()
     assert config == body
@@ -496,7 +496,7 @@ def test_shop_update_config_with_shipping(test_client, shop_with_config):
         },
         "config_version": 1,
     }
-    response = test_client.put(f"/shops/config/{shop_with_config}", data=json_dumps(body))
+    response = test_client.put(f"/shops/config/{shop_with_config}", content=json_dumps(body))
     assert 201 == response.status_code
     config = response.json()
     assert config["config"]["shipping"]["enabled"] is True

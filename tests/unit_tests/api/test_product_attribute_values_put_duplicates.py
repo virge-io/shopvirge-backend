@@ -19,7 +19,7 @@ def test_put_product_attribute_values_with_duplicate_option_ids(test_client, sho
     # PUT request should succeed with 404 No Content
     resp = test_client.put(
         f"/shops/{shop_id}/product-attribute-values/{product_id}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp.status_code == 400
 
@@ -40,13 +40,13 @@ def test_put_product_attribute_values_with_duplicates_and_pre_existing_data(
     # 1. First, create one option normally
     test_client.put(
         f"/shops/{shop_id}/product-attribute-values/{product_id}",
-        data=json_dumps({"option_ids": [opt1a]}),
+        content=json_dumps({"option_ids": [opt1a]}),
     )
 
     # 2. Now PUT with opt1a (pre-existing) and opt1b (new), but with duplicates in the list
     body = {"option_ids": [opt1a, opt1b, opt1a, opt1b]}
     resp = test_client.put(
         f"/shops/{shop_id}/product-attribute-values/{product_id}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp.status_code == 400

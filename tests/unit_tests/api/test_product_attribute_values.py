@@ -58,7 +58,7 @@ def test_post_create_product_attribute_values_for_product(
     body = {"option_ids": [str(ids["opt1b_id"])]}
     resp = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp.status_code == 201
 
@@ -77,7 +77,7 @@ def test_post_create_product_attribute_values_for_product(
     # 404 when product does not belong to shop
     resp_bad_shop = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{other_shop_product}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp_bad_shop.status_code == 404
 
@@ -85,7 +85,7 @@ def test_post_create_product_attribute_values_for_product(
     body_invalid = {"option_ids": [str(uuid4())]}
     resp_invalid = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body_invalid),
+        content=json_dumps(body_invalid),
     )
     assert resp_invalid.status_code == 400
 
@@ -102,7 +102,7 @@ def test_put_selected_product_attribute_values_grouping_and_validations(test_cli
     body = {"option_ids": [str(ids["opt1b_id"])]}
     resp = test_client.put(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp.status_code == 204
 
@@ -131,21 +131,21 @@ def test_put_selected_product_attribute_values_grouping_and_validations(test_cli
     # 400 when empty list
     resp_empty = test_client.put(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps({"option_ids": []}),
+        content=json_dumps({"option_ids": []}),
     )
     assert resp_empty.status_code == 400
 
     # 400 when any option id invalid
     resp_invalid = test_client.put(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps({"option_ids": [str(uuid4()), str(ids["opt1b_id"])]}),
+        content=json_dumps({"option_ids": [str(uuid4()), str(ids["opt1b_id"])]}),
     )
     assert resp_invalid.status_code == 400
 
     # 400 when inferred attribute is from another shop
     resp_wrong_attr_shop = test_client.put(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps({"option_ids": [str(ids["other_opt_id"])]}),
+        content=json_dumps({"option_ids": [str(ids["other_opt_id"])]}),
     )
     assert resp_wrong_attr_shop.status_code == 400
 
