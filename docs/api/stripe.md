@@ -56,6 +56,17 @@ Behavior:
 
 Cancels an existing Stripe subscription.
 
+## Exceptions
+
+The `server/services/stripe_client.py` helper raises these exceptions before any Stripe SDK call is made:
+
+| Exception                | Raised when                                                                |
+|--------------------------|----------------------------------------------------------------------------|
+| `StripeNotConfigured`    | The shop has no `stripe_secret_key` (or shop is `None`).                   |
+| `StripeCustomerMissing`  | The account's `details` JSON has no `stripe_customer_id` key.              |
+
+The helper does **not** translate `stripe.error.StripeError` into HTTP errors — that stays the responsibility of the route handler so each endpoint can pick the right status code (typically `502` for upstream errors).
+
 ## Customer linkage
 
 The first time a checkout email is seen for a shop, `server/api/endpoints/shop_endpoints/orders.py` creates both:
