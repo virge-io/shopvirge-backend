@@ -7,9 +7,24 @@ description: Pydantic-based form endpoints in ShopVirge Backend, including the g
 
 ShopVirge Backend exposes a small form API built on top of
 [`pydantic-forms`](https://pydantic-forms.readthedocs.io/en/latest/).
+
 These endpoints return or advance form pages that are defined with Pydantic
 models on the backend, so the frontend can render them dynamically instead of
 hard-coding every input field.
+
+**Pydantic docs resources**: For the actual frontend/UI implementation side of the `pydantic-forms`
+ecosystem, this repo is also worth linking:
+
+- [workfloworchestrator/pydantic-forms-ui](https://github.com/workfloworchestrator/pydantic-forms-ui)
+
+For the Python/backend library itself, this source repository is also useful:
+
+- [workfloworchestrator/pydantic-forms](https://github.com/workfloworchestrator/pydantic-forms)
+
+More links at the bottom of this page.
+
+- [External references](forms.md#external-references)
+
 
 ## Why this exists
 
@@ -32,15 +47,6 @@ One caveat: the Workflow Orchestrator page itself marks the `Custom Form Fields`
 section as out of date after the migration from `uniforms` to `pydantic-forms`,
 so use that section as a conceptual reference rather than as exact current UI
 implementation guidance.
-
-For the actual frontend/UI implementation side of the `pydantic-forms`
-ecosystem, this repo is also worth linking:
-
-- [workfloworchestrator/pydantic-forms-ui](https://github.com/workfloworchestrator/pydantic-forms-ui)
-
-For the Python/backend library itself, this source repository is also useful:
-
-- [workfloworchestrator/pydantic-forms](https://github.com/workfloworchestrator/pydantic-forms)
 
 ## Route families
 
