@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from server.db import db
 from server.db.models import OrderTable, ShopTable
 from server.mail import _compute_order_lines_for_email, send_order_confirmation_emails
+from server.schemas.base import quantize_money
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.categories import make_category
 from tests.unit_tests.factories.product import make_product
@@ -132,15 +134,15 @@ def test_compute_order_lines_treats_stored_price_as_vat_inclusive(completed_orde
 
     widget_a = next(line for line in lines if line["product_name"] == "Widget A")
     assert widget_a["btw_rate"] == shop.vat_standard
-    assert widget_a["price_inc_btw"] == 10.0, "stored price must be surfaced as the inc-VAT price"
-    assert widget_a["price_ex_btw"] == round(10.0 / 1.21, 2)
-    assert widget_a["line_total_inc_btw"] == 20.0
-    assert widget_a["line_total_ex_btw"] == round(20.0 / 1.21, 2)
+    assert widget_a["price_inc_btw"] == Decimal("10.00"), "stored price must be surfaced as the inc-VAT price"
+    assert widget_a["price_ex_btw"] == quantize_money(Decimal("10") / Decimal("1.21"))
+    assert widget_a["line_total_inc_btw"] == Decimal("20.00")
+    assert widget_a["line_total_ex_btw"] == quantize_money(Decimal("20") / Decimal("1.21"))
 
     widget_b = next(line for line in lines if line["product_name"] == "Widget B")
-    assert widget_b["price_inc_btw"] == 5.0
-    assert widget_b["price_ex_btw"] == round(5.0 / 1.21, 2)
-    assert widget_b["line_total_inc_btw"] == 5.0
+    assert widget_b["price_inc_btw"] == Decimal("5.00")
+    assert widget_b["price_ex_btw"] == quantize_money(Decimal("5") / Decimal("1.21"))
+    assert widget_b["line_total_inc_btw"] == Decimal("5.00")
 
 
 def test_customer_mail_shows_completed_at_in_europe_amsterdam_for_nl(completed_order, shop_with_config, mock_smtp):
@@ -172,7 +174,7 @@ def test_customer_mail_shows_completed_at_in_europe_amsterdam_for_nl(completed_o
 def test_compute_order_lines_zero_vat_is_lossless(completed_order, shop_with_config):
     """With a 0% VAT rate, ex and inc figures must be identical (no division by zero fragility)."""
     shop = db.session.get(ShopTable, shop_with_config)
-    shop.vat_standard = 0.0
+    shop.vat_standard = Decimal("0")
     db.session.commit()
 
     order = db.session.get(OrderTable, completed_order)

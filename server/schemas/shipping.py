@@ -13,7 +13,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from server.schemas.base import BoilerplateBaseModel
+from server.schemas.base import BoilerplateBaseModel, Money
 from server.schemas.order import OrderItem
 
 
@@ -23,18 +23,18 @@ class ShippingCalculateRequest(BoilerplateBaseModel):
 
 
 class ShippingLine(BoilerplateBaseModel):
-    btw_rate: float
-    amount_ex_btw: float
-    amount_inc_btw: float
-    amount_btw: float
+    btw_rate: Money
+    amount_ex_btw: Money
+    amount_inc_btw: Money
+    amount_btw: Money
 
 
 class ShippingCalculation(BoilerplateBaseModel):
     enabled: bool
     method: Optional[str] = None
-    fee_inc_btw: float
-    fee_ex_btw: float
-    fee_btw: float
+    fee_inc_btw: Money
+    fee_ex_btw: Money
+    fee_btw: Money
     free_shipping_applied: bool
-    free_shipping_threshold: Optional[float] = None
+    free_shipping_threshold: Optional[Money] = None
     lines: List[ShippingLine]

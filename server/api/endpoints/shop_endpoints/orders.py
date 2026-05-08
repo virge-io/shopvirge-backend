@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from http import HTTPStatus
 from operator import or_
 from typing import Any, List, Optional
@@ -24,6 +25,7 @@ from server.db.models import Account, OrderTable, ShopTable, UserTable
 from server.mail import send_order_confirmation_emails
 from server.schemas import ProductUpdate
 from server.schemas.account import AccountCreate
+from server.schemas.base import quantize_money
 from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdate, OrderUpdated
 from server.schemas.product import ProductTranslationBase
 from server.security import auth_required
@@ -311,8 +313,8 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     # server-side so it can't be manipulated by the client.
     shipping_calc = compute_shipping_for_cart(data.order_info, shop)
     data.shipping_fee_inc_btw = shipping_calc.fee_inc_btw if shipping_calc is not None else None
-    items_total = sum(item.price * item.quantity for item in data.order_info)
-    data.total = round(items_total + (data.shipping_fee_inc_btw or 0.0), 2)
+    items_total = sum((item.price * item.quantity for item in data.order_info), Decimal("0"))
+    data.total = quantize_money(items_total + (data.shipping_fee_inc_btw or Decimal("0")))
 
     order = order_crud.create(obj_in=data)
 

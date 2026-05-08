@@ -10,42 +10,47 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from decimal import Decimal
 from typing import Any, Optional
 
+from server.schemas.base import quantize_money
 from server.schemas.shipping import ShippingCalculation, ShippingLine
 
 
-def resolve_vat_rate(product: Any, shop: Any) -> float:
+def resolve_vat_rate(product: Any, shop: Any) -> Decimal:
     """Look up the VAT rate for a product, falling back to shop.vat_standard.
 
     Mirrors the resolution used elsewhere (mail rendering): the product's
-    `tax_category` is the name of a Float column on the shop (e.g.
+    `tax_category` is the name of a Numeric column on the shop (e.g.
     ``vat_standard``, ``vat_lower_1``).
     """
     if product is not None and getattr(product, "tax_category", None):
-        return getattr(shop, product.tax_category, shop.vat_standard)
-    return shop.vat_standard
+        rate = getattr(shop, product.tax_category, shop.vat_standard)
+    else:
+        rate = shop.vat_standard
+    return rate if isinstance(rate, Decimal) else Decimal(str(rate))
 
 
-def build_rate_subtotals(order_info: list, shop: Any) -> dict[float, float]:
+def build_rate_subtotals(order_info: list, shop: Any) -> dict[Decimal, Decimal]:
     """Sum cart inc-VAT line totals grouped by VAT rate.
 
     `order_info` may contain dicts or Pydantic items; both are accepted.
     """
     from server.crud.crud_product import product_crud
 
-    subtotals: dict[float, float] = {}
+    subtotals: dict[Decimal, Decimal] = {}
     for raw in order_info:
         item = raw.model_dump() if hasattr(raw, "model_dump") else dict(raw)
         product = product_crud.get_id_by_shop_id(shop.id, item["product_id"])
         rate = resolve_vat_rate(product, shop)
         quantity = item.get("quantity", 1)
-        line_total_inc = round(item["price"] * quantity, 2)
-        subtotals[rate] = round(subtotals.get(rate, 0.0) + line_total_inc, 2)
+        price = item["price"] if isinstance(item["price"], Decimal) else Decimal(str(item["price"]))
+        line_total_inc = quantize_money(price * quantity)
+        subtotals[rate] = quantize_money(subtotals.get(rate, Decimal("0")) + line_total_inc)
     return subtotals
 
 
-def allocate_shipping_lines(fee_inc_btw: float, rate_subtotals: dict[float, float]) -> list[ShippingLine]:
+def allocate_shipping_lines(fee_inc_btw: Decimal, rate_subtotals: dict[Decimal, Decimal]) -> list[ShippingLine]:
     """Split a single inc-VAT shipping fee proportionally across cart VAT rates.
 
     The rounding remainder (positive or negative) is folded into the last
@@ -54,27 +59,27 @@ def allocate_shipping_lines(fee_inc_btw: float, rate_subtotals: dict[float, floa
     if fee_inc_btw <= 0 or not rate_subtotals:
         return []
 
-    grand_total = sum(rate_subtotals.values())
+    grand_total = sum(rate_subtotals.values(), Decimal("0"))
     if grand_total <= 0:
         return []
 
     sorted_rates = sorted(rate_subtotals.keys())
-    allocations: list[tuple[float, float]] = []
-    allocated = 0.0
+    allocations: list[tuple[Decimal, Decimal]] = []
+    allocated = Decimal("0")
     for i, rate in enumerate(sorted_rates):
         if i == len(sorted_rates) - 1:
-            amount_inc = round(fee_inc_btw - allocated, 2)
+            amount_inc = quantize_money(fee_inc_btw - allocated)
         else:
-            amount_inc = round(fee_inc_btw * rate_subtotals[rate] / grand_total, 2)
-            allocated = round(allocated + amount_inc, 2)
+            amount_inc = quantize_money(fee_inc_btw * rate_subtotals[rate] / grand_total)
+            allocated = quantize_money(allocated + amount_inc)
         if amount_inc > 0:
             allocations.append((rate, amount_inc))
 
     lines: list[ShippingLine] = []
     for rate, amount_inc in allocations:
-        vat_divisor = 1 + rate / 100
-        amount_ex = round(amount_inc / vat_divisor, 2)
-        amount_btw = round(amount_inc - amount_ex, 2)
+        vat_divisor = Decimal("1") + rate / Decimal("100")
+        amount_ex = quantize_money(amount_inc / vat_divisor)
+        amount_btw = quantize_money(amount_inc - amount_ex)
         lines.append(
             ShippingLine(
                 btw_rate=rate,
@@ -103,23 +108,23 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
         return None
 
     method = shipping_cfg.get("method", "fixed")
-    fixed_fee = float(shipping_cfg.get("fixed_fee", 0.0) or 0.0)
+    fixed_fee = Decimal(str(shipping_cfg.get("fixed_fee", "0") or "0"))
     free_above_enabled = bool(shipping_cfg.get("free_shipping_above_enabled", False))
-    free_above_amount = float(shipping_cfg.get("free_shipping_above_amount", 0.0) or 0.0)
+    free_above_amount = Decimal(str(shipping_cfg.get("free_shipping_above_amount", "0") or "0"))
 
     rate_subtotals = build_rate_subtotals(order_info, shop)
-    cart_total_inc = round(sum(rate_subtotals.values()), 2)
+    cart_total_inc = quantize_money(sum(rate_subtotals.values(), Decimal("0")))
 
     free_shipping_applied = False
     if free_above_enabled and free_above_amount > 0 and cart_total_inc >= free_above_amount:
-        fee_inc_btw = 0.0
+        fee_inc_btw = Decimal("0.00")
         free_shipping_applied = True
     else:
-        fee_inc_btw = round(fixed_fee, 2)
+        fee_inc_btw = quantize_money(fixed_fee)
 
     lines = allocate_shipping_lines(fee_inc_btw, rate_subtotals)
-    fee_ex_btw = round(sum(line.amount_ex_btw for line in lines), 2)
-    fee_btw = round(fee_inc_btw - fee_ex_btw, 2)
+    fee_ex_btw = quantize_money(sum((line.amount_ex_btw for line in lines), Decimal("0")))
+    fee_btw = quantize_money(fee_inc_btw - fee_ex_btw)
 
     return ShippingCalculation(
         enabled=True,

@@ -14,17 +14,17 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from server.schemas.base import BoilerplateBaseModel
+from server.schemas.base import BoilerplateBaseModel, Money
 
 
 class PriceBase(BoilerplateBaseModel):
     internal_product_id: Optional[str]
-    half: Optional[float]
-    one: Optional[float]
-    two_five: Optional[float]
-    five: Optional[float]
-    joint: Optional[float]
-    piece: Optional[float]
+    half: Optional[Money]
+    one: Optional[Money]
+    two_five: Optional[Money]
+    five: Optional[Money]
+    joint: Optional[Money]
+    piece: Optional[Money]
 
 
 # Properties to receive via API on creation
@@ -61,8 +61,8 @@ class DefaultPrice(BoilerplateBaseModel):
     internal_product_id: Optional[str] = None
     active: Optional[bool] = None
     new: Optional[bool] = None
-    one: Optional[float] = None
-    two_five: Optional[float] = None
-    five: Optional[float] = None
-    joint: Optional[float] = None
-    piece: Optional[float] = None
+    one: Optional[Money] = None
+    two_five: Optional[Money] = None
+    five: Optional[Money] = None
+    joint: Optional[Money] = None
+    piece: Optional[Money] = None

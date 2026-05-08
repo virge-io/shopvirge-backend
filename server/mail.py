@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 from email.encoders import encode_base64
 from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
@@ -15,6 +16,7 @@ import html2text
 import jinja2
 import structlog
 
+from server.schemas.base import quantize_money
 from server.schemas.product import ProductBase
 from server.settings import mail_settings, template_environment
 from server.utils.date_utils import nowtz
@@ -398,11 +400,12 @@ def _compute_order_lines_for_email(order_info: list[dict], shop: Any) -> list[di
         # the rate, and keep the inc-VAT line total as the authoritative value
         # so shown totals match what the customer paid.
         quantity = item.get("quantity", 1)
-        price_inc = item["price"]
-        vat_divisor = 1 + vat_rate / 100
-        price_ex = round(price_inc / vat_divisor, 2)
-        line_total_inc = round(price_inc * quantity, 2)
-        line_total_ex = round(line_total_inc / vat_divisor, 2)
+        price_inc_raw = item["price"]
+        price_inc = price_inc_raw if isinstance(price_inc_raw, Decimal) else Decimal(str(price_inc_raw))
+        vat_divisor = Decimal("1") + vat_rate / Decimal("100")
+        price_ex = quantize_money(price_inc / vat_divisor)
+        line_total_inc = quantize_money(price_inc * quantity)
+        line_total_ex = quantize_money(line_total_inc / vat_divisor)
 
         # Collect product attributes
         attributes = []
@@ -455,16 +458,21 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
         order_lines = _compute_order_lines_for_email(order.order_info, shop)
 
         # Compute item totals
-        items_total_ex_btw = round(sum(line["line_total_ex_btw"] for line in order_lines), 2)
-        items_total_inc_btw = round(sum(line["line_total_inc_btw"] for line in order_lines), 2)
+        items_total_ex_btw = quantize_money(sum((line["line_total_ex_btw"] for line in order_lines), Decimal("0")))
+        items_total_inc_btw = quantize_money(sum((line["line_total_inc_btw"] for line in order_lines), Decimal("0")))
 
         # Build shipping lines (one per VAT rate) using the same allocation logic
         # the order create endpoint used. Persisted on the order as a single
         # inc-VAT figure; we re-derive the per-rate split for display.
-        shipping_fee_inc_btw = getattr(order, "shipping_fee_inc_btw", None)
+        shipping_fee_raw = getattr(order, "shipping_fee_inc_btw", None)
+        shipping_fee_inc_btw: Decimal | None = (
+            None
+            if shipping_fee_raw is None
+            else (shipping_fee_raw if isinstance(shipping_fee_raw, Decimal) else Decimal(str(shipping_fee_raw)))
+        )
         shipping_lines: list[dict] = []
-        shipping_total_ex_btw = 0.0
-        shipping_total_inc_btw = 0.0
+        shipping_total_ex_btw = Decimal("0")
+        shipping_total_inc_btw = Decimal("0")
         if shipping_fee_inc_btw is not None and shipping_fee_inc_btw > 0:
             from server.services.shipping import allocate_shipping_lines, build_rate_subtotals
 
@@ -478,12 +486,14 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
                         "amount_btw": sl.amount_btw,
                     }
                 )
-            shipping_total_ex_btw = round(sum(line["amount_ex_btw"] for line in shipping_lines), 2)
-            shipping_total_inc_btw = round(shipping_fee_inc_btw, 2)
+            shipping_total_ex_btw = quantize_money(
+                sum((line["amount_ex_btw"] for line in shipping_lines), Decimal("0"))
+            )
+            shipping_total_inc_btw = quantize_money(shipping_fee_inc_btw)
 
-        total_ex_btw = round(items_total_ex_btw + shipping_total_ex_btw, 2)
-        total_inc_btw = round(items_total_inc_btw + shipping_total_inc_btw, 2)
-        total_btw = round(total_inc_btw - total_ex_btw, 2)
+        total_ex_btw = quantize_money(items_total_ex_btw + shipping_total_ex_btw)
+        total_inc_btw = quantize_money(items_total_inc_btw + shipping_total_inc_btw)
+        total_btw = quantize_money(total_inc_btw - total_ex_btw)
 
         # Extract business info from account details
         account_details = account.details or {} if account.details else {}
