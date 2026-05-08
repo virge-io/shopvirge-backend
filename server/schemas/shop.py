@@ -173,6 +173,7 @@ class ConfigurationShipping(BoilerplateBaseModel):
     enabled: bool = False
     method: str = "fixed"
     fixed_fee: Money = Decimal("0")
+    vat_calculation_enabled: bool = True
     free_shipping_above_enabled: bool = False
     free_shipping_above_amount: Money = Decimal("0")
 

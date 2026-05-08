@@ -125,6 +125,7 @@ def make_shop_with_shipping(
     free_shipping_above_amount: float = 0.0,
     enabled: bool = True,
     method: str = "fixed",
+    vat_calculation_enabled: bool = True,
 ):
     """Create a shop with a populated config and a shipping block."""
     menu_items = ConfigurationLanguageFieldMenuItems(
@@ -162,6 +163,7 @@ def make_shop_with_shipping(
         enabled=enabled,
         method=method,
         fixed_fee=fixed_fee,
+        vat_calculation_enabled=vat_calculation_enabled,
         free_shipping_above_enabled=free_shipping_above_enabled,
         free_shipping_above_amount=free_shipping_above_amount,
     )

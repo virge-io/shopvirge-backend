@@ -463,7 +463,10 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
 
         # Build shipping lines (one per VAT rate) using the same allocation logic
         # the order create endpoint used. Persisted on the order as a single
-        # inc-VAT figure; we re-derive the per-rate split for display.
+        # inc-VAT figure; we re-derive the per-rate split for display by
+        # re-running the shipping calculation against current shop config.
+        # When the shop opts out of VAT on shipping, the calc returns no lines
+        # and the fee is rendered flat.
         shipping_fee_raw = getattr(order, "shipping_fee_inc_btw", None)
         shipping_fee_inc_btw: Decimal | None = (
             None
@@ -474,22 +477,27 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
         shipping_total_ex_btw = Decimal("0")
         shipping_total_inc_btw = Decimal("0")
         if shipping_fee_inc_btw is not None and shipping_fee_inc_btw > 0:
-            from server.services.shipping import allocate_shipping_lines, build_rate_subtotals
+            from server.services.shipping import compute_shipping_for_cart
 
-            rate_subtotals = build_rate_subtotals(order.order_info, shop)
-            for sl in allocate_shipping_lines(shipping_fee_inc_btw, rate_subtotals):
-                shipping_lines.append(
-                    {
-                        "btw_rate": sl.btw_rate,
-                        "amount_ex_btw": sl.amount_ex_btw,
-                        "amount_inc_btw": sl.amount_inc_btw,
-                        "amount_btw": sl.amount_btw,
-                    }
-                )
-            shipping_total_ex_btw = quantize_money(
-                sum((line["amount_ex_btw"] for line in shipping_lines), Decimal("0"))
-            )
+            shipping_calc = compute_shipping_for_cart(order.order_info, shop)
+            if shipping_calc is not None and not shipping_calc.free_shipping_applied:
+                for sl in shipping_calc.lines:
+                    shipping_lines.append(
+                        {
+                            "btw_rate": sl.btw_rate,
+                            "amount_ex_btw": sl.amount_ex_btw,
+                            "amount_inc_btw": sl.amount_inc_btw,
+                            "amount_btw": sl.amount_btw,
+                        }
+                    )
             shipping_total_inc_btw = quantize_money(shipping_fee_inc_btw)
+            if shipping_lines:
+                shipping_total_ex_btw = quantize_money(
+                    sum((line["amount_ex_btw"] for line in shipping_lines), Decimal("0"))
+                )
+            else:
+                # VAT bypass (or unknown config): flat fee with no VAT split.
+                shipping_total_ex_btw = shipping_total_inc_btw
 
         total_ex_btw = quantize_money(items_total_ex_btw + shipping_total_ex_btw)
         total_inc_btw = quantize_money(items_total_inc_btw + shipping_total_inc_btw)

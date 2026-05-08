@@ -50,13 +50,13 @@ def build_rate_subtotals(order_info: list, shop: Any) -> dict[Decimal, Decimal]:
     return subtotals
 
 
-def allocate_shipping_lines(fee_inc_btw: Decimal, rate_subtotals: dict[Decimal, Decimal]) -> list[ShippingLine]:
-    """Split a single inc-VAT shipping fee proportionally across cart VAT rates.
+def allocate_shipping_lines(fee_ex_btw: Decimal, rate_subtotals: dict[Decimal, Decimal]) -> list[ShippingLine]:
+    """Split an ex-VAT shipping fee proportionally across cart VAT rates and add VAT per rate.
 
     The rounding remainder (positive or negative) is folded into the last
-    sorted rate so the per-line inc-VAT amounts sum exactly to ``fee_inc_btw``.
+    sorted rate so the per-line ex-VAT amounts sum exactly to ``fee_ex_btw``.
     """
-    if fee_inc_btw <= 0 or not rate_subtotals:
+    if fee_ex_btw <= 0 or not rate_subtotals:
         return []
 
     grand_total = sum(rate_subtotals.values(), Decimal("0"))
@@ -68,18 +68,17 @@ def allocate_shipping_lines(fee_inc_btw: Decimal, rate_subtotals: dict[Decimal, 
     allocated = Decimal("0")
     for i, rate in enumerate(sorted_rates):
         if i == len(sorted_rates) - 1:
-            amount_inc = quantize_money(fee_inc_btw - allocated)
+            amount_ex = quantize_money(fee_ex_btw - allocated)
         else:
-            amount_inc = quantize_money(fee_inc_btw * rate_subtotals[rate] / grand_total)
-            allocated = quantize_money(allocated + amount_inc)
-        if amount_inc > 0:
-            allocations.append((rate, amount_inc))
+            amount_ex = quantize_money(fee_ex_btw * rate_subtotals[rate] / grand_total)
+            allocated = quantize_money(allocated + amount_ex)
+        if amount_ex > 0:
+            allocations.append((rate, amount_ex))
 
     lines: list[ShippingLine] = []
-    for rate, amount_inc in allocations:
-        vat_divisor = Decimal("1") + rate / Decimal("100")
-        amount_ex = quantize_money(amount_inc / vat_divisor)
-        amount_btw = quantize_money(amount_inc - amount_ex)
+    for rate, amount_ex in allocations:
+        amount_btw = quantize_money(amount_ex * rate / Decimal("100"))
+        amount_inc = quantize_money(amount_ex + amount_btw)
         lines.append(
             ShippingLine(
                 btw_rate=rate,
@@ -93,6 +92,10 @@ def allocate_shipping_lines(fee_inc_btw: Decimal, rate_subtotals: dict[Decimal, 
 
 def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingCalculation]:
     """Compute the shipping fee and per-VAT-rate breakdown for a cart.
+
+    The configured ``fixed_fee`` is interpreted as ex-VAT; VAT is added on top
+    proportionally across the cart's VAT rates. When ``vat_calculation_enabled``
+    is ``False``, the fee is added flat (no VAT split, no per-rate lines).
 
     Returns ``None`` when shipping is not configured or not enabled on the shop.
     Returns a ``ShippingCalculation`` with ``fee_inc_btw=0`` and
@@ -109,6 +112,7 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
 
     method = shipping_cfg.get("method", "fixed")
     fixed_fee = Decimal(str(shipping_cfg.get("fixed_fee", "0") or "0"))
+    vat_enabled = bool(shipping_cfg.get("vat_calculation_enabled", True))
     free_above_enabled = bool(shipping_cfg.get("free_shipping_above_enabled", False))
     free_above_amount = Decimal(str(shipping_cfg.get("free_shipping_above_amount", "0") or "0"))
 
@@ -117,14 +121,39 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
 
     free_shipping_applied = False
     if free_above_enabled and free_above_amount > 0 and cart_total_inc >= free_above_amount:
-        fee_inc_btw = Decimal("0.00")
-        free_shipping_applied = True
-    else:
-        fee_inc_btw = quantize_money(fixed_fee)
+        return ShippingCalculation(
+            enabled=True,
+            method=method,
+            fee_inc_btw=Decimal("0.00"),
+            fee_ex_btw=Decimal("0.00"),
+            fee_btw=Decimal("0.00"),
+            free_shipping_applied=True,
+            free_shipping_threshold=free_above_amount,
+            lines=[],
+        )
 
-    lines = allocate_shipping_lines(fee_inc_btw, rate_subtotals)
-    fee_ex_btw = quantize_money(sum((line.amount_ex_btw for line in lines), Decimal("0")))
-    fee_btw = quantize_money(fee_inc_btw - fee_ex_btw)
+    if not vat_enabled:
+        fee = quantize_money(fixed_fee)
+        return ShippingCalculation(
+            enabled=True,
+            method=method,
+            fee_inc_btw=fee,
+            fee_ex_btw=fee,
+            fee_btw=Decimal("0.00"),
+            free_shipping_applied=False,
+            free_shipping_threshold=free_above_amount if free_above_enabled else None,
+            lines=[],
+        )
+
+    fee_ex_btw = quantize_money(fixed_fee)
+    lines = allocate_shipping_lines(fee_ex_btw, rate_subtotals)
+    if lines:
+        fee_inc_btw = quantize_money(sum((line.amount_inc_btw for line in lines), Decimal("0")))
+        fee_ex_btw = quantize_money(sum((line.amount_ex_btw for line in lines), Decimal("0")))
+        fee_btw = quantize_money(fee_inc_btw - fee_ex_btw)
+    else:
+        fee_inc_btw = fee_ex_btw
+        fee_btw = Decimal("0.00")
 
     return ShippingCalculation(
         enabled=True,
@@ -132,7 +161,7 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
         fee_inc_btw=fee_inc_btw,
         fee_ex_btw=fee_ex_btw,
         fee_btw=fee_btw,
-        free_shipping_applied=free_shipping_applied,
+        free_shipping_applied=False,
         free_shipping_threshold=free_above_amount if free_above_enabled else None,
         lines=lines,
     )

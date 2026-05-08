@@ -1332,6 +1332,11 @@
             "default": "fixed",
             "title": "Method",
             "type": "string"
+          },
+          "vat_calculation_enabled": {
+            "default": true,
+            "title": "Vat Calculation Enabled",
+            "type": "boolean"
           }
         },
         "title": "ConfigurationShipping",
@@ -1363,6 +1368,11 @@
             "default": "fixed",
             "title": "Method",
             "type": "string"
+          },
+          "vat_calculation_enabled": {
+            "default": true,
+            "title": "Vat Calculation Enabled",
+            "type": "boolean"
           }
         },
         "title": "ConfigurationShipping",

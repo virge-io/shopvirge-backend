@@ -11,6 +11,7 @@ from server.schemas.base import quantize_money
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.categories import make_category
 from tests.unit_tests.factories.product import make_product
+from tests.unit_tests.factories.shop import make_shop_with_shipping
 
 
 @pytest.fixture()
@@ -183,3 +184,59 @@ def test_compute_order_lines_zero_vat_is_lossless(completed_order, shop_with_con
     for line in lines:
         assert line["price_ex_btw"] == line["price_inc_btw"]
         assert line["line_total_ex_btw"] == line["line_total_inc_btw"]
+
+
+@pytest.fixture()
+def completed_order_with_vat_bypass_shipping():
+    """Shop with VAT-bypass shipping (5.00 flat) and one order line."""
+    shop_id = make_shop_with_shipping(fixed_fee=5.00, vat_calculation_enabled=False)
+    account_id = make_account(shop_id=shop_id, name="customer@example.com")
+    category = make_category(shop_id=shop_id)
+    product_id = make_product(shop_id=shop_id, category_id=category, main_name="Widget A")
+    order = OrderTable(
+        shop_id=shop_id,
+        account_id=account_id,
+        customer_order_id=99,
+        order_info=[
+            {
+                "description": "first line",
+                "product_name": "Widget A",
+                "price": 10.0,
+                "quantity": 2,
+                "product_id": str(product_id),
+            },
+        ],
+        total=Decimal("25.00"),
+        shipping_fee_inc_btw=Decimal("5.00"),
+        status="complete",
+        completed_at=datetime(2026, 4, 23, 12, 0, tzinfo=timezone.utc),
+    )
+    db.session.add(order)
+    db.session.commit()
+    return {"order_id": order.id, "shop_id": shop_id}
+
+
+def test_mail_renders_vat_bypass_shipping_as_flat_line(completed_order_with_vat_bypass_shipping, mock_smtp):
+    """When VAT bypass is on, mail body shows shipping as a flat fee with no per-rate split."""
+    _, smtp_instance = mock_smtp
+    fixt = completed_order_with_vat_bypass_shipping
+    order = db.session.get(OrderTable, fixt["order_id"])
+    shop = db.session.get(ShopTable, fixt["shop_id"])
+
+    send_order_confirmation_emails(order=order, shop=shop, account=order.account)
+
+    customer_call = next(
+        call for call in smtp_instance.send_message.call_args_list if call.args[0]["To"] == "customer@example.com"
+    )
+    message = customer_call.args[0]
+    html_parts = [part for part in message.walk() if part.get_content_type() == "text/html"]
+    assert html_parts, "no HTML part in customer mail"
+    html_body = html_parts[0].get_payload(decode=True).decode("utf-8")
+
+    # No per-rate VAT row for shipping (would render "21%" or similar) — flat line uses "Verzendkosten:" label
+    assert "Verzendkosten:" in html_body
+    # Flat fee amount is shown without splitting; &nbsp; prevents the symbol from wrapping off the amount.
+    assert "&euro;&nbsp;5.00" in html_body
+    # Items: 10 inc-VAT * 2 = 20.00; shipping: 5.00 flat → total = 25.00
+    assert "Totaal inc BTW:" in html_body
+    assert "25.00" in html_body
