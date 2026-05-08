@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from decimal import Decimal
 from http import HTTPStatus
 
 import structlog
@@ -37,9 +38,9 @@ def calculate(data: ShippingCalculateRequest = Body(...)) -> ShippingCalculation
         return ShippingCalculation(
             enabled=False,
             method=None,
-            fee_inc_btw=0.0,
-            fee_ex_btw=0.0,
-            fee_btw=0.0,
+            fee_inc_btw=Decimal("0.00"),
+            fee_ex_btw=Decimal("0.00"),
+            fee_btw=Decimal("0.00"),
             free_shipping_applied=False,
             free_shipping_threshold=None,
             lines=[],

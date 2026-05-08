@@ -12,8 +12,31 @@
 # limitations under the License.
 
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Annotated, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PlainSerializer
+
+
+def quantize_money(value: Union[Decimal, int, float, str], places: int = 2) -> Decimal:
+    """Quantize a value to ``places`` decimal places using ROUND_HALF_UP.
+
+    Accepts Decimal, int, float, or string. Floats are converted via ``str()``
+    first to avoid binary-representation noise (e.g. ``Decimal(0.1)`` carries
+    the float artefact, but ``Decimal(str(0.1))`` is exact).
+    """
+    if not isinstance(value, Decimal):
+        value = Decimal(str(value))
+    q = Decimal(10) ** -places
+    return value.quantize(q, rounding=ROUND_HALF_UP)
+
+
+# Money: Decimal internally, but JSON-serialized as a number (not a string) so
+# the wire format stays backward compatible with clients that expect floats.
+Money = Annotated[
+    Decimal,
+    PlainSerializer(lambda v: float(v), return_type=float, when_used="json"),
+]
 
 
 class BoilerplateBaseModel(BaseModel):

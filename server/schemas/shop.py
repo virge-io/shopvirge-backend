@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Annotated, List, Optional
 from uuid import UUID
@@ -19,7 +20,7 @@ from pydantic import EmailStr, UrlConstraints
 from pydantic_core import Url
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
-from server.schemas.base import BoilerplateBaseModel
+from server.schemas.base import BoilerplateBaseModel, Money
 
 
 class PhoneNumberNl(PhoneNumber):
@@ -45,12 +46,12 @@ class ShopBase(BoilerplateBaseModel):
     description: str
     internal_url: str | None = None
     external_url: str | None = None
-    vat_standard: float
-    vat_lower_1: float
-    vat_lower_2: float
-    vat_lower_3: float
-    vat_special: float
-    vat_zero: float
+    vat_standard: Money
+    vat_lower_1: Money
+    vat_lower_2: Money
+    vat_lower_3: Money
+    vat_special: Money
+    vat_zero: Money
 
 
 # Properties to receive via API on creation
@@ -171,9 +172,10 @@ class Toggles(BoilerplateBaseModel):
 class ConfigurationShipping(BoilerplateBaseModel):
     enabled: bool = False
     method: str = "fixed"
-    fixed_fee: float = 0.0
+    fixed_fee: Money = Decimal("0")
+    vat_calculation_enabled: bool = True
     free_shipping_above_enabled: bool = False
-    free_shipping_above_amount: float = 0.0
+    free_shipping_above_amount: Money = Decimal("0")
 
 
 class ConfigurationV1(BoilerplateBaseModel):

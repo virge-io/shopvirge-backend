@@ -100,9 +100,10 @@ def test_create_order_with_shipping_single_rate(shop_shipping_fixed_with_product
     response = test_client.post("/orders/", json=body)
     assert response.status_code == 201, response.json()
     j = response.json()
-    assert j["shipping_fee_inc_btw"] == 4.95
-    # items_total = 20; total = 20 + 4.95
-    assert j["total"] == 24.95
+    # fixed_fee=4.95 is ex-VAT; with 21% VAT → 5.99 inc
+    assert j["shipping_fee_inc_btw"] == 5.99
+    # items_total = 20; total = 20 + 5.99
+    assert j["total"] == 25.99
 
 
 def test_create_order_with_shipping_mixed_vat(shop_shipping_mixed_vat, test_client):
@@ -115,9 +116,10 @@ def test_create_order_with_shipping_mixed_vat(shop_shipping_mixed_vat, test_clie
     response = test_client.post("/orders/", json=body)
     assert response.status_code == 201, response.json()
     j = response.json()
-    assert j["shipping_fee_inc_btw"] == 10.0
-    # items_total = 200; total = 200 + 10
-    assert j["total"] == 210.0
+    # fixed_fee=10.0 ex-VAT split 50/50 → 5*1.21 + 5*1.09 = 11.50 inc
+    assert j["shipping_fee_inc_btw"] == 11.5
+    # items_total = 200; total = 200 + 11.50
+    assert j["total"] == 211.5
 
 
 def test_create_order_free_shipping_threshold(shop_shipping_free_above, test_client):
@@ -136,7 +138,7 @@ def test_create_order_free_shipping_threshold(shop_shipping_free_above, test_cli
 
 def test_create_order_below_free_shipping_threshold(shop_shipping_free_above, test_client):
     ids = shop_shipping_free_above
-    # Cart total inc-VAT = 30, threshold = 50 -> shipping should be 4.95
+    # Cart total inc-VAT = 30, threshold = 50 -> shipping should apply
     items = [
         {"description": "x", "price": 10.0, "product_id": str(ids["p1"]), "product_name": "Item 1", "quantity": 3},
     ]
@@ -144,8 +146,9 @@ def test_create_order_below_free_shipping_threshold(shop_shipping_free_above, te
     response = test_client.post("/orders/", json=body)
     assert response.status_code == 201, response.json()
     j = response.json()
-    assert j["shipping_fee_inc_btw"] == 4.95
-    assert j["total"] == 34.95
+    # 4.95 ex-VAT @ 21% → 5.99 inc
+    assert j["shipping_fee_inc_btw"] == 5.99
+    assert j["total"] == 35.99
 
 
 def test_create_order_client_total_overridden(shop_shipping_fixed_with_products, test_client):
@@ -157,9 +160,32 @@ def test_create_order_client_total_overridden(shop_shipping_fixed_with_products,
     response = test_client.post("/orders/", json=body)
     assert response.status_code == 201, response.json()
     j = response.json()
-    # Client sent total=1.0 but server should override with items + shipping = 10 + 4.95
-    assert j["total"] == 14.95
-    assert j["shipping_fee_inc_btw"] == 4.95
+    # Client sent total=1.0 but server should override with items + shipping = 10 + 5.99
+    assert j["total"] == 15.99
+    assert j["shipping_fee_inc_btw"] == 5.99
+
+
+@pytest.fixture()
+def shop_shipping_vat_bypass_with_products():
+    shop_id = make_shop_with_shipping(fixed_fee=5.00, vat_calculation_enabled=False)
+    category = make_category(shop_id=shop_id)
+    p1 = make_product(shop_id=shop_id, category_id=category, main_name="Item 1", price=10.0)
+    return {"shop_id": shop_id, "p1": p1}
+
+
+def test_create_order_vat_bypass_adds_flat_fee(shop_shipping_vat_bypass_with_products, test_client):
+    """With VAT bypass on, configured fee is added to total without VAT calc."""
+    ids = shop_shipping_vat_bypass_with_products
+    items = [
+        {"description": "x", "price": 10.0, "product_id": str(ids["p1"]), "product_name": "Item 1", "quantity": 2},
+    ]
+    body = _order_body(ids["shop_id"], items)
+    response = test_client.post("/orders/", json=body)
+    assert response.status_code == 201, response.json()
+    j = response.json()
+    # Configured 5.00 added flat (no VAT split, no per-rate inflation)
+    assert j["shipping_fee_inc_btw"] == 5.0
+    assert j["total"] == 25.0
 
 
 # from server.api.endpoints.shop_endpoints.orders import get_price_rules_total

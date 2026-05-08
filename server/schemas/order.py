@@ -15,15 +15,13 @@ from datetime import datetime
 from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic.v1 import BaseModel, root_validator
-
-from server.schemas.base import BoilerplateBaseModel
+from server.schemas.base import BoilerplateBaseModel, Money
 
 
 # Made them optional for now because there are some empty order_info fields in DB
 class OrderItem(BoilerplateBaseModel):
     description: Optional[str]
-    price: float  # Was optional
+    price: Money  # Was optional
     # kind_id: Optional[str]
     # kind_name: Optional[str]
     product_id: UUID  # Was optional
@@ -46,11 +44,11 @@ class OrderItem(BoilerplateBaseModel):
 
 class OrderBase(BoilerplateBaseModel):
     account_id: Optional[UUID] = None  # Optional for account creation on absence
-    total: Optional[float]
+    total: Optional[Money]
     notes: Optional[str]
     customer_order_id: Optional[int]  # Optional or required ?
     status: Optional[str]
-    shipping_fee_inc_btw: Optional[float] = None
+    shipping_fee_inc_btw: Optional[Money] = None
 
 
 # Properties to receive via API on creation

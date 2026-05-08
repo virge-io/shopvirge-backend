@@ -20,6 +20,7 @@ from server.db.models import (
     ProductAttributeValueTable,
     ProductTranslationTable,
 )
+from server.schemas.base import Money
 from server.schemas.product_attribute import ProductAttributeItem
 
 router = APIRouter()
@@ -47,17 +48,17 @@ class ProductResponse(BaseModel):
     description_short: str
     description: str
     tax_category: str
-    tax_percentage: float
-    price: float | None = None
-    recurring_price_monthly: float | None = None
-    recurring_price_yearly: float | None = None
+    tax_percentage: Money
+    price: Money | None = None
+    recurring_price_monthly: Money | None = None
+    recurring_price_yearly: Money | None = None
     max_one: bool
     shippable: bool
     attributes: list[str] = []
     digital: str | None = None
     featured: bool
     new_product: bool
-    discounted_price: float | None = None
+    discounted_price: Money | None = None
     discounted_from: datetime | None = None
     discounted_to: datetime | None = None
     image_1: str | None = None

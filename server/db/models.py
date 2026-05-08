@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
 import sqlalchemy
@@ -24,9 +25,9 @@ from sqlalchemy import (
     Column,
     DateTime,
     Enum,
-    Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     TypeDecorator,
     func,
@@ -174,12 +175,12 @@ class ShopTable(BaseModel):
     config_version = Column(Integer, nullable=False, server_default="1")
     stripe_secret_key = Column(String(255), nullable=True)
     stripe_public_key = Column(String(255), nullable=True)
-    vat_standard = Column(Float, default=21.0)
-    vat_lower_1 = Column(Float, default=10.0)
-    vat_lower_2 = Column(Float, default=5.0)
-    vat_lower_3 = Column(Float, default=2.0)
-    vat_special = Column(Float, default=12.0)
-    vat_zero = Column(Float, default=0.0)
+    vat_standard = Column(Numeric(5, 2), default=Decimal("21.00"))
+    vat_lower_1 = Column(Numeric(5, 2), default=Decimal("10.00"))
+    vat_lower_2 = Column(Numeric(5, 2), default=Decimal("5.00"))
+    vat_lower_3 = Column(Numeric(5, 2), default=Decimal("2.00"))
+    vat_special = Column(Numeric(5, 2), default=Decimal("12.00"))
+    vat_zero = Column(Numeric(5, 2), default=Decimal("0.00"))
     internal_url = Column(String(255), nullable=True, server_default="")
     external_url = Column(String(255), nullable=True, server_default="")
     created_at = Column(UtcTimestamp, server_default=text("CURRENT_TIMESTAMP"))
@@ -303,8 +304,8 @@ class OrderTable(BaseModel):
     shop_id = Column(UUIDType, ForeignKey("shops.id"), index=True)
     account_id = Column(UUIDType, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True)
     order_info = Column(postgresql.JSONB())
-    total = Column(Float())
-    shipping_fee_inc_btw = Column(Float(), nullable=True)
+    total = Column(Numeric(12, 2))
+    shipping_fee_inc_btw = Column(Numeric(12, 2), nullable=True)
     status = Column(String(), default="pending")
     created_at = Column(DateTime, server_default=func.now())
     completed_by = Column("completed_by", UUIDType, ForeignKey("users.id"), nullable=True)
@@ -328,13 +329,13 @@ class ProductTable(BaseModel):
     )
     shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
     category_id = Column("category_id", UUIDType, ForeignKey("categories.id"), index=True)
-    price = Column(Float(), nullable=True)
+    price = Column(Numeric(12, 2), nullable=True)
     tax_category = Column(String(20), default="vat_standard")
-    discounted_price = Column(Float(), nullable=True)
+    discounted_price = Column(Numeric(12, 2), nullable=True)
     discounted_from = Column(DateTime, nullable=True)
     discounted_to = Column(DateTime, nullable=True)
-    recurring_price_monthly = Column(Float(), nullable=True)
-    recurring_price_yearly = Column(Float(), nullable=True)
+    recurring_price_monthly = Column(Numeric(12, 2), nullable=True)
+    recurring_price_yearly = Column(Numeric(12, 2), nullable=True)
     max_one = Column(Boolean(), default=False)
     digital = Column(String(255), nullable=True)  # if provided: links to original asset
     shippable = Column(Boolean(), default=True)

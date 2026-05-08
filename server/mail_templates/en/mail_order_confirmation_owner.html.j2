@@ -60,10 +60,10 @@
                     {% endif %}
                 </td>
                 <td style="text-align: right; padding: 10px;">{{ line.quantity }}</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(line.price_ex_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(line.price_ex_btw) }}</td>
                 <td style="text-align: right; padding: 10px;">{{ "%.0f"|format(line.btw_rate) }}%</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(line.price_inc_btw) }}</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(line.line_total_inc_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(line.price_inc_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(line.line_total_inc_btw) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -72,12 +72,17 @@
             {% for s in shipping_lines %}
             <tr style="border-top: 2px solid #ddd;">
                 <td colspan="2" style="padding: 10px;"><strong>Shipping</strong></td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(s.amount_ex_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_ex_btw) }}</td>
                 <td style="text-align: right; padding: 10px;">{{ "%.0f"|format(s.btw_rate) }}%</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(s.amount_inc_btw) }}</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(s.amount_inc_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_inc_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_inc_btw) }}</td>
             </tr>
             {% endfor %}
+            {% elif shipping_fee_inc_btw is not none and shipping_fee_inc_btw > 0 %}
+            <tr style="border-top: 2px solid #ddd;">
+                <td colspan="5" style="text-align: right; padding: 10px;"><strong>Shipping:</strong></td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(shipping_fee_inc_btw) }}</td>
+            </tr>
             {% elif shipping_fee_inc_btw is not none and shipping_fee_inc_btw == 0 %}
             <tr style="border-top: 2px solid #ddd;">
                 <td colspan="5" style="text-align: right; padding: 10px;"><strong>Shipping:</strong></td>
@@ -86,15 +91,15 @@
             {% endif %}
             <tr style="border-top: 2px solid #ddd;">
                 <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold;">Total ex VAT:</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(total_ex_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(total_ex_btw) }}</td>
             </tr>
             <tr>
                 <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold;">VAT:</td>
-                <td style="text-align: right; padding: 10px;">&euro; {{ "%.2f"|format(total_btw) }}</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(total_btw) }}</td>
             </tr>
             <tr style="border-top: 1px solid #ddd;">
                 <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">Total inc VAT:</td>
-                <td style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">&euro; {{ "%.2f"|format(total_inc_btw) }}</td>
+                <td style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">&euro;&nbsp;{{ "%.2f"|format(total_inc_btw) }}</td>
             </tr>
         </tfoot>
     </table>

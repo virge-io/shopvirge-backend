@@ -78,6 +78,7 @@ decoding functions differently then `default` and `object_hook` is that they are
 from contextlib import suppress
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Tuple, Union
 from uuid import UUID
 
@@ -117,6 +118,10 @@ def to_serializable(o: Any) -> Any:
         return str(o)
     if isinstance(o, datetime):
         return isoformat(o)
+    if isinstance(o, Decimal):
+        # Stored as JSON number to preserve the shape of existing JSONB columns
+        # (shop config etc.). Pydantic re-coerces float → Decimal on read.
+        return float(o)
     if is_dataclass(o):
         return asdict(o)
     if hasattr(o, "__json__"):

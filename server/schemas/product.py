@@ -18,7 +18,7 @@ from uuid import UUID
 from pydantic import ConfigDict, Field, ValidationError, model_validator
 
 from server.api.error_handling import raise_status
-from server.schemas.base import BoilerplateBaseModel
+from server.schemas.base import BoilerplateBaseModel, Money
 from server.schemas.price import DefaultPrice
 from server.schemas.product_attribute import ProductAttributeItem
 
@@ -46,9 +46,9 @@ class ProductBase(BoilerplateBaseModel):
 
     shop_id: UUID
     category_id: UUID
-    price: Optional[float] = None
-    recurring_price_monthly: Optional[float] = None
-    recurring_price_yearly: Optional[float] = None
+    price: Optional[Money] = None
+    recurring_price_monthly: Optional[Money] = None
+    recurring_price_yearly: Optional[Money] = None
     max_one: bool
     shippable: bool
     digital: Optional[str] = None
@@ -56,7 +56,7 @@ class ProductBase(BoilerplateBaseModel):
     new_product: bool
     # Todo: make enum with: vat_standard, vat_lower_1, vat_lower_2, vat_lower_3, vat_special, vat_zero
     tax_category: str
-    discounted_price: Optional[float] = None
+    discounted_price: Optional[Money] = None
     discounted_from: Optional[datetime] = None
     discounted_to: Optional[datetime] = None
     order_number: Optional[int] = None

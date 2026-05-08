@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
@@ -6,9 +7,11 @@ import pytest
 from server.db import db
 from server.db.models import OrderTable, ShopTable
 from server.mail import _compute_order_lines_for_email, send_order_confirmation_emails
+from server.schemas.base import quantize_money
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.categories import make_category
 from tests.unit_tests.factories.product import make_product
+from tests.unit_tests.factories.shop import make_shop_with_shipping
 
 
 @pytest.fixture()
@@ -132,15 +135,15 @@ def test_compute_order_lines_treats_stored_price_as_vat_inclusive(completed_orde
 
     widget_a = next(line for line in lines if line["product_name"] == "Widget A")
     assert widget_a["btw_rate"] == shop.vat_standard
-    assert widget_a["price_inc_btw"] == 10.0, "stored price must be surfaced as the inc-VAT price"
-    assert widget_a["price_ex_btw"] == round(10.0 / 1.21, 2)
-    assert widget_a["line_total_inc_btw"] == 20.0
-    assert widget_a["line_total_ex_btw"] == round(20.0 / 1.21, 2)
+    assert widget_a["price_inc_btw"] == Decimal("10.00"), "stored price must be surfaced as the inc-VAT price"
+    assert widget_a["price_ex_btw"] == quantize_money(Decimal("10") / Decimal("1.21"))
+    assert widget_a["line_total_inc_btw"] == Decimal("20.00")
+    assert widget_a["line_total_ex_btw"] == quantize_money(Decimal("20") / Decimal("1.21"))
 
     widget_b = next(line for line in lines if line["product_name"] == "Widget B")
-    assert widget_b["price_inc_btw"] == 5.0
-    assert widget_b["price_ex_btw"] == round(5.0 / 1.21, 2)
-    assert widget_b["line_total_inc_btw"] == 5.0
+    assert widget_b["price_inc_btw"] == Decimal("5.00")
+    assert widget_b["price_ex_btw"] == quantize_money(Decimal("5") / Decimal("1.21"))
+    assert widget_b["line_total_inc_btw"] == Decimal("5.00")
 
 
 def test_customer_mail_shows_completed_at_in_europe_amsterdam_for_nl(completed_order, shop_with_config, mock_smtp):
@@ -172,7 +175,7 @@ def test_customer_mail_shows_completed_at_in_europe_amsterdam_for_nl(completed_o
 def test_compute_order_lines_zero_vat_is_lossless(completed_order, shop_with_config):
     """With a 0% VAT rate, ex and inc figures must be identical (no division by zero fragility)."""
     shop = db.session.get(ShopTable, shop_with_config)
-    shop.vat_standard = 0.0
+    shop.vat_standard = Decimal("0")
     db.session.commit()
 
     order = db.session.get(OrderTable, completed_order)
@@ -181,3 +184,59 @@ def test_compute_order_lines_zero_vat_is_lossless(completed_order, shop_with_con
     for line in lines:
         assert line["price_ex_btw"] == line["price_inc_btw"]
         assert line["line_total_ex_btw"] == line["line_total_inc_btw"]
+
+
+@pytest.fixture()
+def completed_order_with_vat_bypass_shipping():
+    """Shop with VAT-bypass shipping (5.00 flat) and one order line."""
+    shop_id = make_shop_with_shipping(fixed_fee=5.00, vat_calculation_enabled=False)
+    account_id = make_account(shop_id=shop_id, name="customer@example.com")
+    category = make_category(shop_id=shop_id)
+    product_id = make_product(shop_id=shop_id, category_id=category, main_name="Widget A")
+    order = OrderTable(
+        shop_id=shop_id,
+        account_id=account_id,
+        customer_order_id=99,
+        order_info=[
+            {
+                "description": "first line",
+                "product_name": "Widget A",
+                "price": 10.0,
+                "quantity": 2,
+                "product_id": str(product_id),
+            },
+        ],
+        total=Decimal("25.00"),
+        shipping_fee_inc_btw=Decimal("5.00"),
+        status="complete",
+        completed_at=datetime(2026, 4, 23, 12, 0, tzinfo=timezone.utc),
+    )
+    db.session.add(order)
+    db.session.commit()
+    return {"order_id": order.id, "shop_id": shop_id}
+
+
+def test_mail_renders_vat_bypass_shipping_as_flat_line(completed_order_with_vat_bypass_shipping, mock_smtp):
+    """When VAT bypass is on, mail body shows shipping as a flat fee with no per-rate split."""
+    _, smtp_instance = mock_smtp
+    fixt = completed_order_with_vat_bypass_shipping
+    order = db.session.get(OrderTable, fixt["order_id"])
+    shop = db.session.get(ShopTable, fixt["shop_id"])
+
+    send_order_confirmation_emails(order=order, shop=shop, account=order.account)
+
+    customer_call = next(
+        call for call in smtp_instance.send_message.call_args_list if call.args[0]["To"] == "customer@example.com"
+    )
+    message = customer_call.args[0]
+    html_parts = [part for part in message.walk() if part.get_content_type() == "text/html"]
+    assert html_parts, "no HTML part in customer mail"
+    html_body = html_parts[0].get_payload(decode=True).decode("utf-8")
+
+    # No per-rate VAT row for shipping (would render "21%" or similar) — flat line uses "Verzendkosten:" label
+    assert "Verzendkosten:" in html_body
+    # Flat fee amount is shown without splitting; &nbsp; prevents the symbol from wrapping off the amount.
+    assert "&euro;&nbsp;5.00" in html_body
+    # Items: 10 inc-VAT * 2 = 20.00; shipping: 5.00 flat → total = 25.00
+    assert "Totaal inc BTW:" in html_body
+    assert "25.00" in html_body
