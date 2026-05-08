@@ -30,7 +30,7 @@ wheel
 stripe==10.7.0
 phonenumbers==8.13.45
 pydantic_extra_types==2.9.0
-httpx
+httpx<0.28
 sentry-sdk~=2.28.0
 html2text==2024.2.26
 Jinja2==3.1.4
