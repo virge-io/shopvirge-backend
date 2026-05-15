@@ -10,7 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Literal, Optional, Tuple
 
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
@@ -37,10 +37,16 @@ class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
         filter_parameters: Optional[List[str]],
         sort_parameters: Optional[List[str]],
         query_parameter: Optional[Any] = None,
+        stock_status: Literal["in_stock", "out_of_stock", "all"] = "all",
     ) -> Tuple[List[ProductTable], str]:
         query = query_parameter
         if query is None:
             query = db.session.query(self.model).filter(self.model.shop_id == shop_id)
+
+        if stock_status == "in_stock":
+            query = query.filter(ProductTable.stock > 0)
+        elif stock_status == "out_of_stock":
+            query = query.filter(ProductTable.stock == 0)
 
         if filter_parameters:
             for filter_parameter in filter_parameters:

@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 from server.db.models import ProductTable
 from server.utils.json import json_dumps
+from tests.unit_tests.factories.product import make_product
 
 
 def test_products_get_multi(shop_with_products, test_client):
@@ -243,3 +244,53 @@ def test_products_get_multi_with_attributes_mutually_exclusive_filters(test_clie
     )
     assert response.status_code == 400
     assert "Only one filter may be used at a time" in response.json()["detail"]["message"]
+
+
+def test_products_get_multi_filter_in_stock(shop, category, test_client):
+    in_id = make_product(shop_id=shop, category_id=category, main_name="HasStock", stock=5)
+    out_id = make_product(shop_id=shop, category_id=category, main_name="NoStock", stock=0)
+
+    response = test_client.get(f"/shops/{shop}/products/?stock_status=in_stock")
+    assert response.status_code == 200
+    ids = {p["id"] for p in response.json()}
+    assert str(in_id) in ids
+    assert str(out_id) not in ids
+
+
+def test_products_get_multi_filter_out_of_stock(shop, category, test_client):
+    in_id = make_product(shop_id=shop, category_id=category, main_name="HasStock", stock=5)
+    out_id = make_product(shop_id=shop, category_id=category, main_name="NoStock", stock=0)
+
+    response = test_client.get(f"/shops/{shop}/products/?stock_status=out_of_stock")
+    assert response.status_code == 200
+    ids = {p["id"] for p in response.json()}
+    assert str(out_id) in ids
+    assert str(in_id) not in ids
+
+
+def test_products_get_multi_filter_all_is_default(shop, category, test_client):
+    make_product(shop_id=shop, category_id=category, main_name="HasStock", stock=5)
+    make_product(shop_id=shop, category_id=category, main_name="NoStock", stock=0)
+
+    default_response = test_client.get(f"/shops/{shop}/products/")
+    explicit_response = test_client.get(f"/shops/{shop}/products/?stock_status=all")
+    assert default_response.status_code == 200
+    assert explicit_response.status_code == 200
+    assert len(default_response.json()) == 2
+    assert {p["id"] for p in default_response.json()} == {p["id"] for p in explicit_response.json()}
+
+
+def test_products_get_multi_filter_invalid_stock_status(shop, test_client):
+    response = test_client.get(f"/shops/{shop}/products/?stock_status=bogus")
+    assert response.status_code == 422
+
+
+def test_products_get_multi_with_attributes_filter_out_of_stock(shop, category, test_client):
+    in_id = make_product(shop_id=shop, category_id=category, main_name="HasStock", stock=5)
+    out_id = make_product(shop_id=shop, category_id=category, main_name="NoStock", stock=0)
+
+    response = test_client.get(f"/shops/{shop}/products/with_attributes?stock_status=out_of_stock")
+    assert response.status_code == 200
+    ids = {p["product"]["id"] for p in response.json()}
+    assert str(out_id) in ids
+    assert str(in_id) not in ids
