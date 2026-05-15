@@ -5655,7 +5655,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.2.9"
+    "version": "0.2.10"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -11604,6 +11604,23 @@
             }
           },
           {
+            "description": "Filter products by inventory state. `in_stock` returns products with stock > 0, `out_of_stock` returns products with stock = 0, `all` (default) returns everything.",
+            "in": "query",
+            "name": "stock_status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "Filter products by inventory state. `in_stock` returns products with stock > 0, `out_of_stock` returns products with stock = 0, `all` (default) returns everything.",
+              "enum": [
+                "in_stock",
+                "out_of_stock",
+                "all"
+              ],
+              "title": "Stock Status",
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "skip",
             "required": false,
@@ -11737,7 +11754,7 @@
     },
     "/shops/{shop_id}/products/with_attributes": {
       "get": {
-        "description": "Fetch a list of products along with their associated attributes.\n\nYou can filter the results using one of the following mutually exclusive attribute filters:\n\n* `option_id` array[UUID]: Filter by one or multiple attribute option UUIDs.\n* `attribute_id` UUID: Filter by attribute UUID.\n* `option_value_key` array[str]: Filter by option value (e.g., 'Red', 'XL').\n* `attribute_name` array[str]: Filter by one or multiple attribute names (e.g., 'Color', 'Size').\n\nOnly one attribute filter can be used at a time.",
+        "description": "Fetch a list of products along with their associated attributes.\n\nYou can filter the results using one of the following mutually exclusive attribute filters:\n\n* `option_id` array[UUID]: Filter by one or multiple attribute option UUIDs.\n* `attribute_id` UUID: Filter by attribute UUID.\n* `option_value_key` array[str]: Filter by option value (e.g., 'Red', 'XL').\n* `attribute_name` array[str]: Filter by one or multiple attribute names (e.g., 'Color', 'Size').\n\nOnly one attribute filter can be used at a time.\n\nYou can additionally narrow results by inventory state with `stock_status`:\n`in_stock` (stock > 0), `out_of_stock` (stock = 0), or `all` (default).",
         "operationId": "get_multi_with_attributes_shops__shop_id__products_with_attributes_get",
         "parameters": [
           {
@@ -11791,6 +11808,23 @@
             "required": false,
             "schema": {
               "title": "Attribute Name",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter products by inventory state. `in_stock` returns products with stock > 0, `out_of_stock` returns products with stock = 0, `all` (default) returns everything.",
+            "in": "query",
+            "name": "stock_status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "Filter products by inventory state. `in_stock` returns products with stock > 0, `out_of_stock` returns products with stock = 0, `all` (default) returns everything.",
+              "enum": [
+                "in_stock",
+                "out_of_stock",
+                "all"
+              ],
+              "title": "Stock Status",
               "type": "string"
             }
           },

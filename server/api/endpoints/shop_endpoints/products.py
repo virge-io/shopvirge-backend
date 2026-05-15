@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from http import HTTPStatus
 from textwrap import dedent
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 from uuid import UUID
 
 import structlog
@@ -41,7 +41,16 @@ def get_shop(shop_id: UUID):
 
 @router.get("/", response_model=List[ProductWithDefaultPrice])
 def get_multi(
-    shop_id: UUID, response: Response, common: dict = Depends(common_parameters)
+    shop_id: UUID,
+    response: Response,
+    stock_status: Literal["in_stock", "out_of_stock", "all"] = Query(
+        "all",
+        description=(
+            "Filter products by inventory state. `in_stock` returns products with stock > 0, "
+            "`out_of_stock` returns products with stock = 0, `all` (default) returns everything."
+        ),
+    ),
+    common: dict = Depends(common_parameters),
 ) -> List[ProductWithDefaultPrice]:
     products, header_range = product_crud.get_multi_by_shop_id(
         shop_id=shop_id,
@@ -49,6 +58,7 @@ def get_multi(
         limit=common["limit"],
         filter_parameters=common["filter"],
         sort_parameters=common["sort"],
+        stock_status=stock_status,
     )
     response.headers["Content-Range"] = header_range
 
@@ -76,6 +86,9 @@ You can filter the results using one of the following mutually exclusive attribu
 * `attribute_name` array[str]: Filter by one or multiple attribute names (e.g., 'Color', 'Size').
 
 Only one attribute filter can be used at a time.
+
+You can additionally narrow results by inventory state with `stock_status`:
+`in_stock` (stock > 0), `out_of_stock` (stock = 0), or `all` (default).
 """,
 )
 def get_multi_with_attributes(
@@ -85,6 +98,13 @@ def get_multi_with_attributes(
     attribute_id: UUID = Query(None),
     option_value_key: List[str] = Query(None),
     attribute_name: str = Query(None),
+    stock_status: Literal["in_stock", "out_of_stock", "all"] = Query(
+        "all",
+        description=(
+            "Filter products by inventory state. `in_stock` returns products with stock > 0, "
+            "`out_of_stock` returns products with stock = 0, `all` (default) returns everything."
+        ),
+    ),
     common: dict = Depends(common_parameters),
 ) -> List[ProductWithAttributes]:
     attribute_filters = AttributeFilters(
@@ -109,6 +129,7 @@ def get_multi_with_attributes(
         limit=common["limit"],
         filter_parameters=filter_parameters,
         sort_parameters=common["sort"],
+        stock_status=stock_status,
     )
     # We will update Content-Range if filtering by option_id changes the visible count
     response.headers["Content-Range"] = header_range

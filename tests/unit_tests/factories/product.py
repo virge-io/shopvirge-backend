@@ -16,12 +16,13 @@ def make_product(
     main_description="Test Product Description",
     price=1.0,
     tax_category="vat_standard",
+    stock: int = 1,
 ):
     product = ProductTable(
         shop_id=shop_id,
         category_id=category_id,
         price=price,
-        stock=1,
+        stock=stock,
         tax_category=tax_category,
     )
     db.session.add(product)
