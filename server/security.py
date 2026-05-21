@@ -52,7 +52,11 @@ cognito_eu = CognitoAuth(settings=CognitoSettings.from_global_settings(auth_sett
 
 
 def auth_required(token: CognitoToken = Depends(cognito_eu.auth_required)):
-    if token.client_id == app_settings.AWS_COGNITO_CLIENT_ID:
+    user_client_ids = {
+        app_settings.AWS_COGNITO_CLIENT_ID,
+        app_settings.AWS_COGNITO_MCP_CLIENT_ID,
+    } - {""}
+    if token.client_id in user_client_ids:
         # No need to check scopes for user tokens
         return token
 

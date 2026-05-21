@@ -24,6 +24,10 @@ run:
       value: "false"
     - name: MCP_ENABLED
       value: "true"
+    - name: AWS_COGNITO_MCP_CLIENT_ID
+      value: "6m8pss5q1drhph217kn5guu421"
+    - name: PUBLIC_BASE_URL
+      value: "https://api.shopvirge.com"
   secrets:
     - name: DATABASE_URI
       value-from: "arn:aws:ssm:eu-central-1:987457788157:parameter/pricelist-backend/DATABASE_URI"

@@ -2,6 +2,8 @@
 
 A backend for serving pricelists.
 
+📖 Full docs: <https://shopvirge.readthedocs.io/>
+
 ## Server
 
 This project only works with Python 3.10 and higher.
@@ -37,6 +39,26 @@ Or run a threaded server and auto-apply migrations on launch:
 ```bash
 /bin/server
 ````
+
+## Connecting Claude Code to the MCP server
+
+Prod exposes a Model Context Protocol endpoint at `/mcp`. Claude Code can drive it via Cognito Hosted UI browser-login (recommended for humans) or with a per-shop API key (recommended for scripts). See [`docs/api/mcp.md`](docs/api/mcp.md) for the full reference, including how to mint API keys and add new MCP tools.
+
+**Browser-login (Cognito):**
+
+```bash
+claude mcp add --transport http shopvirge https://api.shopvirge.com/mcp/ \
+  --callback-port 7777
+```
+
+Then `/mcp` inside Claude Code → **Authenticate** → Cognito Hosted UI opens → log in → done. The callback port must match what's whitelisted on the `shopvirge-mcp` Cognito app client (currently `7777`).
+
+**API-key (headless):**
+
+```bash
+claude mcp add --transport http shopvirge https://api.shopvirge.com/mcp/ \
+  --header "X-API-Key: sv_…"
+```
 
 ## Running tests
 ```bash
