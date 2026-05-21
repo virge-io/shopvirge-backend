@@ -2,6 +2,8 @@
 
 A backend for serving pricelists.
 
+📖 Full docs: <https://shopvirge.readthedocs.io/>
+
 ## Server
 
 This project only works with Python 3.10 and higher.
