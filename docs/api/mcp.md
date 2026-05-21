@@ -31,10 +31,11 @@ When enabled, `server/main.py` calls `mount_mcp(app)` after all routers are incl
 
 ## Authentication
 
-Two methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are checked in this order:
+Three methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are checked in this order:
 
 1. **API key** — `X-API-Key: sv_<prefix>_<rest>` header, *or* `Authorization: Bearer sv_<prefix>_<rest>`. Recommended for headless LLM clients.
-2. **Cognito JWT** — `Authorization: Bearer <jwt>`. Same flow as the regular REST API; useful when a logged-in user drives the agent from a browser.
+2. **Cognito JWT (M2M / service-to-service)** — `Authorization: Bearer <jwt>` with scope ending in `/api`.
+3. **Cognito JWT (interactive user)** — `Authorization: Bearer <jwt>` from the Next.js app client or the MCP browser-login flow. Useful when a logged-in user drives the agent from a browser.
 
 The dual-auth dependency is `server.security.auth_required_any`. It either resolves the API key against the `api_keys` table (returning the matched row) or delegates to the existing Cognito flow (returning a `CustomCognitoToken`). Endpoints not tagged for MCP still use `auth_required` (Cognito only) — an API key cannot reach the full REST surface.
 
@@ -81,7 +82,20 @@ curl -X DELETE https://api.example.com/shops/$SHOP_ID/api-keys/$KEY_ID \
 
 ## Connecting an MCP client
 
-### Claude Desktop / Claude Code
+### Claude Code — browser login (Cognito Hosted UI)
+
+The MCP server publishes OAuth discovery metadata so Claude Code can drive Cognito's Hosted UI directly. Add the server with a fixed callback port (must match the Cognito app client's whitelisted redirect URI — currently `7777`):
+
+```bash
+claude mcp add --transport http shopvirge https://api.shopvirge.com/mcp/ \
+  --callback-port 7777
+```
+
+Inside Claude Code, run `/mcp` → **Authenticate**. Your browser opens the Cognito Hosted UI, you sign in with your normal credentials, and the access token lands back in Claude Code. From there every tool call carries `Authorization: Bearer <cognito-jwt>` automatically.
+
+Three discovery endpoints make this work; see [OAuth discovery](#oauth-discovery-claude-code-browser-login) below for the full chain.
+
+### Claude Desktop / Claude Code — static API key
 
 Add an entry to the client's MCP config (`~/.claude/mcp.json` or the Claude Desktop UI):
 
@@ -120,9 +134,34 @@ You should see all 20 tool definitions in the response.
 
 ## How auth flows through `from_fastapi`
 
-`FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `auth_required_any`. The only thing fastmcp does *not* do by default is forward auth headers: its `get_http_headers()` exclude list strips `authorization`.
+`FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `auth_required_any`.
 
-`server/mcp/server.py` adds a small httpx request hook that re-injects both `Authorization` and `X-API-Key` on every internal call, so per-route auth fires exactly as it would over plain REST.
+fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.)
+
+## OAuth discovery (Claude Code browser-login)
+
+MCP clients that follow the [MCP 2025-06-18](https://modelcontextprotocol.io/) auth spec bootstrap their OAuth flow via RFC 9728 / RFC 8414 / RFC 7591. Cognito covers most of that out of the box but does **not** support Dynamic Client Registration (RFC 7591), which Claude Code's MCP SDK attempts unconditionally even when a static `client_id` is configured ([anthropics/claude-code#26675](https://github.com/anthropics/claude-code/issues/26675)).
+
+To bridge that gap, `server/api/endpoints/oauth_discovery.py` mounts three unauthenticated endpoints at the app root:
+
+| Path | Spec | Purpose |
+|------|------|---------|
+| `GET /.well-known/oauth-protected-resource` | RFC 9728 | Points clients at the authorization server (`PUBLIC_BASE_URL`). |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 | Cognito's OIDC metadata stitched together with our shim's `registration_endpoint`. `issuer` deliberately matches Cognito's so token-`iss` validation succeeds client-side. |
+| `POST /oauth/register` | RFC 7591 | DCR shim — ignores the body and returns `AWS_COGNITO_MCP_CLIENT_ID` verbatim. Cognito enforces the real redirect-URI allowlist at the authorize step. |
+
+The Hosted UI base URL is resolved once at import time from Cognito's `/.well-known/openid-configuration`, so changing the user pool's Hosted UI domain in the future doesn't require a code edit.
+
+End-to-end flow when a user clicks **Authenticate**:
+
+1. Claude Code GETs `/.well-known/oauth-protected-resource`
+2. Follows to `/.well-known/oauth-authorization-server`
+3. POSTs `/oauth/register` → gets static `AWS_COGNITO_MCP_CLIENT_ID`
+4. Opens Cognito Hosted UI → user signs in → redirect to `http://localhost:<callback-port>/callback`
+5. Exchanges code at Cognito's `token_endpoint`
+6. Calls MCP tools with `Authorization: Bearer <cognito-jwt>`
+
+**Pre-registered Cognito app client.** Created once via `aws cognito-idp create-user-pool-client --no-generate-secret --allowed-o-auth-flows code --allowed-o-auth-scopes openid email profile --callback-urls 'http://localhost:7777/callback'`. The `client_id` (non-secret — it appears in every browser URL during auth) is deployed as `AWS_COGNITO_MCP_CLIENT_ID`. To rotate, recreate the client and update the env var.
 
 ## Adding a new tool
 
@@ -147,14 +186,17 @@ The docstring on the handler becomes the tool description — write it for an LL
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MCP_ENABLED` | `false` | Mount `/mcp` and enter its lifespan. |
+| `AWS_COGNITO_MCP_CLIENT_ID` | `""` | Pre-registered Cognito public PKCE client returned by the DCR shim. Required for the browser-login flow. Non-secret. |
+| `PUBLIC_BASE_URL` | `http://localhost:8080` | Backend's public origin. Used to build absolute URLs in the OAuth discovery documents (`resource`, `authorization_servers`, `registration_endpoint`). |
 
 API keys themselves are stored in the `api_keys` table (migration `c1a2b3d4e5f6`) and need no env config.
 
 ## Related files
 
-- `server/mcp/server.py` — `mount_mcp(app)` and the auth-header forwarding hook.
+- `server/mcp/server.py` — `mount_mcp(app)`.
 - `server/agent_tags.py` — the `AgentTag` enum.
-- `server/security.py` — `auth_required_any` dual-auth dependency.
+- `server/security.py` — `auth_required` / `auth_required_any` dependencies.
 - `server/crud/crud_api_key.py` — minting, lookup, revocation.
 - `server/api/endpoints/shop_endpoints/api_keys.py` — REST management endpoints.
+- `server/api/endpoints/oauth_discovery.py` — OAuth discovery + DCR shim for the browser-login flow.
 - `tests/unit_tests/mcp/test_mcp.py` — verifies tag coverage and `FastMCP.from_fastapi` introspection.
