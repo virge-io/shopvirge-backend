@@ -48,7 +48,16 @@ class AppSettings(BaseSettings):
     AWS_COGNITO_CLIENT_ID: str = "AWS_COGNITO_CLIENT_ID"
     AWS_COGNITO_M2M_CLIENT_ID: str = "AWS_COGNITO_M2M_CLIENT_ID"
     AWS_COGNITO_M2M_CLIENT_SECRET: str = "AWS_COGNITO_M2M_CLIENT_SECRET"
+    # Pre-registered Cognito app client used by MCP clients (Claude Code etc.)
+    # that can't do dynamic client registration. The /oauth/register shim
+    # returns this id verbatim.
+    AWS_COGNITO_MCP_CLIENT_ID: str = ""
     AWS_COGNITO_REGION: str = "eu-central-1"
+
+    # Public base URL of the backend, used to build absolute URLs in the OAuth
+    # discovery documents (issuer-style fields, registration_endpoint, etc.).
+    # Must be set in production; local dev defaults to the dev server URL.
+    PUBLIC_BASE_URL: str = "http://localhost:8080"
 
     # Sentry settings
     SENTRY_DSN: Optional[str] = None
@@ -193,6 +202,7 @@ class AuthSetting(BaseSettings):
             "app_client_id": [
                 app_settings.AWS_COGNITO_CLIENT_ID,
                 app_settings.AWS_COGNITO_M2M_CLIENT_ID,
+                app_settings.AWS_COGNITO_MCP_CLIENT_ID,
             ],
         },
     }
