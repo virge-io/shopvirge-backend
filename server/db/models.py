@@ -608,7 +608,14 @@ class ApiKeyTable(BaseModel):
     shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(120), nullable=False)
     prefix = Column(String(16), nullable=False, index=True)
-    key_hash = Column(String(64), nullable=False, unique=True)
+    # sha256 of the plaintext key — indexed for O(1) lookup. Plaintext is
+    # opaque (32 random bytes), so the SHA pre-image space is effectively
+    # infinite; the fingerprint is safe to leak in logs.
+    fingerprint = Column(String(64), nullable=False, unique=True, index=True)
+    # bcrypt hash of the plaintext key — verified after the fingerprint
+    # lookup so a leaked DB doesn't immediately yield usable keys even if
+    # SHA256 is ever weakened.
+    encrypted_key = Column(String, nullable=False)
     created_by_sub = Column(String(64), nullable=True)
     created_at = Column(UtcTimestamp, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     last_used_at = Column(UtcTimestamp, nullable=True)

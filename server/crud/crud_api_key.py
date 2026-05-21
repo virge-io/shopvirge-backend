@@ -6,9 +6,13 @@
 #    http://www.apache.org/licenses/LICENSE-2.0
 """CRUD for ApiKeyTable.
 
-Keys are stored as ``sha256`` of the plaintext; the plaintext leaves the
-server exactly once, in the response from :meth:`CRUDApiKey.mint`. Listing
-endpoints only ever surface the ``prefix`` so users can identify a key.
+Two-layer storage: sha256 fingerprint for indexed lookup, bcrypt hash for
+verification. A DB dump alone cannot yield usable keys — even if SHA256 is
+weakened, the bcrypt round still has to be brute-forced per row.
+
+The plaintext leaves the server exactly once, in the response from
+:meth:`CRUDApiKey.mint`. Listing endpoints surface only the ``prefix`` so
+users can identify a key.
 """
 
 from __future__ import annotations
@@ -19,21 +23,25 @@ from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
+from passlib.context import CryptContext
+
 from server.db import db
 from server.db.models import ApiKeyTable
 
 KEY_PLAINTEXT_PREFIX = "sv"
 PREFIX_LEN = 8
 
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def _hash(plaintext: str) -> str:
+
+def _fingerprint(plaintext: str) -> str:
     return hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
 
 
 def _generate_plaintext() -> Tuple[str, str]:
     """Return ``(plaintext, prefix)``. Prefix is the leading ``PREFIX_LEN`` chars
-    of the random body — stored alongside the hash so users can identify a key
-    in listings without exposing the full secret."""
+    of the random body — stored alongside so users can identify a key in
+    listings without exposing the full secret."""
     body = secrets.token_urlsafe(32)
     prefix = body[:PREFIX_LEN]
     plaintext = f"{KEY_PLAINTEXT_PREFIX}_{prefix}_{body[PREFIX_LEN:]}"
@@ -47,7 +55,8 @@ class CRUDApiKey:
             shop_id=shop_id,
             name=name,
             prefix=prefix,
-            key_hash=_hash(plaintext),
+            fingerprint=_fingerprint(plaintext),
+            encrypted_key=_pwd_context.hash(plaintext),
             created_by_sub=created_by_sub,
         )
         db.session.add(api_key)
@@ -58,13 +67,15 @@ class CRUDApiKey:
     def lookup_by_plaintext(self, plaintext: str) -> Optional[ApiKeyTable]:
         """Return the key row iff the plaintext matches an active (non-revoked) key.
 
-        Bumps ``last_used_at`` as a side effect.
+        Sha256 fingerprint narrows the lookup to one row; bcrypt-verify
+        confirms the plaintext. Bumps ``last_used_at`` as a side effect.
         """
         if not plaintext or not plaintext.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
             return None
-        key_hash = _hash(plaintext)
-        row = db.session.query(ApiKeyTable).filter(ApiKeyTable.key_hash == key_hash).first()
+        row = db.session.query(ApiKeyTable).filter(ApiKeyTable.fingerprint == _fingerprint(plaintext)).first()
         if row is None or row.revoked_at is not None:
+            return None
+        if not _pwd_context.verify(plaintext, row.encrypted_key):
             return None
         row.last_used_at = datetime.now(timezone.utc)
         db.session.commit()

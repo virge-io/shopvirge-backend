@@ -63,7 +63,7 @@ curl -sX POST https://api.example.com/shops/$SHOP_ID/api-keys/ \
 }
 ```
 
-`plaintext` is returned **exactly once**. Store it somewhere safe; subsequent `GET /shops/{shop_id}/api-keys/` listings only return the prefix. The server stores `sha256(plaintext)` and never the raw value.
+`plaintext` is returned **exactly once**. Store it somewhere safe; subsequent `GET /shops/{shop_id}/api-keys/` listings only return the prefix. The server stores two derived values and never the raw key: a `sha256` *fingerprint* (indexed for O(1) lookup, safe to leak in logs) and a `bcrypt` hash that the request handler bcrypt-verifies on every call. A DB dump alone cannot yield usable keys.
 
 List keys:
 

@@ -31,7 +31,8 @@ def upgrade() -> None:
         sa.Column("shop_id", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
         sa.Column("prefix", sa.String(length=16), nullable=False),
-        sa.Column("key_hash", sa.String(length=64), nullable=False),
+        sa.Column("fingerprint", sa.String(length=64), nullable=False),
+        sa.Column("encrypted_key", sa.String(), nullable=False),
         sa.Column("created_by_sub", sa.String(length=64), nullable=True),
         sa.Column(
             "created_at",
@@ -43,14 +44,15 @@ def upgrade() -> None:
         sa.Column("revoked_at", UtcTimestamp(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["shop_id"], ["shops.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("key_hash"),
     )
     op.create_index(op.f("ix_api_keys_id"), "api_keys", ["id"], unique=False)
     op.create_index(op.f("ix_api_keys_shop_id"), "api_keys", ["shop_id"], unique=False)
     op.create_index(op.f("ix_api_keys_prefix"), "api_keys", ["prefix"], unique=False)
+    op.create_index(op.f("ix_api_keys_fingerprint"), "api_keys", ["fingerprint"], unique=True)
 
 
 def downgrade() -> None:
+    op.drop_index(op.f("ix_api_keys_fingerprint"), table_name="api_keys")
     op.drop_index(op.f("ix_api_keys_prefix"), table_name="api_keys")
     op.drop_index(op.f("ix_api_keys_shop_id"), table_name="api_keys")
     op.drop_index(op.f("ix_api_keys_id"), table_name="api_keys")
