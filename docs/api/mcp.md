@@ -161,7 +161,56 @@ End-to-end flow when a user clicks **Authenticate**:
 5. Exchanges code at Cognito's `token_endpoint`
 6. Calls MCP tools with `Authorization: Bearer <cognito-jwt>`
 
-**Pre-registered Cognito app client.** Created once via `aws cognito-idp create-user-pool-client --no-generate-secret --allowed-o-auth-flows code --allowed-o-auth-scopes openid email profile --callback-urls 'http://localhost:7777/callback'`. The `client_id` (non-secret — it appears in every browser URL during auth) is deployed as `AWS_COGNITO_MCP_CLIENT_ID`. To rotate, recreate the client and update the env var.
+### Cognito app client setup
+
+The pre-registered Cognito app client backs the static `client_id` the DCR shim returns. The `client_id` is non-secret (it appears in every browser URL during auth) and is deployed as `AWS_COGNITO_MCP_CLIENT_ID`.
+
+Create it via CLI:
+
+```bash
+aws cognito-idp create-user-pool-client \
+  --region eu-central-1 \
+  --user-pool-id <USERPOOL_ID> \
+  --client-name shopvirge-mcp \
+  --no-generate-secret \
+  --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+  --supported-identity-providers COGNITO \
+  --callback-urls 'http://localhost:7777/callback' 'http://127.0.0.1:7777/callback' \
+  --logout-urls  'http://localhost:7777/callback' 'http://127.0.0.1:7777/callback' \
+  --allowed-o-auth-flows code \
+  --allowed-o-auth-scopes openid email profile \
+  --allowed-o-auth-flows-user-pool-client \
+  --read-attributes email email_verified family_name given_name name preferred_username \
+  --write-attributes email family_name given_name name preferred_username \
+  --prevent-user-existence-errors ENABLED \
+  --enable-token-revocation \
+  --auth-session-validity 3 \
+  --access-token-validity 60 \
+  --id-token-validity 60 \
+  --refresh-token-validity 30 \
+  --token-validity-units 'AccessToken=minutes,IdToken=minutes,RefreshToken=days'
+```
+
+The CLI prints a `ClientId` — copy it into `apprunner.yaml` as `AWS_COGNITO_MCP_CLIENT_ID` and redeploy.
+
+#### ⚠️ Managed Login branding (required step the CLI doesn't cover)
+
+User pools created in 2024-2025 default to **Managed Login** for new app clients. Until you explicitly assign a Managed Login branding style to a new client, its Hosted UI returns `403 "Login pages unavailable"` — even from the console's own "View login page" button. **Older app clients in the same user pool keep working because they still use the legacy Hosted UI.**
+
+There is currently no clean CLI command to assign branding. Do it once per new client via the console:
+
+1. `Cognito → User pool → App integration → Managed login branding versions`.
+2. Open the default style (create one if none exists; empty/default styling is fine).
+3. Scroll to the "App clients" section and add the new MCP client. Save.
+4. Re-test by hitting the "View login page" button on the client — it should now render Cognito's sign-in page instead of "Login pages unavailable".
+
+#### Callback URLs: register both `localhost` and `127.0.0.1`
+
+Claude Code's MCP SDK sends `http://localhost:<port>/callback` as the `redirect_uri`. The Cognito console's "Quick setup" wizard for **Mobile app** / **SPA** presets sometimes rejects `http://localhost:…` at create time but accepts `http://127.0.0.1:…`. To avoid a `redirect_uri mismatch` at sign-in, **whitelist both** variants — the CLI command above does this. If you've already created the client and only registered `127.0.0.1`, update it with `aws cognito-idp update-user-pool-client --callback-urls '<both>'`.
+
+#### Rotation
+
+To rotate the client, run the same `create-user-pool-client` command again with a new name, redo the Managed Login branding step, update `AWS_COGNITO_MCP_CLIENT_ID` in `apprunner.yaml`, deploy, and finally delete the old client with `aws cognito-idp delete-user-pool-client`.
 
 ## Adding a new tool
 
