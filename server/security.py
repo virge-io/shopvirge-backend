@@ -13,7 +13,7 @@
 from datetime import datetime, timedelta
 from typing import Any, List, Optional, Union
 
-from fastapi import HTTPException
+from fastapi import Header, HTTPException, Request
 from fastapi.param_functions import Depends
 from fastapi_cognito import CognitoAuth, CognitoSettings, CognitoToken
 from jose import jwt
@@ -61,6 +61,45 @@ def auth_required(token: CognitoToken = Depends(cognito_eu.auth_required)):
         return token
 
     raise HTTPException(status_code=401, detail="Invalid OAuth2 scope")
+
+
+async def auth_required_any(
+    request: Request,
+    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+):
+    """Accept either a Cognito JWT or a per-shop API key.
+
+    Resolution order:
+        1. ``X-API-Key`` header, if present.
+        2. ``Authorization: Bearer <token>`` where ``<token>`` starts with the
+           API-key prefix (``sv_``).
+        3. Otherwise fall back to the standard Cognito flow.
+
+    Returns an :class:`server.db.models.ApiKeyTable` row on API-key auth, or a
+    :class:`CustomCognitoToken` on Cognito auth. Endpoints downstream of this
+    dep don't typically inspect the return value (shop ownership comes from
+    the path param), so the union is intentional.
+    """
+    # Lazy import — avoids a CRUD<->security cycle.
+    from server.crud.crud_api_key import KEY_PLAINTEXT_PREFIX, api_key_crud
+
+    plaintext: Optional[str] = x_api_key
+    if plaintext is None:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            candidate = auth_header[7:].strip()
+            if candidate.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
+                plaintext = candidate
+
+    if plaintext is not None and plaintext.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
+        row = api_key_crud.lookup_by_plaintext(plaintext)
+        if row is None:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        return row
+
+    # No API key supplied — defer to Cognito.
+    token = await cognito_eu.auth_required(request)
+    return auth_required(token)
 
 
 def admin_required(token: CognitoToken = Depends(auth_required)):

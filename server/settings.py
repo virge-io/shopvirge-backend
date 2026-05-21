@@ -39,6 +39,7 @@ class AppSettings(BaseSettings):
     PROJECT_NAME: str = "Prijslijst backend"
     TESTING: bool = True
     EMAILS_ENABLED: bool = False
+    MCP_ENABLED: bool = False
     # SESSION_SECRET: str = "".join(secrets.choice(string.ascii_letters) for i in range(16))  # noqa: S311
     SESSION_SECRET: str = "CHANGEME"
 

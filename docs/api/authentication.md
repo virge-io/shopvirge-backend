@@ -4,10 +4,11 @@ Authentication lives in `server/security.py` and is built on [AWS Cognito](https
 
 ## Token model
 
-Two token shapes are accepted:
+Three credential shapes are accepted:
 
 1. **User tokens** — standard Cognito-issued ID/access tokens for interactive users. Validated against the configured Cognito user pool and resolved to a `client_id` / subject.
 2. **M2M (machine-to-machine) tokens** — Cognito client-credentials tokens. Must carry the `/api` scope. Used by server-to-server integrations.
+3. **API keys** — per-shop bearer tokens issued from `/shops/{shop_id}/api-keys/`. Accepted **only** on routes that opt in (currently the MCP-exposed CRUD surface for products / categories / tags / attributes). See the [MCP server](mcp.md) page for issuance and usage.
 
 The `CustomCognitoToken` model wraps the jose-decoded JWT and exposes the subject, scopes, and groups in a uniform shape.
 
@@ -27,6 +28,7 @@ All auth settings come from environment variables loaded by `server/settings.py`
 | `JWT_ALGORITHM` | Default `HS256`. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Default `120`. |
 | `SESSION_SECRET` | Signing key for `SessionMiddleware` cookies. |
+| `MCP_ENABLED` | Default `false`. Mount the [MCP server](mcp.md) at `/mcp`. |
 
 Cognito itself — user pool, app clients, domain, groups — is managed outside this repo.
 
@@ -44,6 +46,19 @@ def protected_route(token = Depends(auth_required)):
 ```
 
 `auth_required` accepts both user and M2M tokens. For M2M-only endpoints, the handler can assert on `token.scopes` inside the body.
+
+For endpoints that should also accept API keys (currently the MCP-exposed shop CRUD routes), use `auth_required_any` instead:
+
+```python
+from server.security import auth_required_any
+
+@router.get("/protected")
+def protected_route(principal = Depends(auth_required_any)):
+    # principal is either a CustomCognitoToken or an ApiKeyTable row.
+    ...
+```
+
+`auth_required_any` resolves `X-API-Key` or `Authorization: Bearer sv_…` first, then falls back to Cognito.
 
 ## Shop access checks
 
