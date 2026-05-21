@@ -18,11 +18,11 @@ tool description.
 Auth: ``from_fastapi`` invokes routes via in-process ``httpx`` over
 ``ASGITransport``, which goes through the FastAPI middleware + dependency
 chain so the existing ``Depends(auth_required_any)`` on each route fires
-normally when the LLM calls the corresponding MCP tool. We just need to
-forward the incoming MCP request's auth headers (``Authorization`` for
-Cognito JWT or API key, ``X-API-Key`` for the API key alternative) into
-that inner httpx call, which fastmcp does NOT do by default — its
-``get_http_headers()`` default exclude list strips ``authorization``.
+normally when the LLM calls the corresponding MCP tool. fastmcp's
+``OpenAPITool.run`` auto-forwards the incoming MCP request's headers into
+that inner httpx call, and as of 2.14.x its default exclude list does NOT
+strip ``authorization`` or ``x-api-key`` — so either credential reaches the
+underlying route's auth dependency without extra plumbing here.
 
 Transport: streamable HTTP.
 
@@ -31,7 +31,6 @@ Pattern adapted from ``workfloworchestrator/orchestrator-core`` PR #1620.
 
 from typing import TYPE_CHECKING
 
-import httpx
 from fastapi import FastAPI
 
 from server.agent_tags import AgentTag
@@ -40,25 +39,6 @@ if TYPE_CHECKING:
     from starlette.applications import Starlette
 
 MCP_MOUNT_PATH = "/mcp"
-
-_FORWARDED_AUTH_HEADERS = ("authorization", "x-api-key")
-
-
-async def _forward_auth_header(request: httpx.Request) -> None:
-    """Httpx request hook: forward the incoming MCP request's auth headers.
-
-    fastmcp's ``OpenAPITool.run`` already auto-forwards request headers, but
-    its default exclude list strips ``authorization`` (see
-    ``fastmcp.server.dependencies.get_http_headers``). We re-add it — plus
-    ``X-API-Key`` — so the route's ``Depends(auth_required_any)`` can
-    validate either a bearer token or an API key.
-    """
-    from fastmcp.server.dependencies import get_http_headers
-
-    auth_headers = get_http_headers(include=set(_FORWARDED_AUTH_HEADERS))
-    for key, value in auth_headers.items():
-        if key not in request.headers:
-            request.headers[key] = value
 
 
 def mount_mcp(app: FastAPI) -> "Starlette":
@@ -83,7 +63,6 @@ def mount_mcp(app: FastAPI) -> "Starlette":
             RouteMap(tags={AgentTag.EXPOSED.value}, mcp_type=MCPType.TOOL),
             RouteMap(mcp_type=MCPType.EXCLUDE),
         ],
-        httpx_client_kwargs={"event_hooks": {"request": [_forward_auth_header]}},
     )
 
     mcp_app = mcp.http_app(path="/", transport="http")
