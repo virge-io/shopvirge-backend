@@ -26,6 +26,13 @@ attempts DCR unconditionally even when configured with a static client_id
 * Mounts ``/oauth/register`` as a DCR shim — ignores the request body
   and returns the static MCP client_id, so Claude Code thinks it
   registered and proceeds straight to PKCE.
+* Mounts ``/oauth/authorize`` and ``/oauth/token`` as thin proxies in
+  front of Cognito that strip the RFC 8707 ``resource`` parameter
+  before forwarding. Cognito does not implement Resource Indicators
+  and responds with "Login pages unavailable" instead of ignoring the
+  unknown param (an RFC 6749 §3.1 violation), but the MCP spec requires
+  clients to send it. Tokens are still issued and signed by Cognito,
+  so ``iss`` validation client-side still matches the discovery doc.
 
 The discovery doc's ``issuer`` field intentionally matches Cognito's
 issuer (``https://cognito-idp.<region>.amazonaws.com/<userpool-id>``),
@@ -37,10 +44,12 @@ validation.
 """
 
 import time
+import urllib.parse
 from typing import Any
 
-from fastapi import APIRouter, Body, status
-from fastapi.responses import JSONResponse
+import httpx
+from fastapi import APIRouter, Body, Request, status
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from server.settings import app_settings
 
@@ -117,8 +126,10 @@ def oauth_authorization_server() -> dict[str, Any]:
     hosted = _hosted_ui_base()
     return {
         "issuer": _cognito_issuer(),
-        "authorization_endpoint": f"{hosted}/oauth2/authorize",
-        "token_endpoint": f"{hosted}/oauth2/token",
+        # authorize/token point at our resource-stripping proxies, not at
+        # Cognito directly. See module docstring.
+        "authorization_endpoint": f"{app_settings.PUBLIC_BASE_URL}/oauth/authorize",
+        "token_endpoint": f"{app_settings.PUBLIC_BASE_URL}/oauth/token",
         "jwks_uri": f"{_cognito_issuer()}/.well-known/jwks.json",
         "registration_endpoint": f"{app_settings.PUBLIC_BASE_URL}/oauth/register",
         "response_types_supported": ["code"],
@@ -131,6 +142,51 @@ def oauth_authorization_server() -> dict[str, Any]:
         "revocation_endpoint": f"{hosted}/oauth2/revoke",
         "userinfo_endpoint": f"{hosted}/oauth2/userInfo",
     }
+
+
+@router.get(
+    "/oauth/authorize",
+    include_in_schema=False,
+)
+def oauth_authorize_proxy(request: Request) -> RedirectResponse:
+    """Redirect to Cognito's authorize endpoint, stripping the ``resource`` param.
+
+    MCP clients (Claude Code) include ``resource=<mcp-url>`` per RFC 8707.
+    Cognito rejects authorize requests carrying it with "Login pages
+    unavailable"; dropping it on the way through lets the Hosted UI render.
+    """
+    params = [(k, v) for k, v in request.query_params.multi_items() if k != "resource"]
+    qs = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+    return RedirectResponse(
+        f"{_hosted_ui_base()}/oauth2/authorize?{qs}",
+        status_code=status.HTTP_302_FOUND,
+    )
+
+
+@router.post(
+    "/oauth/token",
+    include_in_schema=False,
+)
+async def oauth_token_proxy(request: Request) -> Response:
+    """Proxy token-exchange POSTs to Cognito, stripping the ``resource`` param.
+
+    Some MCP clients include ``resource`` on the token request too. Cognito's
+    token endpoint tends to be more permissive than authorize, but stripping
+    keeps behavior consistent with ``oauth_authorize_proxy`` and avoids future
+    surprises. Returns Cognito's response verbatim (status, body, content-type).
+    """
+    form = [(k, v) for k, v in (await request.form()).multi_items() if k != "resource"]
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        upstream = await client.post(
+            f"{_hosted_ui_base()}/oauth2/token",
+            data=form,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+    return Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        media_type=upstream.headers.get("content-type", "application/json"),
+    )
 
 
 @router.post(
