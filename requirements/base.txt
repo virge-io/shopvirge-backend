@@ -5,8 +5,9 @@ deepdiff==5.6.0
 Deprecated~=1.2.12
 emails~=0.6
 email-validator~=2.1.1
-fastapi~=0.110.0
+fastapi~=0.115.0
 fastapi-cognito
+fastmcp~=2.0
 #fastapi-mail~=0.3.5.0
 gunicorn~=20.0.4
 more-itertools==10.2.0

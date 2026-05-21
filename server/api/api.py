@@ -34,6 +34,7 @@ from server.api.endpoints import (
 )
 from server.api.endpoints.shop_endpoints import (
     accounts,
+    api_keys,
     attribute_options,
     attributes,
     categories,
@@ -49,7 +50,7 @@ from server.api.endpoints.shop_endpoints import (
     tags,
 )
 from server.api.endpoints.shop_endpoints.images import router as shop_image_router
-from server.security import auth_required
+from server.security import auth_required, auth_required_any
 from server.settings import mail_settings
 
 api_router = APIRouter()
@@ -101,7 +102,7 @@ api_router.include_router(
     categories.router,
     prefix="/shops/{shop_id}/categories",
     tags=["categories"],
-    dependencies=[Depends(auth_required)],
+    dependencies=[Depends(auth_required_any)],
 )
 api_router.include_router(
     categories.public_router,
@@ -131,7 +132,7 @@ api_router.include_router(
     products.router,
     prefix="/shops/{shop_id}/products",
     tags=["shops", "products"],
-    dependencies=[Depends(auth_required)],
+    dependencies=[Depends(auth_required_any)],
 )
 api_router.include_router(
     products.public_router,
@@ -148,13 +149,18 @@ api_router.include_router(
     tags.router,
     prefix="/shops/{shop_id}/tags",
     tags=["shops", "products"],
-    dependencies=[Depends(auth_required)],
+    dependencies=[Depends(auth_required_any)],
 )
 api_router.include_router(
     attributes.router,
     prefix="/shops/{shop_id}/attributes",
     tags=["shops", "attributes"],
-    dependencies=[Depends(auth_required)],
+    dependencies=[Depends(auth_required_any)],
+)
+api_router.include_router(
+    api_keys.router,
+    prefix="/shops/{shop_id}/api-keys",
+    tags=["shops", "api-keys"],
 )
 api_router.include_router(
     attribute_options.router,

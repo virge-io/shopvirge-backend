@@ -10,6 +10,7 @@ from fastapi.param_functions import Body, Depends
 from sqlalchemy import func
 from starlette.responses import Response
 
+from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.api.helpers import invalidateShopCache
@@ -59,7 +60,12 @@ def get_shop(shop_id: UUID):
     return shop
 
 
-@router.get("/", response_model=List[CategorySchema])
+@router.get(
+    "/",
+    response_model=List[CategorySchema],
+    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
+    operation_id="list_categories",
+)
 def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_parameters)) -> List[CategorySchema]:
     # shop = get_shop(shop_id)
     categories, header_range = category_crud.get_multi_by_shop_id(
@@ -73,7 +79,12 @@ def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_p
     return categories
 
 
-@router.get("/{category_id}", response_model=CategorySchema)
+@router.get(
+    "/{category_id}",
+    response_model=CategorySchema,
+    tags=[AgentTag.EXPOSED],
+    operation_id="get_category",
+)
 def get_by_id(shop_id: UUID, category_id: UUID) -> CategorySchema:
     category = category_crud.get_id_by_shop_id(shop_id, category_id)
     if not category:
@@ -99,7 +110,13 @@ def get_by_name(name: str, shop_id: UUID) -> CategorySchema:
     return category
 
 
-@router.post("/", response_model=None, status_code=HTTPStatus.CREATED)
+@router.post(
+    "/",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    tags=[AgentTag.EXPOSED],
+    operation_id="create_category",
+)
 def create(shop_id: UUID, data: CategoryCreate = Body(...)) -> None:
     category = CategoryTable.query.filter_by(shop_id=shop_id).order_by(CategoryTable.order_number.desc()).first()
     data.order_number = (category.order_number + 1) if category is not None else 0
@@ -108,7 +125,13 @@ def create(shop_id: UUID, data: CategoryCreate = Body(...)) -> None:
     return category_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
 
 
-@router.put("/{category_id}", response_model=None, status_code=HTTPStatus.CREATED)
+@router.put(
+    "/{category_id}",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    tags=[AgentTag.EXPOSED],
+    operation_id="update_category",
+)
 def update(*, category_id: UUID, shop_id: UUID, item_in: CategoryUpdate) -> Any:
     category = category_crud.get_id_by_shop_id(shop_id, category_id)
     logger.info("Updating category", data=category)
@@ -158,7 +181,13 @@ def swap(shop_id: UUID, category_id: UUID, move_up: bool):
     return HTTPStatus.CREATED
 
 
-@router.delete("/{category_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.delete(
+    "/{category_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    tags=[AgentTag.EXPOSED],
+    operation_id="delete_category",
+)
 def delete(category_id: UUID, shop_id: UUID) -> None:
     return category_crud.delete_by_shop_id(shop_id=shop_id, id=category_id)
 

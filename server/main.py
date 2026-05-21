@@ -33,6 +33,7 @@ from server.api.error_handling import ProblemDetailException
 from server.db import db, init_database
 from server.db.database import DBSessionMiddleware
 from server.exception_handlers.generic_exception_handlers import problem_detail_handler
+from server.mcp import mount_mcp
 from server.settings import app_settings
 
 # from server.version import GIT_COMMIT_HASH
@@ -64,10 +65,20 @@ def run_migrations():
 async def lifespan(app_: FastAPI):
     logger.info("run alembic upgrade head...")
     run_migrations()
-    yield
+    if mcp_app is not None:
+        # Starlette does NOT run mounted sub-app lifespans; we enter the MCP
+        # sub-app's StreamableHTTPSessionManager lifespan from the parent.
+        async with mcp_app.router.lifespan_context(app_):
+            yield
+    else:
+        yield
 
 
-APP_VERSION = "0.2.10"
+APP_VERSION = "0.3.0"
+
+# Assigned after the api_router is included if MCP_ENABLED. The lifespan
+# closure above references it.
+mcp_app = None
 
 app = FastAPI(
     title="ShopVirge API",
@@ -94,6 +105,12 @@ sentry_sdk.init(
 init_database(app_settings)
 
 app.include_router(api_router)
+
+if app_settings.MCP_ENABLED:
+    # Mount AFTER all routers are included so FastMCP.from_fastapi scans the
+    # full route table. Auto-generates an MCP tool for every route tagged
+    # AgentTag.EXPOSED; everything else is excluded.
+    mcp_app = mount_mcp(app)
 
 app.add_middleware(SessionMiddleware, secret_key=app_settings.SESSION_SECRET)
 app.add_middleware(DBSessionMiddleware, database=db)

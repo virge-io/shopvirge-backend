@@ -8,6 +8,7 @@ from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
+from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.base import NotFound
@@ -89,6 +90,8 @@ def get_with_options(
     response_model=List[AttributeSchema],
     summary="List shop attributes",
     description="Retrieve a paginated list of all attributes defined for a specific shop. This list does not include options.",
+    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
+    operation_id="list_attributes",
 )
 def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_parameters)) -> List[AttributeSchema]:
     """List attributes for a shop."""
@@ -126,6 +129,8 @@ def get_by_id_with_options(attribute_id: UUID, shop_id: UUID) -> AttributeWithOp
     response_model=AttributeSchema,
     summary="Get attribute by ID",
     description="Retrieve the details of a specific attribute using its unique ID.",
+    tags=[AgentTag.EXPOSED],
+    operation_id="get_attribute",
 )
 def get_by_id(attribute_id: UUID, shop_id: UUID) -> AttributeSchema:
     """Get a single attribute for a shop by its ID."""
@@ -155,6 +160,8 @@ def get_by_name(name: str, shop_id: UUID) -> AttributeSchema:
     status_code=HTTPStatus.CREATED,
     summary="Create attribute",
     description="Create a new attribute for a shop. This also initializes a translation record with the provided name.",
+    tags=[AgentTag.EXPOSED],
+    operation_id="create_attribute",
 )
 def create(shop_id: UUID, data: AttributeCreate = Body(...)) -> AttributeSchema:
     """
@@ -179,6 +186,8 @@ def create(shop_id: UUID, data: AttributeCreate = Body(...)) -> AttributeSchema:
     response_model=AttributeSchema,
     summary="Update attribute",
     description="Update the details of an existing attribute, such as its name or unit.",
+    tags=[AgentTag.EXPOSED],
+    operation_id="update_attribute",
 )
 def update(attribute_id: UUID, shop_id: UUID, data: AttributeUpdate = Body(...)) -> AttributeSchema:
     """Update an attribute for a shop."""
@@ -198,6 +207,8 @@ def update(attribute_id: UUID, shop_id: UUID, data: AttributeUpdate = Body(...))
     status_code=HTTPStatus.NO_CONTENT,
     summary="Delete attribute",
     description="Remove an attribute from a shop. This will fail if the attribute is currently in use by any products.",
+    tags=[AgentTag.EXPOSED],
+    operation_id="delete_attribute",
 )
 def delete(attribute_id: UUID, shop_id: UUID) -> None:
     """Delete an attribute for a shop."""

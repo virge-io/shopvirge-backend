@@ -8,6 +8,7 @@ import structlog
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from starlette.responses import Response
 
+from server.agent_tags import AgentTag
 from server.api import deps
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
@@ -39,7 +40,12 @@ def get_shop(shop_id: UUID):
     return shop
 
 
-@router.get("/", response_model=List[ProductWithDefaultPrice])
+@router.get(
+    "/",
+    response_model=List[ProductWithDefaultPrice],
+    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
+    operation_id="list_products",
+)
 def get_multi(
     shop_id: UUID,
     response: Response,
@@ -224,7 +230,12 @@ def get_by_id_with_attributes(product_id: UUID, shop_id: UUID) -> ProductWithAtt
     return ProductWithAttributes(product=prod_schema, attributes=attrs)
 
 
-@public_router.get("/{product_id}", response_model=ProductWithDetailsAndPrices)
+@public_router.get(
+    "/{product_id}",
+    response_model=ProductWithDetailsAndPrices,
+    tags=[AgentTag.EXPOSED],
+    operation_id="get_product",
+)
 def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
     if not product:
@@ -259,7 +270,13 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     return product
 
 
-@router.post("/", response_model=None, status_code=HTTPStatus.CREATED)
+@router.post(
+    "/",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    tags=[AgentTag.EXPOSED],
+    operation_id="create_product",
+)
 def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     product = (
         ProductTable.query.filter_by(shop_id=shop_id)
@@ -274,7 +291,13 @@ def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     return product
 
 
-@router.put("/{product_id}", response_model=None, status_code=HTTPStatus.CREATED)
+@router.put(
+    "/{product_id}",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    tags=[AgentTag.EXPOSED],
+    operation_id="update_product",
+)
 def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
     logger.info("Updating product", data=product)
@@ -337,6 +360,12 @@ def swap(shop_id: UUID, product_id: UUID, move_up: bool):
     return HTTPStatus.CREATED
 
 
-@router.delete("/{product_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.delete(
+    "/{product_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    tags=[AgentTag.EXPOSED],
+    operation_id="delete_product",
+)
 def delete(product_id: UUID, shop_id: UUID) -> None:
     return product_crud.delete_by_shop_id(shop_id=shop_id, id=product_id)

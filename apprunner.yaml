@@ -22,6 +22,8 @@ run:
       value: "true"
     - name: MAIL_TEST_ENDPOINT_ENABLED
       value: "false"
+    - name: MCP_ENABLED
+      value: "true"
   secrets:
     - name: DATABASE_URI
       value-from: "arn:aws:ssm:eu-central-1:987457788157:parameter/pricelist-backend/DATABASE_URI"

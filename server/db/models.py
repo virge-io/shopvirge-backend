@@ -599,3 +599,19 @@ class ProductAttributeValueTable(BaseModel):
             name="uq_pav_product_attribute_option_value",
         ),
     )
+
+
+class ApiKeyTable(BaseModel):
+    __tablename__ = "api_keys"
+
+    id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    prefix = Column(String(16), nullable=False, index=True)
+    key_hash = Column(String(64), nullable=False, unique=True)
+    created_by_sub = Column(String(64), nullable=True)
+    created_at = Column(UtcTimestamp, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    last_used_at = Column(UtcTimestamp, nullable=True)
+    revoked_at = Column(UtcTimestamp, nullable=True)
+
+    shop = relationship("ShopTable", lazy=True)

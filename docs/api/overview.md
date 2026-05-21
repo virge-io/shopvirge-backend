@@ -34,6 +34,10 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
 
     Everything under `/shops/{shop_id}/...` — see [Shop-scoped endpoints](shop-scoped.md) for the full list.
 
+=== "MCP"
+
+    `/mcp` (off by default; set `MCP_ENABLED=true`) exposes shop CRUD operations as Model Context Protocol tools for LLM clients. See [MCP server](mcp.md).
+
 ## FastAPI app metadata
 
 From `server/main.py` (version `0.2.6` at time of writing):

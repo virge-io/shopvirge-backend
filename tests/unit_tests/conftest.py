@@ -30,7 +30,7 @@ from server.db.database import (
 )
 from server.db.models import ProductTable, UserTable
 from server.exception_handlers.generic_exception_handlers import problem_detail_handler
-from server.security import CustomCognitoToken, auth_required
+from server.security import CustomCognitoToken, auth_required, auth_required_any
 from server.settings import app_settings
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.attribute import make_attribute, make_attribute_with_translation, make_option, make_pav
@@ -213,6 +213,7 @@ def fastapi_app(database, db_uri):
         )
 
     app.dependency_overrides[auth_required] = get_current_active_superuser_override
+    app.dependency_overrides[auth_required_any] = get_current_active_superuser_override
 
     # Admin endpoints (e.g. /admin/accounts) gate on get_current_active_superuser
     # which validates a real JWT and inspects role membership. Tests don't
@@ -267,6 +268,7 @@ def fastapi_app_not_authenticated(database, db_uri):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     app.dependency_overrides[auth_required] = get_current_active_superuser_override
+    app.dependency_overrides[auth_required_any] = get_current_active_superuser_override
 
     return app
 
