@@ -25,7 +25,7 @@ run:
     - name: MCP_ENABLED
       value: "true"
     - name: AWS_COGNITO_MCP_CLIENT_ID
-      value: "6m8pss5q1drhph217kn5guu421"
+      value: "3lq6ps78rb2i8pji1b9d4i5bq2"
     - name: PUBLIC_BASE_URL
       value: "https://api.shopvirge.com"
   secrets:
