@@ -13,7 +13,7 @@ gunicorn~=20.0.4
 more-itertools==10.2.0
 passlib[bcrypt]==1.7.4
 psycopg2-binary==2.9.9
-pydantic[email]==2.7.1
+pydantic[email]>=2.11.7
 pyjwt==2.1.0  # Todo: Not sure if we need this one
 python-jose[cryptography]==3.2.0
 python-rapidjson==1.17
@@ -23,10 +23,10 @@ SQLAlchemy-Utils
 # SQLAlchemy-Searchable~=1.2.0
 structlog
 #typer-cli==0.0.12
-uvicorn[standard]~=0.29.0
+uvicorn[standard]>=0.35
 itsdangerous
 pydantic-forms
-pydantic-settings~=2.4.0
+pydantic-settings>=2.5.2
 python-multipart==0.0.12
 wheel
 stripe==10.7.0
