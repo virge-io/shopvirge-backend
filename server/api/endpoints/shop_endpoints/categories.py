@@ -8,6 +8,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Body, Depends
 from sqlalchemy import func
+from sqlalchemy.orm import aliased
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
@@ -196,9 +197,13 @@ def delete(category_id: UUID, shop_id: UUID) -> None:
     "/{category_id}/available-attributes",
     response_model=list[AvailableAttributeSchema],
     summary="Get available filter attributes for a category",
-    description="Returns attributes actually used by products in this category, with option counts.",
+    description="Returns attributes actually used by products in this category, with option counts. Pass option_id[] to narrow counts to the already-selected filters (AND logic).",
 )
-def get_available_attributes(shop_id: UUID, category_id: UUID) -> list[AvailableAttributeSchema]:
+def get_available_attributes(
+    shop_id: UUID,
+    category_id: UUID,
+    option_id: List[UUID] = Query(None),
+) -> list[AvailableAttributeSchema]:
     category = category_crud.get_id_by_shop_id(shop_id, category_id)
     if not category:
         raise_status(HTTPStatus.NOT_FOUND, f"Category with id {category_id} not found")
@@ -207,8 +212,26 @@ def get_available_attributes(shop_id: UUID, category_id: UUID) -> list[Available
     if shop and isinstance(shop.config, str):
         shop.config = json.loads(shop.config)
 
-    # Single aggregation query: get attribute+option+count for all used options in this category
-    query = (
+    # Build a subquery of product IDs that match the active filters
+    product_subq = (
+        db.session.query(ProductTable.id)
+        .filter(ProductTable.shop_id == shop_id)
+        .filter(ProductTable.category_id == category_id)
+        .filter(ProductTable.price.isnot(None))
+    )
+    if shop and shop.config.get("toggles", {}).get("enable_stock_on_products"):
+        product_subq = product_subq.filter(ProductTable.stock > 0)
+    # Each selected option_id is ANDed: products must carry all of them
+    if option_id:
+        for opt in option_id:
+            pav_alias = aliased(ProductAttributeValueTable)
+            product_subq = product_subq.join(pav_alias, ProductTable.id == pav_alias.product_id).filter(
+                pav_alias.option_id == opt
+            )
+    product_subq = product_subq.subquery()
+
+    # Aggregation query: count per attribute option across the filtered product set
+    results = (
         db.session.query(
             AttributeTable.id.label("attribute_id"),
             AttributeTable.name.label("attribute_name"),
@@ -218,23 +241,17 @@ def get_available_attributes(shop_id: UUID, category_id: UUID) -> list[Available
             func.count(ProductAttributeValueTable.id).label("product_count"),
         )
         .join(ProductAttributeValueTable, ProductAttributeValueTable.attribute_id == AttributeTable.id)
-        .join(ProductTable, ProductTable.id == ProductAttributeValueTable.product_id)
+        .join(product_subq, product_subq.c.id == ProductAttributeValueTable.product_id)
         .join(AttributeOptionTable, AttributeOptionTable.id == ProductAttributeValueTable.option_id)
-        .filter(ProductTable.shop_id == shop_id)
-        .filter(ProductTable.category_id == category_id)
-        .filter(ProductTable.price.isnot(None))
+        .group_by(
+            AttributeTable.id,
+            AttributeTable.name,
+            AttributeTable.unit,
+            AttributeOptionTable.id,
+            AttributeOptionTable.value_key,
+        )
+        .all()
     )
-
-    if shop and shop.config.get("toggles", {}).get("enable_stock_on_products"):
-        query = query.filter(ProductTable.stock > 0)
-
-    results = query.group_by(
-        AttributeTable.id,
-        AttributeTable.name,
-        AttributeTable.unit,
-        AttributeOptionTable.id,
-        AttributeOptionTable.value_key,
-    ).all()
 
     if not results:
         return []

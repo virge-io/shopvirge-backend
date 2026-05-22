@@ -5820,7 +5820,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.0"
+    "version": "0.3.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -11037,7 +11037,7 @@
     },
     "/shops/{shop_id}/categories/{category_id}/available-attributes": {
       "get": {
-        "description": "Returns attributes actually used by products in this category, with option counts.",
+        "description": "Returns attributes actually used by products in this category, with option counts. Pass option_id[] to narrow counts to the already-selected filters (AND logic).",
         "operationId": "get_available_attributes_shops__shop_id__categories__category_id__available_attributes_get",
         "parameters": [
           {
@@ -11058,6 +11058,19 @@
               "format": "uuid",
               "title": "Category Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "option_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "title": "Option Id",
+              "type": "array"
             }
           }
         ],
