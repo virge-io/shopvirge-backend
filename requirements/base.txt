@@ -7,19 +7,19 @@ emails~=0.6
 email-validator~=2.1.1
 fastapi~=0.115.0
 fastapi-cognito
-fastmcp~=2.0
+fastmcp~=2.14.7  # >=2.14 fixes transitive $defs pruning that broke list_* MCP tools
 #fastapi-mail~=0.3.5.0
 gunicorn~=20.0.4
 more-itertools==10.2.0
 passlib[bcrypt]==1.7.4
 bcrypt<4.1  # passlib 1.7.4's bcrypt backend init fails against bcrypt >=4.1 (uses removed `__about__`)
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.12
 pydantic[email]>=2.11.7
 pyjwt==2.1.0  # Todo: Not sure if we need this one
 python-jose[cryptography]==3.2.0
 python-rapidjson==1.17
 pytz==2024.1
-SQLAlchemy==2.0.30
+SQLAlchemy==2.0.50
 SQLAlchemy-Utils
 # SQLAlchemy-Searchable~=1.2.0
 structlog
