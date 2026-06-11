@@ -15,7 +15,6 @@ passlib[bcrypt]==1.7.4
 bcrypt<4.1  # passlib 1.7.4's bcrypt backend init fails against bcrypt >=4.1 (uses removed `__about__`)
 psycopg2-binary==2.9.12
 pydantic[email]>=2.11.7
-pyjwt==2.1.0  # Todo: Not sure if we need this one
 python-jose[cryptography]==3.2.0
 python-rapidjson==1.17
 pytz==2024.1
