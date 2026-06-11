@@ -2239,6 +2239,32 @@
         "title": "Msg",
         "type": "object"
       },
+      "MyShopsResponse": {
+        "properties": {
+          "can_write": {
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "is_admin": {
+            "title": "Is Admin",
+            "type": "boolean"
+          },
+          "shops": {
+            "items": {
+              "$ref": "#/components/schemas/ShopSchema"
+            },
+            "title": "Shops",
+            "type": "array"
+          }
+        },
+        "required": [
+          "shops",
+          "is_admin",
+          "can_write"
+        ],
+        "title": "MyShopsResponse",
+        "type": "object"
+      },
       "OrderBase": {
         "properties": {
           "account_id": {
@@ -8541,6 +8567,29 @@
         "summary": "Get Last Pending Order",
         "tags": [
           "shops"
+        ]
+      }
+    },
+    "/shops/my-shops": {
+      "get": {
+        "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Always call this first \u2014 before saying anything to the user.",
+        "operationId": "list_my_shops",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyShopsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List shops and capabilities for the current user",
+        "tags": [
+          "shops",
+          "agent-exposed"
         ]
       }
     },

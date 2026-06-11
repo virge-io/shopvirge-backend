@@ -52,6 +52,8 @@ EXPECTED_TOOL_NAMES = {
     "create_attribute",
     "update_attribute",
     "delete_attribute",
+    # shops
+    "list_my_shops",
 }
 
 
