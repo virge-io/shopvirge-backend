@@ -293,6 +293,7 @@ def test_shop_create_config(test_client, shop):
                 "btw_number": "string",
             },
             "shipping": None,
+            "order_status_mails": None,
         },
         "config_version": 0,
     }
@@ -418,6 +419,7 @@ def test_shop_update_config(test_client, shop_with_config):
                 "btw_number": "string",
             },
             "shipping": None,
+            "order_status_mails": None,
         },
         "config_version": 0,
     }

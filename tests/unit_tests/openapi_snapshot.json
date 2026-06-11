@@ -1402,6 +1402,46 @@
         "title": "ConfigurationLegal",
         "type": "object"
       },
+      "ConfigurationOrderStatusMails": {
+        "properties": {
+          "copy_email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Copy Email"
+          },
+          "copy_enabled": {
+            "default": false,
+            "title": "Copy Enabled",
+            "type": "boolean"
+          },
+          "owner_notification_email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Notification Email"
+          },
+          "owner_notification_enabled": {
+            "default": true,
+            "title": "Owner Notification Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "ConfigurationOrderStatusMails",
+        "type": "object"
+      },
       "ConfigurationShipping-Input": {
         "properties": {
           "enabled": {
@@ -1554,6 +1594,16 @@
             "title": "Main Banner",
             "type": "string"
           },
+          "order_status_mails": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfigurationOrderStatusMails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "shipping": {
             "anyOf": [
               {
@@ -1646,6 +1696,16 @@
           "main_banner": {
             "title": "Main Banner",
             "type": "string"
+          },
+          "order_status_mails": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfigurationOrderStatusMails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "shipping": {
             "anyOf": [
@@ -5820,7 +5880,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.1"
+    "version": "0.3.2"
   },
   "openapi": "3.1.0",
   "paths": {

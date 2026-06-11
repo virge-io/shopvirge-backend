@@ -227,6 +227,7 @@ class MailSettings(BaseSettings):
     # through the configured SMTP (i.e. Mailpit) for local smoke testing. Never enable
     # in production — anyone who can reach the backend can trigger outbound mail.
     MAIL_TEST_ENDPOINT_ENABLED: bool = False
+    MAIL_TEST_SEND_ENABLED: bool = False
 
     class Config:
         env_file = ".env"
