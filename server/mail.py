@@ -197,6 +197,7 @@ def _generate_mail_intro_for_product_info(
         date=date,
     )
 
+
 def generate_confirmation_mail(
     product: ProductBase,
     mail_type: MailType,

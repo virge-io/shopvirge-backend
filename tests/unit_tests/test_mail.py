@@ -231,7 +231,9 @@ def test_copy_email_sends_backup_copy(completed_order, shop_with_config):
 def test_copy_email_and_custom_notification_email_are_independent(completed_order, shop_with_config):
     """copy_email and owner_notification_email can both be set to different addresses."""
     shop = db.session.get(ShopTable, shop_with_config)
-    _patch_order_status_mails(shop, owner_notification_email="orders@myshop.com", copy_enabled=True, copy_email="archive@support.com")
+    _patch_order_status_mails(
+        shop, owner_notification_email="orders@myshop.com", copy_enabled=True, copy_email="archive@support.com"
+    )
     order = db.session.get(OrderTable, completed_order)
 
     with patch("server.mail.send_mail", wraps=mail_module.send_mail) as spy:
