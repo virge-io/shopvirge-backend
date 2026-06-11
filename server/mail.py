@@ -197,45 +197,6 @@ def _generate_mail_intro_for_product_info(
         date=date,
     )
 
-
-# def _generate_mail_intro_for_create_workflow(
-#     contact_names: str, model: SubscriptionModel, language: str, summary: str, date: datetime
-# ) -> str:
-#     env = template_environment(loader)
-#     template_file = "mail_intro_create_workflow.html.j2"
-#     template = env.get_template(os.path.join(language.lower(), template_file))
-#
-#     return template.render(
-#         subscription=model.model_dump(),
-#         contact_names=contact_names,
-#         info_link=INFO_LINK,
-#         summary=summary,
-#         date=date,
-#     )
-#
-#
-# def _generate_mail_intro_for_modify_workflow(
-#     contact_names: str, model: SubscriptionModel, language: str, summary: str, date: datetime
-# ) -> str:
-#     env = template_environment(loader)
-#
-#     template = env.get_template(os.path.join(language.lower(), "mail_intro_modify_workflow.html.j2"))
-#     return template.render(
-#         subscription=model.model_dump(),
-#         contact_names=contact_names,
-#         summary=summary,
-#         date=date,
-#     )
-#
-#
-# def _generate_mail_intro_for_terminate_workflow(
-#     contact_names: str, model: SubscriptionModel, language: str, summary: str
-# ) -> str:
-#     env = template_environment(loader)
-#     template = env.get_template(os.path.join(language.lower(), "mail_intro_terminate_workflow.html.j2"))
-#     return template.render(subscription=model.model_dump(), contact_names=contact_names, summary=summary)
-
-
 def generate_confirmation_mail(
     product: ProductBase,
     mail_type: MailType,
@@ -568,9 +529,16 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
         send_mail(customer_mail)
         logger.info("Sent order confirmation to customer", order_id=str(order.id), customer=account.name)
 
-        # Send shop owner email
-        owner_email = contact.get("email")
-        if owner_email:
+        # Resolve owner mail settings — defaults preserve existing behaviour for shops
+        # that have no order_status_mails config yet.
+        order_status_mails_cfg = config.get("order_status_mails") or {}
+        owner_notification_enabled = order_status_mails_cfg.get("owner_notification_enabled", True)
+        owner_notification_email = order_status_mails_cfg.get("owner_notification_email") or contact.get("email")
+        copy_enabled = order_status_mails_cfg.get("copy_enabled", False)
+        copy_email = order_status_mails_cfg.get("copy_email")
+
+        # Active owner notification — goes to owner_notification_email (or contact.email as fallback).
+        if owner_notification_enabled and owner_notification_email:
             owner_template = env.get_template(f"{lang_folder}/mail_order_confirmation_owner.html.j2")
             owner_body = owner_template.render(**template_vars)
 
@@ -582,33 +550,35 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
             owner_mail: ConfirmationMail = {
                 "message": owner_body,
                 "subject": subject_prefix_owner.get(language, subject_prefix_owner["NL"]),
-                "to": [{"email": owner_email, "name": contact.get("company", shop.name)}],
+                "to": [{"email": owner_notification_email, "name": contact.get("company", shop.name)}],
                 "cc": [],
                 "bcc": BCC,
                 "language": language,
                 "images": IMAGES_SHOP_VIRGE,
             }
             send_mail(owner_mail)
-            logger.info("Sent order notification to shop owner", order_id=str(order.id), owner=owner_email)
+            logger.info("Sent order notification to shop owner", order_id=str(order.id), owner=owner_notification_email)
+        elif not owner_notification_email:
+            logger.warning("No shop owner email configured, skipping owner notification", shop_id=str(shop.id))
 
-            subject_prefix_customer_copy = {
+        # Backup/support copy — silent archive, only sent when explicitly enabled and address is set.
+        if copy_enabled and copy_email:
+            subject_prefix_copy = {
                 "NL": f"[KOPIE klantmail] Orderbevestiging #{order.customer_order_id} - {shop.name}",
                 "EN": f"[COPY of customer mail] Order confirmation #{order.customer_order_id} - {shop.name}",
             }
 
-            owner_customer_copy_mail: ConfirmationMail = {
+            copy_mail: ConfirmationMail = {
                 "message": customer_body,
-                "subject": subject_prefix_customer_copy.get(language, subject_prefix_customer_copy["NL"]),
-                "to": [{"email": owner_email, "name": contact.get("company", shop.name)}],
+                "subject": subject_prefix_copy.get(language, subject_prefix_copy["NL"]),
+                "to": [{"email": copy_email, "name": copy_email}],
                 "cc": [],
                 "bcc": BCC,
                 "language": language,
                 "images": IMAGES_SHOP_VIRGE,
             }
-            send_mail(owner_customer_copy_mail)
-            logger.info("Sent customer-mail copy to shop owner", order_id=str(order.id), owner=owner_email)
-        else:
-            logger.warning("No shop owner email configured, skipping owner notification", shop_id=str(shop.id))
+            send_mail(copy_mail)
+            logger.info("Sent customer-mail backup copy", order_id=str(order.id), copy_email=copy_email)
 
     except Exception as e:
         logger.error("Failed to send order confirmation emails", error=str(e), order_id=str(order.id))

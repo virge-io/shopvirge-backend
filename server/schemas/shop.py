@@ -184,6 +184,13 @@ class ConfigurationShipping(BoilerplateBaseModel):
     free_shipping_above_amount: Money = Decimal("0")
 
 
+class ConfigurationOrderStatusMails(BoilerplateBaseModel):
+    owner_notification_enabled: bool = True
+    owner_notification_email: EmailStr | None = None  # overrides contact.email when set
+    copy_enabled: bool = False
+    copy_email: EmailStr | None = None  # backup/support archive
+
+
 class ConfigurationV1(BoilerplateBaseModel):
     short_shop_name: str
     logo: str
@@ -197,6 +204,7 @@ class ConfigurationV1(BoilerplateBaseModel):
     toggles: Toggles
     legal: ConfigurationLegal | None = None
     shipping: ConfigurationShipping | None = None
+    order_status_mails: ConfigurationOrderStatusMails | None = None
 
 
 class ShopTypeName(str, Enum):
