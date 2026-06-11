@@ -89,6 +89,12 @@ class ShopCacheStatus(ShopEmptyBase):
     modified_at: Optional[datetime]
 
 
+class MyShopsResponse(BoilerplateBaseModel):
+    shops: List[ShopSchema]
+    is_admin: bool
+    can_write: bool
+
+
 class ShopLastCompletedOrder(ShopEmptyBase):
     last_completed_order: Optional[str]
 
