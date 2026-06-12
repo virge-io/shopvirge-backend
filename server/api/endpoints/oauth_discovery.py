@@ -39,7 +39,7 @@ validation.
 import time
 from typing import Any
 
-from fastapi import APIRouter, Body, status
+from fastapi import APIRouter, Body, Request, status
 from fastapi.responses import JSONResponse
 
 from server.settings import app_settings
@@ -94,11 +94,18 @@ _HOSTED_UI_BASE = _fetch_hosted_ui_base()
     "/.well-known/oauth-protected-resource",
     include_in_schema=False,
 )
-def oauth_protected_resource() -> dict[str, Any]:
-    """RFC 9728 — tell MCP clients where to find the authorization server."""
+def oauth_protected_resource(request: Request) -> dict[str, Any]:
+    """RFC 9728 — tell MCP clients where to find the authorization server.
+
+    The ``resource`` MUST equal the URL the client used to reach this server
+    (RFC 9728 §3.3).  We derive it from the incoming request so the value is
+    correct whether the client hits us as localhost:8080 or
+    host.docker.internal:8080 or any other alias.
+    """
+    base = f"{request.url.scheme}://{request.url.netloc}"
     return {
-        "resource": f"{app_settings.PUBLIC_BASE_URL}/mcp",
-        "authorization_servers": [app_settings.PUBLIC_BASE_URL],
+        "resource": f"{base}/mcp/",
+        "authorization_servers": [base],
         "bearer_methods_supported": ["header"],
         "scopes_supported": list(_DEFAULT_SCOPES),
     }
@@ -108,19 +115,20 @@ def oauth_protected_resource() -> dict[str, Any]:
     "/.well-known/oauth-authorization-server",
     include_in_schema=False,
 )
-def oauth_authorization_server() -> dict[str, Any]:
+def oauth_authorization_server(request: Request) -> dict[str, Any]:
     """RFC 8414 — Cognito's OIDC doc, plus our DCR shim's registration endpoint.
 
     ``issuer`` deliberately matches Cognito's issuer (not our backend host)
     so token-``iss`` validation succeeds client-side. See module docstring.
     """
     hosted = _hosted_ui_base()
+    base = f"{request.url.scheme}://{request.url.netloc}"
     return {
         "issuer": _cognito_issuer(),
         "authorization_endpoint": f"{hosted}/oauth2/authorize",
         "token_endpoint": f"{hosted}/oauth2/token",
         "jwks_uri": f"{_cognito_issuer()}/.well-known/jwks.json",
-        "registration_endpoint": f"{app_settings.PUBLIC_BASE_URL}/oauth/register",
+        "registration_endpoint": f"{base}/oauth/register",
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "code_challenge_methods_supported": ["S256"],

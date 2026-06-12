@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
+from server.agent_tags import AgentTag
 from server.api import deps
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
@@ -15,6 +16,7 @@ from server.api.helpers import load
 from server.crud.crud_shop import shop_crud
 from server.db.models import ShopTable, UserTable
 from server.schemas.shop import (
+    MyShopsResponse,
     ShopCacheStatus,
     ShopConfig,
     ShopConfigUpdate,
@@ -26,7 +28,7 @@ from server.schemas.shop import (
     ShopUpdate,
     ShopWithPrices,
 )
-from server.security import auth_required
+from server.security import ADMIN_GROUP, CustomCognitoToken, auth_required
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -46,6 +48,34 @@ def get_multi(
     )
     response.headers["Content-Range"] = header_range
     return shops
+
+
+@router.get(
+    "/my-shops",
+    response_model=MyShopsResponse,
+    tags=[AgentTag.EXPOSED],
+    operation_id="list_my_shops",
+    summary="List shops and capabilities for the current user",
+    description=(
+        "Returns the shops this user can manage, derived from their Cognito groups, "
+        "plus capability flags the agent should use to tailor its welcome message and behaviour. "
+        "Admins (group 'Admins') see all shops and have full write access. "
+        "Tenant users see only the shop(s) whose ID matches one of their Cognito group names; "
+        "their write access is also scoped to those shops. "
+        "Always call this first — before saying anything to the user."
+    ),
+)
+def get_my_shops(
+    token: CustomCognitoToken = Depends(auth_required),
+) -> MyShopsResponse:
+    shops, _ = shop_crud.get_multi(skip=0, limit=1000, filter_parameters=[], sort_parameters=[])
+    is_admin = ADMIN_GROUP in token.cognito_groups
+    if is_admin:
+        accessible = shops
+    else:
+        accessible_ids = set(token.cognito_groups)
+        accessible = [s for s in shops if str(s.id) in accessible_ids]
+    return MyShopsResponse(shops=accessible, is_admin=is_admin, can_write=len(accessible) > 0)
 
 
 @router.post("/", response_model=ShopSchema, status_code=HTTPStatus.CREATED)
