@@ -30,6 +30,7 @@ pydantic-settings>=2.5.2
 python-multipart==0.0.12
 wheel
 stripe==10.7.0
+mollie-api-python==4.0.0
 phonenumbers==8.13.45
 pydantic_extra_types==2.9.0
 httpx

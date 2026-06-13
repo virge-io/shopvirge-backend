@@ -16,6 +16,9 @@ EXCLUDED_ENDPOINTS = [
     {"path": "/orders/", "name": "create", "method": "POST"},
     {"path": "/shops/{shop_id}/stripe/", "name": "create_payment_intent", "method": "POST"},
     {"path": "/shops/{shop_id}/stripe/subscription", "name": "create_subscription_intent", "method": "POST"},
+    # Checkout payments are created by the (anonymous) storefront; order
+    # completion is driven by verified PSP webhooks, not by this endpoint.
+    {"path": "/shops/{shop_id}/payments/", "name": "create_payment", "method": "POST"},
     {"path": "/info-request/", "name": "create_info_request", "method": "POST"},
     {"path": "/sentry/", "name": "trigger_error", "method": "GET"},
     {"path": "/test-forms/", "name": "form", "method": "POST"},

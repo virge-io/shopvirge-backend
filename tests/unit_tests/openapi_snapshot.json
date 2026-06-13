@@ -3046,6 +3046,143 @@
         "title": "OrderUpdated",
         "type": "object"
       },
+      "PaymentCreate": {
+        "properties": {
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "return_url": {
+            "title": "Return Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "return_url"
+        ],
+        "title": "PaymentCreate",
+        "type": "object"
+      },
+      "PaymentSessionSchema": {
+        "description": "Provider-agnostic 'what to do next' answer for a created payment.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Secret"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "flow": {
+            "enum": [
+              "redirect",
+              "client_confirmation"
+            ],
+            "title": "Flow",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "publishable_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishable Key"
+          },
+          "redirect_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Url"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id",
+          "order_id",
+          "provider",
+          "status",
+          "amount",
+          "currency",
+          "flow"
+        ],
+        "title": "PaymentSessionSchema",
+        "type": "object"
+      },
+      "PaymentStatusSchema": {
+        "properties": {
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "order_status": {
+            "title": "Order Status",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id",
+          "order_id",
+          "provider",
+          "status",
+          "order_status"
+        ],
+        "title": "PaymentStatusSchema",
+        "type": "object"
+      },
       "ProductAttributeItem": {
         "description": "Lightweight representation of a product's attribute value used in responses.\n\n- attribute_id: the AttributeTable id\n- attribute_name: translated main_name for display (optional, may be omitted in some endpoints)\n- option_id: the AttributeOptionTable id when the value is an enum option\n- option_value_key: the option key (e.g., \"XS\", \"M\") when applicable",
         "properties": {
@@ -5906,7 +6043,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.2"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -11506,6 +11643,113 @@
         ]
       }
     },
+    "/shops/{shop_id}/payments/": {
+      "post": {
+        "operationId": "create_payment_shops__shop_id__payments__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSessionSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Payment",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/shops/{shop_id}/payments/{payment_id}": {
+      "get": {
+        "description": "Current payment status, freshly synced from the provider.\n\nThe sync makes this endpoint double as the webhook fallback: when the\ncustomer lands on the return page before (or without) a webhook arriving,\npolling here still moves the payment \u2014 and on 'paid', the order \u2014 forward.",
+        "operationId": "get_payment_shops__shop_id__payments__payment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentStatusSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Payment",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/shops/{shop_id}/prices/": {
       "get": {
         "operationId": "get_products_shops__shop_id__prices__get",
@@ -13983,6 +14227,61 @@
         "summary": "Update",
         "tags": [
           "users"
+        ]
+      }
+    },
+    "/webhooks/payments/{provider_id}/{shop_id}": {
+      "post": {
+        "operationId": "payment_webhook_webhooks_payments__provider_id___shop_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Payment Webhook Webhooks Payments  Provider Id   Shop Id  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Payment Webhook",
+        "tags": [
+          "payments",
+          "webhooks"
         ]
       }
     }

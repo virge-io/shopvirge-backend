@@ -32,6 +32,7 @@ from server.api.endpoints import (
     shops,
     test_forms,
     users,
+    webhooks,
 )
 from server.api.endpoints.shop_endpoints import (
     accounts,
@@ -42,6 +43,7 @@ from server.api.endpoints.shop_endpoints import (
     category_images,
     info_request,
     orders,
+    payments,
     prices,
     product_attribute_values,
     products,
@@ -193,6 +195,18 @@ api_router.include_router(
     prefix="/shops/{shop_id}/stripe",
     tags=["stripe"],
     # dependencies=[Depends(deps.get_current_active_superuser)],
+)
+# Provider-agnostic checkout payments; deprecates the /stripe routes above.
+api_router.include_router(
+    payments.router,
+    prefix="/shops/{shop_id}/payments",
+    tags=["payments"],
+)
+# Public PSP webhooks (Mollie, Stripe); verification happens per provider.
+api_router.include_router(
+    webhooks.router,
+    prefix="/webhooks/payments",
+    tags=["payments", "webhooks"],
 )
 
 api_router.include_router(
