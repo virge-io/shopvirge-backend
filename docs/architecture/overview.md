@@ -25,7 +25,8 @@ Almost every resource is scoped to a shop. Shop-scoped endpoints live under `/sh
 - `/shops/{shop_id}/attributes`
 - `/shops/{shop_id}/prices`
 - `/shops/{shop_id}/accounts`
-- `/shops/{shop_id}/stripe`
+- `/shops/{shop_id}/payments`
+- `/shops/{shop_id}/stripe` (legacy)
 - …
 
 See [Shop-scoped endpoints](../api/shop-scoped.md) for the pattern and the full list.
@@ -43,7 +44,7 @@ Four domain tables have companion translation tables that carry per-language nam
 
 ## External integrations
 
-- **Payments:** Stripe (`server/api/endpoints/shop_endpoints/stripe.py`).
+- **Payments:** pluggable providers — Mollie and Stripe (`server/payments/`, see [Payments](../api/payments.md)); legacy direct Stripe routes in `server/api/endpoints/shop_endpoints/stripe.py`.
 - **Auth:** AWS Cognito (`fastapi-cognito`) — see [Authentication](../api/authentication.md).
 - **Error tracking:** Sentry (`SentryAsgiMiddleware` in `server/main.py`).
 - **Email:** SMTP, configured via `SMTP_*` env vars; templates under `server/mail_templates/`.

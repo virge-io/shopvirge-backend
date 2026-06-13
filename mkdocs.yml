@@ -111,6 +111,7 @@ nav:
       - Authentication: api/authentication.md
       - MCP server: api/mcp.md
       - Admin accounts: api/admin-accounts.md
+      - Payments: api/payments.md
       - Stripe: api/stripe.md
       - Email notifications: api/email-notifications.md
   - Development:
