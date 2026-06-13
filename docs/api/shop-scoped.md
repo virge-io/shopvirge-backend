@@ -26,6 +26,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | File | Resource |
 |------|----------|
 | `orders.py` | Orders — create, complete, list, email confirmation on completion. |
+| `payments.py` | Provider-agnostic checkout payments (Mollie, Stripe) — see [Payments](payments.md). |
 | `products.py` | Products (public router split out for unauthenticated catalog browsing). |
 | `categories.py` | Categories (public router split out similarly). |
 | `tags.py` | Tags. |
@@ -35,7 +36,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | `products_to_tags.py` | Product ↔ tag links. |
 | `prices.py` | Price management. |
 | `accounts.py` | Shop-level customer/vendor accounts. |
-| `stripe.py` | Stripe integration (payment intents, webhooks). |
+| `stripe.py` | Legacy Stripe routes (payment intents, subscriptions) — deprecated for one-off payments in favour of `payments.py`. |
 | `category_images.py` | Category image uploads. |
 | `images.py` | Generic shop image uploads. |
 | `info_request.py` | Incoming info requests. |

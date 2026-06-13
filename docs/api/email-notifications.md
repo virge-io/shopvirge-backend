@@ -10,11 +10,13 @@ Transactional email is rendered with Jinja2 and sent via SMTP.
 
 ## Order confirmation flow
 
-When an order transitions to "completed" (commit `8dbfd02`), the order endpoint calls:
+When an order transitions to "complete", `server/services/order_lifecycle.py` calls:
 
 ```python
 send_order_confirmation_emails(order, shop, account)
 ```
+
+There are two paths into that transition: the orders PATCH endpoint (admin / legacy frontend) and a paid [payment webhook or status sync](payments.md). Both funnel through the same idempotent `complete_order()` / `notify_order_complete()` service, so the mails are sent exactly once regardless of which path wins.
 
 This renders and sends two mails:
 
@@ -24,7 +26,7 @@ This renders and sends two mails:
 ```mermaid
 sequenceDiagram
     autonumber
-    participant EP as orders endpoint<br/>(complete order)
+    participant EP as complete_order()<br/>(orders PATCH or payment webhook)
     participant Mail as mail.py
     participant J2 as Jinja2 env
     participant SMTP as SMTP server

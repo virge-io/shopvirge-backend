@@ -15,25 +15,22 @@ from starlette.responses import Response
 from server.api import deps
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
-from server.api.helpers import _query_with_filters, invalidateCompletedOrdersCache, invalidatePendingOrdersCache, load
+from server.api.helpers import invalidateCompletedOrdersCache, invalidatePendingOrdersCache
 from server.api.utils import is_ip_allowed, validate_uuid4
 from server.crud.crud_account import account_crud
 from server.crud.crud_order import order_crud
 from server.crud.crud_product import product_crud
 from server.crud.crud_shop import shop_crud
-from server.db.models import Account, OrderTable, ShopTable, UserTable
-from server.mail import send_order_confirmation_emails
-from server.schemas import ProductUpdate
+from server.db.models import Account, OrderTable, UserTable
 from server.schemas.account import AccountCreate
 from server.schemas.base import quantize_money
 from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdate, OrderUpdated
 from server.schemas.product import ProductTranslationBase
 from server.security import auth_required
 from server.services import stripe_client
+from server.services.order_lifecycle import deduct_stock_for_order, notify_order_complete
 from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
-from server.settings import mail_settings
-from server.utils.discord.discord import post_discord_order_complete
 
 logger = structlog.get_logger(__name__)
 
@@ -387,55 +384,10 @@ def patch(
 
     # The following is fixed by the early exit from before `order.status == item_in.status`:
     # `item_in.status == "complete"` is not enough because it doesn't account for the order's current status, this means that the stock gets updated even though the order might not have been changed
-    if shop.config["toggles"]["enable_stock_on_products"] and item_in.status == "complete":
-        for order_product in order.order_info:
-            product = product_crud.get_id_by_shop_id(shop_id, order_product["product_id"])
-
-            logger.info(
-                f"Updating stock for order {product.id} , old stock: {product.stock}, new stock: {product.stock - order_product['quantity']}"
-            )
-
-            new_product = ProductUpdate(
-                shop_id=product.shop_id,
-                category_id=product.category_id,
-                max_one=product.max_one,
-                shippable=product.shippable,
-                featured=product.featured,
-                new_product=product.new_product,
-                tax_category=product.tax_category,
-                stock=product.stock - order_product["quantity"],
-                translation=product.translation,
-                image_1=product.image_1,
-                image_2=product.image_2,
-                image_3=product.image_3,
-                image_4=product.image_4,
-                image_5=product.image_5,
-                image_6=product.image_6,
-            )
-            product_crud.update(db_obj=product, obj_in=new_product)
-
-    # Fetch account once for Discord and email notifications
-    account = account_crud.get(updated_order.account_id) if updated_order.account_id else None
-
-    try:
-        shop = load(ShopTable, updated_order.shop_id)
-        if shop.discord_webhook is not None and account:
-            post_discord_order_complete(
-                f"New order from {account.name}",
-                botname=shop.name,
-                webhook=shop.discord_webhook,
-                order=updated_order,
-                email=account.name,
-            )
-    except Exception as e:
-        logger.error("Failed to post to Discord: ", error=str(e))
-
-    # Send order confirmation emails
-    if mail_settings.SHOP_MAIL_ENABLED and item_in.status == "complete" and account:
-        try:
-            send_order_confirmation_emails(order=order, shop=shop, account=account)
-        except Exception as e:
-            logger.error("Failed to send order confirmation email", error=str(e))
+    if item_in.status == "complete":
+        deduct_stock_for_order(order, shop)
+        account = account_crud.get(updated_order.account_id) if updated_order.account_id else None
+        notify_order_complete(order, shop, account)
 
     invalidateCompletedOrdersCache(updated_order.id)
     return updated_order

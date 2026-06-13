@@ -175,6 +175,12 @@ class ShopTable(BaseModel):
     config_version = Column(Integer, nullable=False, server_default="1")
     stripe_secret_key = Column(String(255), nullable=True)
     stripe_public_key = Column(String(255), nullable=True)
+    # Which payment provider handles checkout for this shop ("stripe", "mollie").
+    # Provider-specific credentials live in payment_config, keyed by provider id,
+    # e.g. {"mollie": {"api_key": "live_..."}}. The legacy stripe_* columns above
+    # remain the source of truth for the stripe provider.
+    payment_provider = Column(String(32), nullable=False, server_default="stripe")
+    payment_config = Column(postgresql.JSONB(), nullable=False, server_default="{}")
     vat_standard = Column(Numeric(5, 2), default=Decimal("21.00"))
     vat_lower_1 = Column(Numeric(5, 2), default=Decimal("10.00"))
     vat_lower_2 = Column(Numeric(5, 2), default=Decimal("5.00"))
@@ -317,6 +323,45 @@ class OrderTable(BaseModel):
 
     def __repr__(self):
         return "<Order for shop: %s with total: %s>" % (self.shop.name, self.total)
+
+
+class PaymentTable(BaseModel):
+    """A payment attempt for an order at an external payment provider.
+
+    Orders and payments are deliberately separate: one order can have several
+    payment attempts (e.g. a failed iDEAL payment followed by a successful
+    retry creates two rows). ``status`` follows the normalized lifecycle from
+    ``server.payments.base.PaymentStatus``; provider-native payloads are kept
+    verbatim in ``raw`` for debugging/auditing.
+    """
+
+    __tablename__ = "payments"
+    id = Column(
+        UUIDType,
+        server_default=text("uuid_generate_v4()"),
+        primary_key=True,
+        index=True,
+    )
+    shop_id = Column(UUIDType, ForeignKey("shops.id"), nullable=False, index=True)
+    order_id = Column(UUIDType, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider = Column(String(32), nullable=False)
+    provider_payment_id = Column(String(255), nullable=True, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(3), nullable=False, server_default="EUR")
+    status = Column(String(16), nullable=False, server_default="created")
+    raw = Column(postgresql.JSONB(), nullable=True)
+    created_at = Column(UtcTimestamp, server_default=text("CURRENT_TIMESTAMP"))
+    modified_at = Column(
+        UtcTimestamp,
+        server_default=text("CURRENT_TIMESTAMP"),
+        server_onupdate=text("CURRENT_TIMESTAMP"),
+    )
+
+    shop = relationship("ShopTable", lazy=True)
+    order = relationship("OrderTable", backref=backref("payments", uselist=True))
+
+    def __repr__(self):
+        return f"<Payment {self.provider}:{self.provider_payment_id} {self.status} for order {self.order_id}>"
 
 
 class ProductTable(BaseModel):

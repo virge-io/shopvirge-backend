@@ -22,7 +22,7 @@ The main tables and what they hold:
 |-------|---------|
 | `UserTable` | Authenticated users (email, username, password hash). |
 | `RoleTable` / `RoleUserTable` | Role definitions and user ↔ role links. |
-| `ShopTable` | Shops: name, config, Stripe keys, VAT rates, webhooks. |
+| `ShopTable` | Shops: name, config, payment provider + config, Stripe keys, VAT rates, webhooks. |
 | `ShopUserTable` | User ↔ shop links. |
 | `ProductTable` | Products: price, tax category, stock, image URLs 1–6, featured/new flags, optional recurring pricing. |
 | `ProductTranslationTable` | Per-language product name and description. |
@@ -33,6 +33,7 @@ The main tables and what they hold:
 | `AttributeOptionTable` | Values of an attribute (e.g. "Small", "Red"). |
 | `ProductAttributeValueTable` | Product-specific attribute assignments. |
 | `OrderTable` | Orders: customer order id, order info JSON, status, completion tracking. |
+| `PaymentTable` | Payment attempts at a PSP: provider, provider payment id, amount, normalized status, raw payload (see [Payments](../api/payments.md)). |
 | `Account` | Shop customer/vendor accounts (`hash_name` supports anonymisation). |
 | `License` | Recurring licence records. |
 | `EarlyAccessTable` | Early-access sign-ups. |
@@ -60,6 +61,7 @@ erDiagram
     ProductTable ||--o{ ProductAttributeValueTable : "has values"
     AttributeOptionTable ||--o{ ProductAttributeValueTable : "value of"
     OrderTable }o--|| Account : "belongs to"
+    OrderTable ||--o{ PaymentTable : "paid via"
 ```
 
 The diagram is illustrative — consult `server/db/models.py` for exact column definitions, nullability, and cascade rules.

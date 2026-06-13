@@ -1,5 +1,8 @@
 # Stripe integration
 
+!!! warning "Partially superseded by the provider-agnostic payments API"
+    One-off checkout payments now go through the pluggable provider layer — see [Payments](payments.md). The `/shops/{shop_id}/stripe/` payment-intent route is kept for the legacy frontend but deprecated; `server/payments/stripe.py` wraps the same Stripe machinery behind the `PaymentProvider` interface. Subscriptions and the admin customer tooling described below remain Stripe-only.
+
 The backend supports per-shop Stripe accounts: every `ShopTable` row carries its own `stripe_secret_key` and `stripe_public_key`. There is no global Stripe key — every API call has to pick the right one for the shop being acted on.
 
 ## The helper: `server/services/stripe_client.py`
@@ -26,8 +29,9 @@ The helper does **not** translate `stripe.error.StripeError` into HTTP errors �
 ## Where it's used
 
 - `server/api/endpoints/admin_accounts.py` — superuser sync + read-through (see [Admin accounts](admin-accounts.md)).
-- `server/api/endpoints/shop_endpoints/stripe.py` — payment intents, subscription create/cancel.
+- `server/api/endpoints/shop_endpoints/stripe.py` — legacy payment intents, subscription create/cancel.
 - `server/api/endpoints/shop_endpoints/orders.py` — auto-creates a Stripe customer when a new account first appears in checkout.
+- `server/payments/stripe.py` — the `StripeProvider` behind the [provider-agnostic payments API](payments.md).
 
 ## Why module-level, not a `StripeClient` instance
 
@@ -35,6 +39,6 @@ The Stripe SDK supports both styles. The codebase has historically used the modu
 
 ## Known follow-ups
 
-- **No webhook handlers yet.** Payment / subscription state changes have to be reconciled via the admin sync endpoints. Adding a `/stripe/webhook` route is the next obvious step.
+- ~~**No webhook handlers yet.**~~ Resolved for payments: `POST /webhooks/payments/stripe/{shop_id}` verifies signed `payment_intent.*` events (see [Payments](payments.md)). Subscription events still have no webhook and are reconciled via the admin sync endpoints.
 - **`/shops/{shop_id}/stripe/*` routes are unauthenticated.** Public access is currently required by the frontend checkout flow; revisit once the checkout is reworked to carry a token.
-- **`shop_endpoints/stripe.py` swallows exceptions** with `except Exception: return e`, which then mishandles the response. Tracked separately.
+- **`shop_endpoints/stripe.py` swallows exceptions** with `except Exception: return e`, which then mishandles the response. Tracked separately. (The provider-based payments endpoints translate provider errors into proper `400`/`502` responses.)
