@@ -5,7 +5,7 @@
 Preferred docs landing path today: https://shopvirge.readthedocs.io/en/latest/
 Preferred landing path once semver releases exist and RTD stable is active: https://shopvirge.readthedocs.io/en/stable/
 Build system: MkDocs Material on Read the Docs
-Repository: https://github.com/acidjunk/shop-backend
+Repository: https://github.com/virge-io/shopvirge-backend
 
 ## Core docs
 

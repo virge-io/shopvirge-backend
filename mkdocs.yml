@@ -5,8 +5,8 @@ site_author: René Dohmen
 # tags point at the configured canonical domain/default version instead of a hardcoded root.
 site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://shopvirge.readthedocs.io/en/latest/"]
 
-repo_url: https://github.com/acidjunk/shop-backend
-repo_name: acidjunk/shop-backend
+repo_url: https://github.com/virge-io/shopvirge-backend
+repo_name: virge-io/shopvirge-backend
 edit_uri: edit/main/docs/
 
 docs_dir: docs
@@ -54,7 +54,7 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/acidjunk/shop-backend
+      link: https://github.com/virge-io/shopvirge-backend
 
 plugins:
   - search

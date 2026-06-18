@@ -57,7 +57,7 @@ The docs site is hosted on [Read the Docs](https://readthedocs.org).
 ### First-time setup (once per project)
 
 1. Sign in at <https://readthedocs.org> with the GitHub account that owns the repo (or the GitHub organisation account).
-2. Click **Import a Project** → select `acidjunk/shop-backend` from the list.
+2. Click **Import a Project** → select `virge-io/shopvirge-backend` from the list.
 3. RTD detects `.readthedocs.yaml` at the repo root automatically — no extra settings needed.
 4. The first build kicks off on import. Subsequent builds trigger via the GitHub webhook RTD installs.
 5. (Optional) *Admin → Advanced Settings* lets you set the default branch and configure custom domains.
