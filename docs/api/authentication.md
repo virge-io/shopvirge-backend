@@ -33,6 +33,7 @@ All auth settings come from environment variables loaded by `server/settings.py`
 | `AWS_COGNITO_REGION` | AWS region of the user pool. |
 | `AWS_COGNITO_CLIENT_ID` | Expected `aud` for user tokens. |
 | `AWS_COGNITO_M2M_CLIENT_ID` | Expected `client_id` for M2M tokens. |
+| `AWS_COGNITO_MCP_CLIENT_ID` | Expected `client_id` for MCP server tokens (accepted alongside M2M tokens when `MCP_ENABLED` is true). |
 | `MCP_ENABLED` | Default `false`. Mount the [MCP server](mcp.md) at `/mcp`. |
 
 Cognito itself — user pool, app clients, domain, groups — is managed outside this repo.

@@ -36,9 +36,12 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | `prices.py` | Price management. |
 | `accounts.py` | Shop-level customer/vendor accounts. |
 | `stripe.py` | Stripe integration for one-time PaymentIntents and subscription create/cancel. |
+| `api_keys.py` | Per-shop API key management (mint, list, revoke). Keys are accepted on MCP-exposed routes via `auth_required_any`. |
 | `category_images.py` | Category image uploads. |
 | `images.py` | Generic shop image uploads. |
+| `product_images.py` | Per-product image uploads. |
 | `info_request.py` | Incoming info requests. The file also exposes the public `POST /info-request/form` endpoint, which uses `pydantic-forms`; see [Forms](forms.md). |
+| `shipping.py` | Shipping cost calculation. |
 
 ## Public sub-routers
 
