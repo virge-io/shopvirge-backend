@@ -25,7 +25,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 
 | File | Resource |
 |------|----------|
-| `orders.py` | Orders — checkout-facing order creation and completion. Implemented in `shop_endpoints/`, but mounted at `/orders` instead of `/shops/{shop_id}/orders`. |
+| `orders.py` | Orders — checkout-facing order creation and status management. Implemented in `shop_endpoints/`, but mounted at `/orders` instead of `/shops/{shop_id}/orders`. `PATCH /{order_id}` transitions an order to `complete` or `cancelled`: triggers stock deduction (if enabled), a Discord webhook notification, and an order confirmation email. |
 | `products.py` | Products (public router split out for unauthenticated catalog browsing). |
 | `categories.py` | Categories (public router split out similarly). |
 | `tags.py` | Tags. |

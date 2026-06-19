@@ -70,7 +70,7 @@ def get_multi(
     "/shop/{shop_id}/pending",
     response_model=List[OrderSchema],
     summary="List pending orders for a shop",
-    description="Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment. Used by POS/kitchen displays.",
+    description="Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment.",
 )
 def show_all_pending_orders_per_shop(
     shop_id: UUID,
@@ -207,9 +207,8 @@ def check(
     summary="Create order",
     description=(
         "Submit a new customer order. The caller's IP is validated against the shop's allowlist. "
-        "Cannabis orders are capped at 5 grams total. If stock tracking is enabled the product "
-        "availability is verified before the order is created. A Stripe customer is auto-created "
-        "for new account names when the shop has Stripe configured."
+        "If stock tracking is enabled the product availability is verified before the order is created. "
+        "A Stripe customer is auto-created for new account names when the shop has Stripe configured."
     ),
 )
 def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
