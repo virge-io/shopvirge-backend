@@ -91,6 +91,41 @@ PYTHONPATH=. alembic revision --message "Description"
   - examples and troubleshooting entries where they remove ambiguity
 - When documenting versions or canonical behavior, verify against current Read the Docs docs instead of relying on memory.
 
+## Authentication
+
+Three auth dependencies in `server/security.py`:
+
+- `auth_required` — Cognito JWT only (user tokens or M2M tokens with `/api` scope). Used on management routes.
+- `auth_required_any` — API key **or** Cognito JWT. Used on MCP-exposed CRUD routes (products, categories, tags, attributes).
+- `admin_required` — wraps `auth_required`; additionally asserts membership in the Cognito `Admins` group.
+
+API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach routes using `auth_required_any` — the full REST surface requires Cognito.
+
+Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `GET /shops/my-shops` is the single resolution point; individual shop endpoints do not re-enforce this.
+
+Swagger UI Authorize button is wired via `HTTPBearer(auto_error=False)` in `security.py` — paste a Bearer token there to authenticate in `/docs`.
+
+## MCP
+
+The MCP server is off by default. Enable with `MCP_ENABLED=true`. When enabled, `server/main.py` mounts it at `/mcp` via `mount_mcp(app)` after all routers are included.
+
+Tools are **auto-generated from the FastAPI route table** by `fastmcp`. A route is exposed as an MCP tool by:
+
+1. Adding `tags=[AgentTag.EXPOSED]` (plus `AgentTag.LARGE` for list endpoints) to the route decorator.
+2. Setting `operation_id="short_snake_case"` — this becomes the tool name (public API contract).
+3. Using `Depends(auth_required_any)` so API-key clients can reach it.
+4. Writing the docstring for an LLM: state intent, list required params, call out side effects.
+
+Any route not tagged `AgentTag.EXPOSED` is excluded from MCP by default.
+
+When adding or removing MCP-exposed routes, also:
+- Bump `APP_VERSION` in `server/main.py`.
+- Regenerate `tests/unit_tests/openapi_snapshot.json` (the drift guard test will fail otherwise):
+  ```bash
+  PYTHONPATH=. pytest tests/unit_tests/test_openapi_snapshot.py --snapshot-update
+  ```
+- Update `EXPECTED_TOOL_NAMES` in `tests/unit_tests/mcp/test_mcp.py`.
+
 ## Testing
 
 - Tests in `tests/unit_tests/` — shared fixtures in `conftest.py`, test data factories in `tests/unit_tests/factories/`

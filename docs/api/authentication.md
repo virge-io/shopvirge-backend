@@ -76,9 +76,14 @@ def protected_route(principal = Depends(auth_required_any)):
 
 `auth_required_any` resolves `X-API-Key` or `Authorization: Bearer sv_…` first, then falls back to Cognito.
 
-## Shop access checks
+## Shop access
 
-Authentication proves *who* is calling; authorisation proves *what shop* they can touch. Shop-scoped handlers resolve the caller's `UserTable` row and check `ShopUserTable` for a link to the `shop_id` path parameter. M2M tokens with `/api` scope bypass the per-shop check (they're trusted server credentials).
+Authentication proves *who* is calling. Which shops they can touch is determined by their **Cognito group membership**:
+
+- Members of the `Admins` group can access every shop.
+- All other users can only access shops whose UUID matches one of their Cognito group names. A user is given access to a shop by adding them to a Cognito group named after that shop's UUID.
+
+`GET /shops/my-shops` (also exposed as the `list_my_shops` MCP tool) returns the list of accessible shops and a `can_write` flag. MCP agents are expected to call this first. The individual shop-scoped endpoints do not re-enforce this check on every request — they rely on the caller having already resolved their shop access via `my-shops`.
 
 ## Troubleshooting
 
