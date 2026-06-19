@@ -5628,7 +5628,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.3"
+    "version": "0.3.4"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -7122,7 +7122,7 @@
         ]
       },
       "post": {
-        "description": "Submit a new customer order. The caller's IP is validated against the shop's allowlist. Cannabis orders are capped at 5 grams total. If stock tracking is enabled the product availability is verified before the order is created. A Stripe customer is auto-created for new account names when the shop has Stripe configured.",
+        "description": "Submit a new customer order. The caller's IP is validated against the shop's allowlist. If stock tracking is enabled the product availability is verified before the order is created. A Stripe customer is auto-created for new account names when the shop has Stripe configured.",
         "operationId": "create_orders__post",
         "requestBody": {
           "content": {
@@ -7312,7 +7312,7 @@
     },
     "/orders/shop/{shop_id}/pending": {
       "get": {
-        "description": "Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment. Used by POS/kitchen displays.",
+        "description": "Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment.",
         "operationId": "show_all_pending_orders_per_shop_orders_shop__shop_id__pending_get",
         "parameters": [
           {
