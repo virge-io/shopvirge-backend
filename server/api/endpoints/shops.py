@@ -15,7 +15,6 @@ from server.api.error_handling import raise_status
 from server.api.helpers import load
 from server.crud.crud_shop import shop_crud
 from server.db.models import ShopTable
-from server.security import CustomCognitoToken
 from server.schemas.shop import (
     MyShopsResponse,
     ShopCacheStatus,

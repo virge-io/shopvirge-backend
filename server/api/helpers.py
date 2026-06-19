@@ -413,5 +413,3 @@ def delete_from_temporary_bucket():
         return {"message": "Deleted files from temporary bucket"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
-
-

@@ -22,14 +22,13 @@ from server.crud.crud_order import order_crud
 from server.crud.crud_product import product_crud
 from server.crud.crud_shop import shop_crud
 from server.db.models import Account, OrderTable, ShopTable
-from server.security import CustomCognitoToken
 from server.mail import send_order_confirmation_emails
 from server.schemas import ProductUpdate
 from server.schemas.account import AccountCreate
 from server.schemas.base import quantize_money
 from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdate, OrderUpdated
 from server.schemas.product import ProductTranslationBase
-from server.security import auth_required
+from server.security import CustomCognitoToken, auth_required
 from server.services import stripe_client
 from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
@@ -433,7 +432,9 @@ def update_stock_on_order_complete(order_id: UUID):
     summary="Full order update",
     description="Fully replace an order's fields. Requires authentication. Also sets `completed_at` when transitioning to `complete` or `cancelled`.",
 )
-def update(*, order_id: UUID, item_in: OrderUpdate, current_user: CustomCognitoToken = Depends(auth_required)) -> OrderUpdated:
+def update(
+    *, order_id: UUID, item_in: OrderUpdate, current_user: CustomCognitoToken = Depends(auth_required)
+) -> OrderUpdated:
     order = order_crud.get(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

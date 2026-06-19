@@ -79,7 +79,9 @@ def create(data: FaqCreate = Body(...), current_user: CustomCognitoToken = Depen
     summary="Update FAQ entry",
     description="Update an existing FAQ entry's question, answer, or category. Returns 409 if another entry already uses the same question.",
 )
-def update(*, faq_id: UUID, item_in: FaqUpdate, current_user: CustomCognitoToken = Depends(auth_required)) -> FaqUpdated:
+def update(
+    *, faq_id: UUID, item_in: FaqUpdate, current_user: CustomCognitoToken = Depends(auth_required)
+) -> FaqUpdated:
 
     faq = faq_crud.get(faq_id)
     if not faq:
