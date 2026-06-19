@@ -4,6 +4,7 @@
       "AccountCreate": {
         "properties": {
           "details": {
+            "additionalProperties": true,
             "title": "Details",
             "type": "object"
           },
@@ -28,6 +29,7 @@
       "AccountSchema": {
         "properties": {
           "details": {
+            "additionalProperties": true,
             "title": "Details",
             "type": "object"
           },
@@ -58,6 +60,7 @@
       "AccountUpdate": {
         "properties": {
           "details": {
+            "additionalProperties": true,
             "title": "Details",
             "type": "object"
           },
@@ -84,6 +87,7 @@
           "details": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -657,6 +661,7 @@
           "alt1_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -671,6 +676,7 @@
           "alt2_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -700,6 +706,7 @@
           "main_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -760,6 +767,7 @@
           "alt1_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -774,6 +782,7 @@
           "alt2_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -808,6 +817,7 @@
           "main_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -918,6 +928,7 @@
           "alt1_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -932,6 +943,7 @@
           "alt2_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -961,6 +973,7 @@
           "main_image": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -1233,39 +1246,7 @@
         "title": "ConfigurationLanguageFields",
         "type": "object"
       },
-      "ConfigurationLanguages-Input": {
-        "properties": {
-          "alt1": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ConfigurationLanguageFields"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "alt2": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ConfigurationLanguageFields"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "main": {
-            "$ref": "#/components/schemas/ConfigurationLanguageFields"
-          }
-        },
-        "required": [
-          "main"
-        ],
-        "title": "ConfigurationLanguages",
-        "type": "object"
-      },
-      "ConfigurationLanguages-Output": {
+      "ConfigurationLanguages": {
         "properties": {
           "alt1": {
             "anyOf": [
@@ -1497,100 +1478,7 @@
             "type": "integer"
           },
           "languages": {
-            "$ref": "#/components/schemas/ConfigurationLanguages-Input"
-          },
-          "legal": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ConfigurationLegal"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "logo": {
-            "title": "Logo",
-            "type": "string"
-          },
-          "main_banner": {
-            "title": "Main Banner",
-            "type": "string"
-          },
-          "shipping": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ConfigurationShipping"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "short_shop_name": {
-            "title": "Short Shop Name",
-            "type": "string"
-          },
-          "toggles": {
-            "$ref": "#/components/schemas/Toggles"
-          }
-        },
-        "required": [
-          "short_shop_name",
-          "logo",
-          "main_banner",
-          "languages",
-          "contact",
-          "toggles"
-        ],
-        "title": "ConfigurationV1",
-        "type": "object"
-      },
-      "ConfigurationV1-Output": {
-        "properties": {
-          "alt1_banner": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Alt1 Banner"
-          },
-          "alt2_banner": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Alt2 Banner"
-          },
-          "contact": {
-            "$ref": "#/components/schemas/ConfigurationContact"
-          },
-          "google_analytics_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Google Analytics Id"
-          },
-          "gradient_percentage": {
-            "default": 75,
-            "title": "Gradient Percentage",
-            "type": "integer"
-          },
-          "languages": {
-            "$ref": "#/components/schemas/ConfigurationLanguages-Output"
+            "$ref": "#/components/schemas/ConfigurationLanguages"
           },
           "legal": {
             "anyOf": [
@@ -2240,6 +2128,32 @@
           "stripe_customer_id"
         ],
         "title": "LinkStripeBody",
+        "type": "object"
+      },
+      "MyShopsResponse": {
+        "properties": {
+          "can_write": {
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "is_admin": {
+            "title": "Is Admin",
+            "type": "boolean"
+          },
+          "shops": {
+            "items": {
+              "$ref": "#/components/schemas/ShopSchema"
+            },
+            "title": "Shops",
+            "type": "array"
+          }
+        },
+        "required": [
+          "shops",
+          "is_admin",
+          "can_write"
+        ],
+        "title": "MyShopsResponse",
         "type": "object"
       },
       "OrderBase": {
@@ -3244,6 +3158,7 @@
           "image_1": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3258,6 +3173,7 @@
           "image_2": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3272,6 +3188,7 @@
           "image_3": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3286,6 +3203,7 @@
           "image_4": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3300,6 +3218,7 @@
           "image_5": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3314,6 +3233,7 @@
           "image_6": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3930,6 +3850,7 @@
           "image_1": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3944,6 +3865,7 @@
           "image_2": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3958,6 +3880,7 @@
           "image_3": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3972,6 +3895,7 @@
           "image_4": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -3986,6 +3910,7 @@
           "image_5": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4000,6 +3925,7 @@
           "image_6": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4233,6 +4159,7 @@
           "image_1": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4247,6 +4174,7 @@
           "image_2": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4261,6 +4189,7 @@
           "image_3": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4275,6 +4204,7 @@
           "image_4": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4289,6 +4219,7 @@
           "image_5": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4303,6 +4234,7 @@
           "image_6": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4520,6 +4452,7 @@
           "image_1": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4534,6 +4467,7 @@
           "image_2": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4548,6 +4482,7 @@
           "image_3": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4562,6 +4497,7 @@
           "image_4": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4576,6 +4512,7 @@
           "image_5": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4590,6 +4527,7 @@
           "image_6": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -4651,6 +4589,7 @@
           "prices": {
             "default": [],
             "items": {
+              "additionalProperties": true,
               "type": "object"
             },
             "title": "Prices",
@@ -5456,6 +5395,7 @@
             "type": "string"
           },
           "stripe_customer": {
+            "additionalProperties": true,
             "title": "Stripe Customer",
             "type": "object"
           },
@@ -5677,12 +5617,18 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.2"
+    "version": "0.3.3"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5806,6 +5752,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List accounts (admin)",
         "tags": [
           "admin",
@@ -5857,6 +5808,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get account (admin)",
         "tags": [
           "admin",
@@ -5918,6 +5874,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Link Stripe customer ID (admin)",
         "tags": [
           "admin",
@@ -5946,6 +5907,7 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "additionalProperties": true,
                   "title": "Response Get Stripe Customer Admin Accounts  Id  Stripe Customer Get",
                   "type": "object"
                 }
@@ -5976,6 +5938,11 @@
             "description": "Stripe API error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Fetch Stripe customer (admin)",
         "tags": [
           "admin",
@@ -6033,6 +6000,11 @@
             "description": "Stripe API error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Sync Stripe customer snapshot (admin)",
         "tags": [
           "admin",
@@ -6171,6 +6143,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create",
         "tags": [
           "early-access"
@@ -6297,6 +6274,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create FAQ entry",
         "tags": [
           "faq"
@@ -6334,6 +6316,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete FAQ entry",
         "tags": [
           "faq"
@@ -6386,6 +6373,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update FAQ entry",
         "tags": [
           "faq"
@@ -6456,6 +6448,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Forms",
         "tags": [
           "forms"
@@ -6498,6 +6495,7 @@
             "application/json": {
               "schema": {
                 "items": {
+                  "additionalProperties": true,
                   "type": "object"
                 },
                 "title": "Json Data",
@@ -6512,6 +6510,7 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "additionalProperties": true,
                   "title": "Response New Form Forms  Form Key  Post",
                   "type": "object"
                 }
@@ -6530,6 +6529,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "New Form",
         "tags": [
           "forms"
@@ -6667,6 +6671,7 @@
               "schema": {
                 "default": [],
                 "items": {
+                  "additionalProperties": true,
                   "type": "object"
                 },
                 "title": "Form Data",
@@ -6781,6 +6786,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List licenses",
         "tags": [
           "licenses"
@@ -6821,6 +6831,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create license",
         "tags": [
           "licenses"
@@ -6901,6 +6916,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete license",
         "tags": [
           "licenses"
@@ -6943,6 +6963,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get license",
         "tags": [
           "licenses"
@@ -6995,6 +7020,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update license",
         "tags": [
           "licenses"
@@ -7081,6 +7111,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List all orders",
         "tags": [
           "orders"
@@ -7264,6 +7299,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List completed orders for a shop",
         "tags": [
           "orders"
@@ -7360,6 +7400,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List pending orders for a shop",
         "tags": [
           "orders"
@@ -7486,6 +7531,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete order",
         "tags": [
           "orders"
@@ -7590,6 +7640,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Full order update",
         "tags": [
           "orders"
@@ -7757,6 +7812,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List shops",
         "tags": [
           "shops"
@@ -7797,6 +7857,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create shop",
         "tags": [
           "shops"
@@ -7845,6 +7910,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List allowed IPs",
         "tags": [
           "shops"
@@ -7901,6 +7971,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Add allowed IP",
         "tags": [
           "shops"
@@ -7959,6 +8034,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Remove allowed IP",
         "tags": [
           "shops"
@@ -8099,6 +8179,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update shop configuration",
         "tags": [
           "shops"
@@ -8209,6 +8294,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List shops and capabilities for the current user",
         "tags": [
           "shops",
@@ -8291,6 +8381,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete shop",
         "tags": [
           "shops"
@@ -8343,6 +8438,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update shop",
         "tags": [
           "shops"
@@ -8429,6 +8529,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List accounts",
         "tags": [
           "shops",
@@ -8468,6 +8573,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create account",
         "tags": [
           "shops",
@@ -8506,6 +8616,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete account",
         "tags": [
           "shops",
@@ -8557,6 +8672,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update account",
         "tags": [
           "shops",
@@ -8602,6 +8722,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get account",
         "tags": [
           "shops",
@@ -8650,6 +8775,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List API keys for the shop",
         "tags": [
           "shops",
@@ -8703,6 +8833,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Mint a new API key for the shop",
         "tags": [
           "shops",
@@ -8750,6 +8885,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Revoke an API key",
         "tags": [
           "shops",
@@ -8847,6 +8987,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List attribute options for a shop",
         "tags": [
           "shops",
@@ -8900,6 +9045,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create attribute option",
         "tags": [
           "shops",
@@ -8948,6 +9098,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete attribute option",
         "tags": [
           "shops",
@@ -9001,6 +9156,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute option",
         "tags": [
           "shops",
@@ -9064,6 +9224,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update attribute option",
         "tags": [
           "shops",
@@ -9828,6 +9993,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List attribute options",
         "tags": [
           "shops",
@@ -9864,6 +10034,7 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": true,
                 "title": "Data",
                 "type": "object"
               }
@@ -9893,6 +10064,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create attribute option",
         "tags": [
           "shops",
@@ -9952,6 +10128,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete attribute option",
         "tags": [
           "shops",
@@ -10016,6 +10197,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute option",
         "tags": [
           "shops",
@@ -10168,6 +10354,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Multi",
         "tags": [
           "shops",
@@ -10220,6 +10411,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete Image",
         "tags": [
           "shops",
@@ -10262,6 +10458,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get By Id",
         "tags": [
           "shops",
@@ -10312,6 +10513,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Put",
         "tags": [
           "shops",
@@ -10321,6 +10527,7 @@
     },
     "/shops/{shop_id}/categories/": {
       "get": {
+        "description": "Returns paginated categories for a shop, ordered by `order_number`. Supports filtering and sorting.",
         "operationId": "list_categories",
         "parameters": [
           {
@@ -10432,6 +10639,7 @@
         ]
       },
       "post": {
+        "description": "Add a new category to a shop. The `order_number` is automatically set to the next available value.",
         "operationId": "create_category",
         "parameters": [
           {
@@ -10569,6 +10777,7 @@
     },
     "/shops/{shop_id}/categories/{category_id}": {
       "delete": {
+        "description": "Remove a category from the shop. Fails if any products are still assigned to it.",
         "operationId": "delete_category",
         "parameters": [
           {
@@ -10630,6 +10839,7 @@
         ]
       },
       "get": {
+        "description": "Retrieve a single category by its UUID within a shop.",
         "operationId": "get_category",
         "parameters": [
           {
@@ -10698,6 +10908,7 @@
         ]
       },
       "put": {
+        "description": "Update an existing category's details and translations.",
         "operationId": "update_category",
         "parameters": [
           {
@@ -11130,6 +11341,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Signed Upload Url",
         "tags": [
           "shops",
@@ -11347,6 +11563,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List product attribute values",
         "tags": [
           "shops",
@@ -11400,6 +11621,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create product attribute values (deprecated)",
         "tags": [
           "shops",
@@ -11449,6 +11675,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete product attribute value",
         "tags": [
           "shops",
@@ -11503,6 +11734,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product attribute value",
         "tags": [
           "shops",
@@ -11567,6 +11803,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create product attribute values for product",
         "tags": [
           "shops",
@@ -11624,6 +11865,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Replace product attribute values for product",
         "tags": [
           "shops",
@@ -11712,6 +11958,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List product-tag associations",
         "tags": [
           "shops",
@@ -11746,6 +11997,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Add tag to product",
         "tags": [
           "shops",
@@ -11799,6 +12055,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product-tag relation ID",
         "tags": [
           "shops",
@@ -11844,6 +12105,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product-tag association",
         "tags": [
           "shops",
@@ -11882,6 +12148,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Remove tag from product",
         "tags": [
           "shops",
@@ -11928,6 +12199,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update product-tag association",
         "tags": [
           "shops",
@@ -11937,6 +12213,7 @@
     },
     "/shops/{shop_id}/products/": {
       "get": {
+        "description": "Returns paginated products for a shop, each with its default price. Supports filtering (e.g. `featured:true`, `category_id:<uuid>`) and sorting via common query parameters.",
         "operationId": "list_products",
         "parameters": [
           {
@@ -12066,6 +12343,7 @@
         ]
       },
       "post": {
+        "description": "Add a new product to a shop category. The `order_number` is automatically set to the next available value within the category.",
         "operationId": "create_product",
         "parameters": [
           {
@@ -12309,6 +12587,7 @@
     },
     "/shops/{shop_id}/products/{product_id}": {
       "delete": {
+        "description": "Permanently remove a product from the shop.",
         "operationId": "delete_product",
         "parameters": [
           {
@@ -12371,6 +12650,7 @@
         ]
       },
       "get": {
+        "description": "Retrieve full product details including all active prices, translations, and images. Public endpoint \u2014 no authentication required.",
         "operationId": "get_product",
         "parameters": [
           {
@@ -12424,6 +12704,7 @@
         ]
       },
       "put": {
+        "description": "Update an existing product's details, including name, description, pricing, stock, and feature flags.",
         "operationId": "update_product",
         "parameters": [
           {
@@ -12820,6 +13101,7 @@
     },
     "/shops/{shop_id}/tags/": {
       "get": {
+        "description": "Returns all tags defined for a shop. Tags can be attached to products for flexible grouping and filtering.",
         "operationId": "list_tags",
         "parameters": [
           {
@@ -12932,6 +13214,7 @@
         ]
       },
       "post": {
+        "description": "Create a new tag for a shop. Tags are attached to products via the `products-to-tags` resource.",
         "operationId": "create_tag",
         "parameters": [
           {
@@ -13071,6 +13354,7 @@
     },
     "/shops/{shop_id}/tags/{tag_id}": {
       "delete": {
+        "description": "Remove a tag from a shop. Fails with 400 if products still reference this tag.",
         "operationId": "delete_tag",
         "parameters": [
           {
@@ -13133,6 +13417,7 @@
         ]
       },
       "get": {
+        "description": "Retrieve a single tag by its UUID within a shop.",
         "operationId": "get_tag",
         "parameters": [
           {
@@ -13202,6 +13487,7 @@
         ]
       },
       "put": {
+        "description": "Update an existing tag's name or translations.",
         "operationId": "update_tag",
         "parameters": [
           {
@@ -13288,6 +13574,7 @@
               "schema": {
                 "default": [],
                 "items": {
+                  "additionalProperties": true,
                   "type": "object"
                 },
                 "title": "Form Data",
