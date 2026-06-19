@@ -10,7 +10,7 @@ Almost every resource in ShopVirge belongs to a specific shop. Most of those end
 /shops/{shop_id}/<resource>/<sub-resource>/{id}
 ```
 
-Every handler that accepts a `shop_id` path parameter also runs it through an authorisation dependency that verifies the caller can access that shop (via `ShopUserTable` or a machine-to-machine token with `/api` scope — see [Authentication](authentication.md)).
+Every handler that accepts a `shop_id` path parameter is gated by an auth dependency (`auth_required` or `auth_required_any`). Which shops a caller may access is determined by their Cognito group membership — see [Authentication](authentication.md).
 
 CRUDs for shop-owned resources use the shop-aware helpers on `CRUDBase`:
 
