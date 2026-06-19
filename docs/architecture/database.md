@@ -20,10 +20,10 @@ The main tables and what they hold:
 
 | Table | Purpose |
 |-------|---------|
-| `UserTable` | Authenticated users (email, username, password hash). |
-| `RoleTable` / `RoleUserTable` | Role definitions and user ↔ role links. |
+| `UserTable` | Legacy user records (email, username). Authentication is now handled by Cognito; this table is retained for DB compatibility. |
+| `RoleTable` / `RoleUserTable` | Legacy RBAC tables from the pre-Cognito era. Retained in schema only. |
 | `ShopTable` | Shops: name, config, Stripe keys, VAT rates, webhooks. |
-| `ShopUserTable` | User ↔ shop links. |
+| `ShopUserTable` | Legacy user ↔ shop join table. Shop access is now determined by Cognito group membership, not rows in this table. |
 | `ProductTable` | Products: price, tax category, stock, image URLs 1–6, featured/new flags, optional recurring pricing. |
 | `ProductTranslationTable` | Per-language product name and description. |
 | `CategoryTable` | Product categories with colour, icon, order number, images. |
@@ -46,10 +46,6 @@ erDiagram
     ShopTable ||--o{ TagTable : has
     ShopTable ||--o{ AttributeTable : defines
     ShopTable ||--o{ OrderTable : receives
-    ShopTable ||--o{ ShopUserTable : grants
-    UserTable ||--o{ ShopUserTable : "has access to"
-    UserTable ||--o{ RoleUserTable : holds
-    RoleTable ||--o{ RoleUserTable : assigned
     ProductTable ||--o{ ProductTranslationTable : translated
     ProductTable ||--o{ ProductToTagTable : tagged
     TagTable ||--o{ ProductToTagTable : applied

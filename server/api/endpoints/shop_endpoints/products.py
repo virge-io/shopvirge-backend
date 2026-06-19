@@ -14,7 +14,7 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud import crud_shop
 from server.crud.crud_product import product_crud
-from server.db.models import ProductTable, UserTable
+from server.db.models import ProductTable
 from server.schemas.product import (
     AttributeFilters,
     ProductCreate,

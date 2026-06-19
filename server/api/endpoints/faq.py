@@ -9,9 +9,8 @@ from starlette.responses import Response
 
 from server.api.deps import common_parameters
 from server.crud.crud_faq import faq_crud
-from server.db.models import UserTable
 from server.schemas.faq import FaqCreate, FaqCreated, FaqSchema, FaqUpdate, FaqUpdated
-from server.security import auth_required
+from server.security import CustomCognitoToken, auth_required
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
@@ -57,7 +56,7 @@ def get_by_id(id: UUID) -> FaqSchema:
     summary="Create FAQ entry",
     description="Add a new FAQ question and answer. Requires authentication. Returns 409 if a FAQ with the same question already exists.",
 )
-def create(data: FaqCreate = Body(...), current_user: UserTable = Depends(auth_required)) -> Any:
+def create(data: FaqCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> Any:
 
     logger.info("Creating FAQ entry", data=data)
 
@@ -80,7 +79,7 @@ def create(data: FaqCreate = Body(...), current_user: UserTable = Depends(auth_r
     summary="Update FAQ entry",
     description="Update an existing FAQ entry's question, answer, or category. Returns 409 if another entry already uses the same question.",
 )
-def update(*, faq_id: UUID, item_in: FaqUpdate, current_user: UserTable = Depends(auth_required)) -> FaqUpdated:
+def update(*, faq_id: UUID, item_in: FaqUpdate, current_user: CustomCognitoToken = Depends(auth_required)) -> FaqUpdated:
 
     faq = faq_crud.get(faq_id)
     if not faq:
@@ -113,5 +112,5 @@ def update(*, faq_id: UUID, item_in: FaqUpdate, current_user: UserTable = Depend
     summary="Delete FAQ entry",
     description="Remove a FAQ entry. Requires authentication.",
 )
-def delete(faq_id: UUID, current_user: UserTable = Depends(auth_required)) -> None:
+def delete(faq_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     return faq_crud.delete(id=faq_id)

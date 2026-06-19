@@ -14,7 +14,8 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.api.helpers import load
 from server.crud.crud_shop import shop_crud
-from server.db.models import ShopTable, UserTable
+from server.db.models import ShopTable
+from server.security import CustomCognitoToken
 from server.schemas.shop import (
     MyShopsResponse,
     ShopCacheStatus,
@@ -43,7 +44,7 @@ logger = structlog.get_logger(__name__)
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[ShopSchema]:
     shops, header_range = shop_crud.get_multi(
         skip=common["skip"],
@@ -90,7 +91,7 @@ def get_my_shops(
     summary="Create shop",
     description="Create a new shop on the platform. Returns the created shop record.",
 )
-def create(data: ShopCreate = Body(...), current_user: UserTable = Depends(auth_required)) -> ShopSchema:
+def create(data: ShopCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> ShopSchema:
     logger.info("Saving shop", data=data)
     shop = shop_crud.create(obj_in=data)
     return shop
@@ -153,7 +154,7 @@ def get_by_id(id: UUID):
     summary="Update shop",
     description="Update shop details such as name, description, and VAT rates.",
 )
-def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: UserTable = Depends(auth_required)) -> None:
+def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     shop = shop_crud.get(id=shop_id)
     logger.info("Updating shop", data=shop)
     if not shop:
@@ -173,7 +174,7 @@ def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: UserTable = Depe
     summary="Delete shop",
     description="Permanently remove a shop from the platform.",
 )
-def delete(shop_id: UUID, current_user: UserTable = Depends(auth_required)) -> None:
+def delete(shop_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     return shop_crud.delete(id=shop_id)
 
 
@@ -203,7 +204,7 @@ def get_config(
 def update_config(
     id: UUID,
     item_in: ShopConfigUpdate,
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> ShopConfig:
     shop = shop_crud.get(id=id)
     logger.info("Updating shop", data=shop)
@@ -225,7 +226,7 @@ def update_config(
 )
 def get_allowed_ips(
     id: UUID,
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[str]:
     shop = shop_crud.get(id)
     if not shop:
@@ -243,7 +244,7 @@ def get_allowed_ips(
     summary="Add allowed IP",
     description="Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
 )
-def add_new_ip(id: UUID, new_ip: ShopIp, current_user: UserTable = Depends(auth_required)):
+def add_new_ip(id: UUID, new_ip: ShopIp, current_user: CustomCognitoToken = Depends(auth_required)):
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
@@ -278,7 +279,7 @@ def add_new_ip(id: UUID, new_ip: ShopIp, current_user: UserTable = Depends(auth_
     summary="Remove allowed IP",
     description="Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
 )
-def remove_ip(id: UUID, old_ip: ShopIp, current_user: UserTable = Depends(auth_required)):
+def remove_ip(id: UUID, old_ip: ShopIp, current_user: CustomCognitoToken = Depends(auth_required)):
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
