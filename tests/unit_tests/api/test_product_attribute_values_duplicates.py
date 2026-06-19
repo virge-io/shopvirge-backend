@@ -12,7 +12,7 @@ def test_post_create_product_attribute_values_for_product_duplicate_conflict(
     # First creation should succeed
     resp1 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp1.status_code == 201
 
@@ -23,7 +23,7 @@ def test_post_create_product_attribute_values_for_product_duplicate_conflict(
     # Second, identical creation doesn't care, it doesn't actually make new one and just returns 201
     resp2 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp2.status_code == 201
 
@@ -45,7 +45,7 @@ def test_post_deprecated_create_product_attribute_value_duplicate_conflict(
     }
     resp1 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp1.status_code == 201
 
@@ -56,7 +56,7 @@ def test_post_deprecated_create_product_attribute_value_duplicate_conflict(
     # Duplicate via the same endpoint should return 409
     resp2 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/",
-        data=json_dumps(body),
+        content=json_dumps(body),
     )
     assert resp2.status_code == 409
 
@@ -72,7 +72,7 @@ def test_cross_endpoint_create_new_then_deprecated(test_client, shop_with_produc
     body_new = {"option_ids": [str(ids["opt1a_id"])]}
     resp1 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body_new),
+        content=json_dumps(body_new),
     )
     assert resp1.status_code == 201
 
@@ -84,7 +84,7 @@ def test_cross_endpoint_create_new_then_deprecated(test_client, shop_with_produc
     }
     resp2 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/",
-        data=json_dumps(body_depr),
+        content=json_dumps(body_depr),
     )
     assert resp2.status_code == 409
 
@@ -104,7 +104,7 @@ def test_cross_endpoint_create_deprecated_then_new(test_client, shop_with_produc
     }
     resp1 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/",
-        data=json_dumps(body_depr),
+        content=json_dumps(body_depr),
     )
     assert resp1.status_code == 201
 
@@ -112,7 +112,7 @@ def test_cross_endpoint_create_deprecated_then_new(test_client, shop_with_produc
     body_new = {"option_ids": [str(ids["opt1a_id"])]}
     resp2 = test_client.post(
         f"/shops/{ids['shop_id']}/product-attribute-values/{ids['product_id']}",
-        data=json_dumps(body_new),
+        content=json_dumps(body_new),
     )
     assert resp2.status_code == 201
 

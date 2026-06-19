@@ -17,7 +17,12 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/", response_model=List[AccountSchema])
+@router.get(
+    "/",
+    response_model=List[AccountSchema],
+    summary="List accounts",
+    description="Returns all customer accounts for a shop. Accounts are created automatically when an order is placed with a new customer name.",
+)
 def get_multi(response: Response, common: dict = Depends(common_parameters)) -> List[AccountSchema]:
     accounts, header_range = account_crud.get_multi(
         skip=common["skip"], limit=common["limit"], filter_parameters=common["filter"], sort_parameters=common["sort"]
@@ -26,7 +31,12 @@ def get_multi(response: Response, common: dict = Depends(common_parameters)) -> 
     return accounts
 
 
-@router.get("/{id}", response_model=AccountSchema)
+@router.get(
+    "/{id}",
+    response_model=AccountSchema,
+    summary="Get account",
+    description="Retrieve a single customer account by its UUID.",
+)
 def get_by_id(id: UUID) -> AccountSchema:
     account = account_crud.get(id)
     if not account:
@@ -34,14 +44,26 @@ def get_by_id(id: UUID) -> AccountSchema:
     return account
 
 
-@router.post("/", response_model=None, status_code=HTTPStatus.CREATED)
+@router.post(
+    "/",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    summary="Create account",
+    description="Manually create a new customer account for a shop.",
+)
 def create(data: AccountCreate = Body(...)) -> None:
     logger.info("Saving account", data=data)
     account = account_crud.create(obj_in=data)
     return account
 
 
-@router.put("/{account_id}", response_model=None, status_code=HTTPStatus.CREATED)
+@router.put(
+    "/{account_id}",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    summary="Update account",
+    description="Update an existing customer account's details.",
+)
 def update(*, account_id: UUID, item_in: AccountUpdate) -> Any:
     account = account_crud.get(id=account_id)
     logger.info("Updating account", data=account)
@@ -55,6 +77,12 @@ def update(*, account_id: UUID, item_in: AccountUpdate) -> Any:
     return account
 
 
-@router.delete("/{account_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.delete(
+    "/{account_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Delete account",
+    description="Remove a customer account from a shop.",
+)
 def delete(account_id: UUID) -> None:
     return account_crud.delete(id=account_id)

@@ -1,6 +1,17 @@
+---
+title: Local Development Setup
+description: Day-to-day local development setup, environment variables, and common fixes.
+---
+
 # Local setup
 
 See the [Quickstart](../quickstart.md) for the canonical setup instructions (sourced from `README.md`). This page covers the parts specific to day-to-day development.
+
+## Summary
+
+- Use this page after Quickstart when you need local dev ergonomics rather than just first boot.
+- The most common local blockers are missing Postgres databases and placeholder Cognito settings.
+- If you are changing docs as well as code, the same local venv can also serve the MkDocs site.
 
 ## Prerequisites
 
@@ -27,7 +38,18 @@ DATABASE_URI=postgresql://shop:shop@localhost/shop
 TESTING=false
 ```
 
-For the full list of knobs (Cognito, Sentry, Stripe, SMTP, S3 buckets, CORS), inspect `server/settings.py` directly — the pydantic model is the source of truth.
+If you are using Cognito-protected endpoints locally, you also need the real Cognito values (the defaults in `settings.py` are placeholders that will cause 401s):
+
+```bash
+AWS_COGNITO_USERPOOL_ID=eu-central-1_xxxxxxx
+AWS_COGNITO_CLIENT_ID=<app client id>
+AWS_COGNITO_M2M_CLIENT_ID=<m2m client id>
+AWS_COGNITO_M2M_CLIENT_SECRET=<m2m client secret>
+```
+
+The `AWS_COGNITO_USERPOOL_ID` is the last path segment of the Cognito issuer URL (`https://cognito-idp.<region>.amazonaws.com/<userpool_id>`); the region subdomain gives you `AWS_COGNITO_REGION`.
+
+For the full list of settings (Cognito, Sentry, Stripe, SMTP, S3 buckets, CORS), inspect `server/settings.py` directly — the pydantic model is the source of truth.
 
 ## Running the server
 
@@ -43,13 +65,6 @@ Visit:
 - <http://127.0.0.1:8080/redoc> — ReDoc.
 - <http://127.0.0.1:8080/> — the tiny info root route.
 
-## Creating an initial user
-
-```bash
-export FIRST_USER=you@example.com
-PYTHONPATH=. python server/create_initial_user.py
-```
-
 ## Docs preview
 
 ```bash
@@ -58,3 +73,9 @@ mkdocs serve
 ```
 
 Then open <http://127.0.0.1:8000>.
+
+## Troubleshooting
+
+- **`psycopg` / database connection errors on startup:** verify that both `shop` and `shop-test` exist and that `DATABASE_URI` points at the main `shop` database.
+- **401s from protected routes in local dev:** the server is up, but Cognito-related env vars are still placeholders. See the Cognito block above.
+- **`mkdocs serve` fails because plugins are missing:** install the docs-only dependencies with `pip install -r requirements/docs.txt` or the full toolchain with `pip install -r requirements/all.txt`.

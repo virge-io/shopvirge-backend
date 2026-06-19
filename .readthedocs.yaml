@@ -3,7 +3,7 @@
 #
 # After merging this file:
 #   1. Sign in at https://readthedocs.org with the GitHub account that owns this repo.
-#   2. "Import a Project" -> select acidjunk/shop-backend.
+#   2. "Import a Project" -> select virge-io/shopvirge-backend.
 #   3. RTD auto-detects this file; no extra settings required.
 #   4. First build triggers automatically; subsequent builds trigger via the
 #      GitHub webhook RTD installs for you.

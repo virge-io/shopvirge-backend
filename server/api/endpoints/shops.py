@@ -14,7 +14,7 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.api.helpers import load
 from server.crud.crud_shop import shop_crud
-from server.db.models import ShopTable, UserTable
+from server.db.models import ShopTable
 from server.schemas.shop import (
     MyShopsResponse,
     ShopCacheStatus,
@@ -34,11 +34,16 @@ router = APIRouter()
 logger = structlog.get_logger(__name__)
 
 
-@router.get("/", response_model=List[ShopSchema])
+@router.get(
+    "/",
+    response_model=List[ShopSchema],
+    summary="List shops",
+    description="Returns all shops on the platform. Supports pagination, filtering, and sorting via common query parameters.",
+)
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[ShopSchema]:
     shops, header_range = shop_crud.get_multi(
         skip=common["skip"],
@@ -78,49 +83,77 @@ def get_my_shops(
     return MyShopsResponse(shops=accessible, is_admin=is_admin, can_write=len(accessible) > 0)
 
 
-@router.post("/", response_model=ShopSchema, status_code=HTTPStatus.CREATED)
-def create(data: ShopCreate = Body(...), current_user: UserTable = Depends(auth_required)) -> ShopSchema:
+@router.post(
+    "/",
+    response_model=ShopSchema,
+    status_code=HTTPStatus.CREATED,
+    summary="Create shop",
+    description="Create a new shop on the platform. Returns the created shop record.",
+)
+def create(data: ShopCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> ShopSchema:
     logger.info("Saving shop", data=data)
     shop = shop_crud.create(obj_in=data)
     return shop
 
 
-@router.get("/cache-status/{id}", response_model=ShopCacheStatus)
+@router.get(
+    "/cache-status/{id}",
+    response_model=ShopCacheStatus,
+    summary="Get shop cache status",
+    description="Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
+)
 def get_cache_status(id: UUID) -> ShopCacheStatus:
-    """Show date of last change in data that could be visible in this shop"""
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
     return shop
 
 
-@router.get("/last-completed-order/{id}", response_model=ShopLastCompletedOrder)
+@router.get(
+    "/last-completed-order/{id}",
+    response_model=ShopLastCompletedOrder,
+    summary="Get timestamp of last completed order",
+    description="Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
+)
 def get_last_completed_order(id: UUID) -> ShopLastCompletedOrder:
-    """Show date of last change in data that could be visible in this shop"""
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
     return shop
 
 
-@router.get("/last-pending-order/{id}", response_model=ShopLastPendingOrder)
+@router.get(
+    "/last-pending-order/{id}",
+    response_model=ShopLastPendingOrder,
+    summary="Get timestamp of last pending order",
+    description="Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
+)
 def get_last_pending_order(id: UUID) -> ShopLastPendingOrder:
-    """Show date of last change in data that could be visible in this shop"""
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
     return shop
 
 
-@router.get("/{id}", response_model=ShopWithPrices)
+@router.get(
+    "/{id}",
+    response_model=ShopWithPrices,
+    summary="Get shop",
+    description="Retrieve a shop by its UUID, including all associated price records.",
+)
 def get_by_id(id: UUID):
-    """List Shop"""
     item = load(ShopTable, id)
     return item
 
 
-@router.put("/{shop_id}", response_model=ShopSchema, status_code=HTTPStatus.CREATED)
-def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: UserTable = Depends(auth_required)) -> None:
+@router.put(
+    "/{shop_id}",
+    response_model=ShopSchema,
+    status_code=HTTPStatus.CREATED,
+    summary="Update shop",
+    description="Update shop details such as name, description, and VAT rates.",
+)
+def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     shop = shop_crud.get(id=shop_id)
     logger.info("Updating shop", data=shop)
     if not shop:
@@ -133,12 +166,23 @@ def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: UserTable = Depe
     return shop
 
 
-@router.delete("/{shop_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
-def delete(shop_id: UUID, current_user: UserTable = Depends(auth_required)) -> None:
+@router.delete(
+    "/{shop_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Delete shop",
+    description="Permanently remove a shop from the platform.",
+)
+def delete(shop_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     return shop_crud.delete(id=shop_id)
 
 
-@router.get("/config/{id}", response_model=ShopConfig)
+@router.get(
+    "/config/{id}",
+    response_model=ShopConfig,
+    summary="Get shop configuration",
+    description="Retrieve the shop's full configuration object, including feature toggles (e.g. stock tracking, checkout behaviour) and payment settings.",
+)
 def get_config(
     id: UUID,
 ) -> ShopConfig:
@@ -149,11 +193,17 @@ def get_config(
     return shop
 
 
-@router.put("/config/{id}", response_model=ShopConfigUpdate, status_code=HTTPStatus.CREATED)
+@router.put(
+    "/config/{id}",
+    response_model=ShopConfigUpdate,
+    status_code=HTTPStatus.CREATED,
+    summary="Update shop configuration",
+    description="Update the shop's configuration. Partial updates are supported — only provided fields are changed.",
+)
 def update_config(
     id: UUID,
     item_in: ShopConfigUpdate,
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> ShopConfig:
     shop = shop_crud.get(id=id)
     logger.info("Updating shop", data=shop)
@@ -167,10 +217,15 @@ def update_config(
     return shop
 
 
-@router.get("/allowed-ips/{id}", response_model=List[str])
+@router.get(
+    "/allowed-ips/{id}",
+    response_model=List[str],
+    summary="List allowed IPs",
+    description="Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
+)
 def get_allowed_ips(
     id: UUID,
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[str]:
     shop = shop_crud.get(id)
     if not shop:
@@ -182,8 +237,13 @@ def get_allowed_ips(
         return []
 
 
-@router.post("/allowed-ips/{id}", response_model=List[str])
-def add_new_ip(id: UUID, new_ip: ShopIp, current_user: UserTable = Depends(auth_required)):
+@router.post(
+    "/allowed-ips/{id}",
+    response_model=List[str],
+    summary="Add allowed IP",
+    description="Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
+)
+def add_new_ip(id: UUID, new_ip: ShopIp, current_user: CustomCognitoToken = Depends(auth_required)):
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
@@ -212,8 +272,13 @@ def add_new_ip(id: UUID, new_ip: ShopIp, current_user: UserTable = Depends(auth_
     return updated_shop.allowed_ips
 
 
-@router.post("/allowed-ips/{id}/remove", response_model=List[str])
-def remove_ip(id: UUID, old_ip: ShopIp, current_user: UserTable = Depends(auth_required)):
+@router.post(
+    "/allowed-ips/{id}/remove",
+    response_model=List[str],
+    summary="Remove allowed IP",
+    description="Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
+)
+def remove_ip(id: UUID, old_ip: ShopIp, current_user: CustomCognitoToken = Depends(auth_required)):
     shop = shop_crud.get(id)
     if not shop:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")

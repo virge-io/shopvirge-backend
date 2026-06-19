@@ -10,20 +10,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from datetime import datetime, timedelta
-from typing import Any, List, Optional, Union
+from typing import List, Optional
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, HTTPException, Request, Security
 from fastapi.param_functions import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_cognito import CognitoAuth, CognitoSettings, CognitoToken
-from jose import jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel, Field, HttpUrl
 from structlog import get_logger
 
 from server.settings import app_settings, auth_settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 logger = get_logger(__name__)
 
@@ -50,8 +46,13 @@ class CustomCognitoToken(BaseModel):
 
 cognito_eu = CognitoAuth(settings=CognitoSettings.from_global_settings(auth_settings), custom_model=CustomCognitoToken)
 
+_bearer_scheme = HTTPBearer(auto_error=False)
 
-def auth_required(token: CognitoToken = Depends(cognito_eu.auth_required)):
+
+def auth_required(
+    token: CognitoToken = Depends(cognito_eu.auth_required),
+    _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+):
     user_client_ids = {
         app_settings.AWS_COGNITO_CLIENT_ID,
         app_settings.AWS_COGNITO_MCP_CLIENT_ID,
@@ -115,21 +116,3 @@ def admin_required(token: CognitoToken = Depends(auth_required)):
         return token
 
     raise HTTPException(status_code=403, detail=f"User is not a member of the '{ADMIN_GROUP}' group")
-
-
-def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=app_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, app_settings.SESSION_SECRET, algorithm=app_settings.JWT_ALGORITHM)
-    return encoded_jwt
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)

@@ -43,7 +43,7 @@ def test_products_create(shop, category, test_client):
         "image_6": "",
     }
 
-    response = test_client.post(f"/shops/{shop}/products/", data=json_dumps(body))
+    response = test_client.post(f"/shops/{shop}/products/", content=json_dumps(body))
     assert HTTPStatus.CREATED == response.status_code, f"No 201 status code: full response {response.json()}"
     product = ProductTable.query.filter_by(id=response.json()["id"]).first()
     assert product.translation.main_name == "Create Product Test"
@@ -73,7 +73,7 @@ def test_products_update(shop_with_config, product, category, test_client):
         "image_6": "",
     }
 
-    response = test_client.put(f"/shops/{shop_with_config}/products/{product}", data=json_dumps(body))
+    response = test_client.put(f"/shops/{shop_with_config}/products/{product}", content=json_dumps(body))
     assert response.status_code == 201
     product = ProductTable.query.filter_by(id=product).first()
     assert product.translation.main_name == "Update Product Test"

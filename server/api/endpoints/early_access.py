@@ -10,9 +10,8 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from server.crud.crud_early_access import early_access_crud
-from server.db.models import UserTable
 from server.schemas.early_access import EarlyAccessCreate
-from server.security import auth_required
+from server.security import CustomCognitoToken, auth_required
 
 # Set up structured logging with structlog
 logger = structlog.get_logger(__name__)
@@ -22,7 +21,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=None, status_code=HTTPStatus.CREATED)
-def create(data: EarlyAccessCreate = Body(...), current_user: UserTable = Depends(auth_required)) -> Any:
+def create(data: EarlyAccessCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> Any:
     try:
         logger.info("Saving early access", data=data)
         early_access = early_access_crud.create(obj_in=data)

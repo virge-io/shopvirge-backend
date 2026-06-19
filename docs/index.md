@@ -1,8 +1,21 @@
+---
+title: Overview
+description: High-level entry point for the ShopVirge Backend documentation site.
+---
+
 # ShopVirge Backend
 
 Welcome to the **ShopVirge Backend** documentation.
 
 ShopVirge is a FastAPI REST API for managing shop pricelists, products, categories, orders, and attributes. It uses a multi-tenant architecture where most resources hang off a shop: `/shops/{shop_id}/...`.
+
+## Summary
+
+- Start with [Quickstart](quickstart.md) if you want a local server running quickly.
+- Use [API Overview](api/overview.md) to understand the route layout and where handlers live.
+- Use [Checkout flow](architecture/checkout.md) for the end-to-end order and Stripe flow between `shop-poc`, this backend, and Stripe.
+- Use [Local setup](development/setup.md) for day-to-day development details and troubleshooting.
+- Use [`/llms.txt`](llms.txt) for a curated machine-readable index of the most important docs pages.
 
 !!! tip "FastAPI-style live API reference"
     The running server exposes an interactive OpenAPI UI at:

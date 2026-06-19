@@ -1,6 +1,6 @@
 # Shop-scoped endpoints
 
-Almost every resource in ShopVirge belongs to a specific shop. These endpoints are implemented in `server/api/endpoints/shop_endpoints/` and nested under the `/shops/{shop_id}/...` prefix when registered in `server/api/api.py`.
+Almost every resource in ShopVirge belongs to a specific shop. Most of those endpoints are implemented in `server/api/endpoints/shop_endpoints/` and mounted under the `/shops/{shop_id}/...` prefix when registered in `server/api/api.py`.
 
 ## The pattern
 
@@ -10,7 +10,7 @@ Almost every resource in ShopVirge belongs to a specific shop. These endpoints a
 /shops/{shop_id}/<resource>/<sub-resource>/{id}
 ```
 
-Every handler that accepts a `shop_id` path parameter also runs it through an authorisation dependency that verifies the caller can access that shop (via `ShopUserTable` or a machine-to-machine token with `/api` scope — see [Authentication](authentication.md)).
+Every handler that accepts a `shop_id` path parameter is gated by an auth dependency (`auth_required` or `auth_required_any`). Which shops a caller may access is determined by their Cognito group membership — see [Authentication](authentication.md).
 
 CRUDs for shop-owned resources use the shop-aware helpers on `CRUDBase`:
 
@@ -25,7 +25,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 
 | File | Resource |
 |------|----------|
-| `orders.py` | Orders — create, complete, list, email confirmation on completion. |
+| `orders.py` | Orders — checkout-facing order creation and status management. Implemented in `shop_endpoints/`, but mounted at `/orders` instead of `/shops/{shop_id}/orders`. `PATCH /{order_id}` transitions an order to `complete` or `cancelled`: triggers stock deduction (if enabled), a Discord webhook notification, and an order confirmation email. |
 | `products.py` | Products (public router split out for unauthenticated catalog browsing). |
 | `categories.py` | Categories (public router split out similarly). |
 | `tags.py` | Tags. |
@@ -35,10 +35,13 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | `products_to_tags.py` | Product ↔ tag links. |
 | `prices.py` | Price management. |
 | `accounts.py` | Shop-level customer/vendor accounts. |
-| `stripe.py` | Stripe integration (payment intents, webhooks). |
+| `stripe.py` | Stripe integration for one-time PaymentIntents and subscription create/cancel. |
+| `api_keys.py` | Per-shop API key management (mint, list, revoke). Keys are accepted on MCP-exposed routes via `auth_required_any`. |
 | `category_images.py` | Category image uploads. |
 | `images.py` | Generic shop image uploads. |
-| `info_request.py` | Incoming info requests. |
+| `product_images.py` | Per-product image uploads. |
+| `info_request.py` | Incoming info requests. The file also exposes the public `POST /info-request/form` endpoint, which uses `pydantic-forms`; see [Forms](forms.md). |
+| `shipping.py` | Shipping cost calculation. |
 
 ## Public sub-routers
 

@@ -21,14 +21,14 @@ from server.crud.crud_account import account_crud
 from server.crud.crud_order import order_crud
 from server.crud.crud_product import product_crud
 from server.crud.crud_shop import shop_crud
-from server.db.models import Account, OrderTable, ShopTable, UserTable
+from server.db.models import Account, OrderTable, ShopTable
 from server.mail import send_order_confirmation_emails
 from server.schemas import ProductUpdate
 from server.schemas.account import AccountCreate
 from server.schemas.base import quantize_money
 from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdate, OrderUpdated
 from server.schemas.product import ProductTranslationBase
-from server.security import auth_required
+from server.security import CustomCognitoToken, auth_required
 from server.services import stripe_client
 from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
@@ -40,72 +40,16 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-def get_price_rules_total(order_items):
-    """Calculate the total number of grams."""
-    JOINT = 0.4
-
-    # Todo: add correct order line for 0.5 and 2.5
-    prices = {"0,5 gram": 0.5, "1 gram": 1, "2,5 gram": 2.5, "5 gram": 5, "joint": JOINT}
-    total = 0
-    for item in order_items:
-        if item.description in prices:
-            total = total + (prices[item.description] * item.quantity)
-
-    return total
-
-
-# Commented because 'active' field no longer exists on products, nor does shops_to_prices
-# def get_first_unavailable_product_name(order_items, shop_id):
-#     """Search for the first unavailable product and return it's name."""
-#     # products = shop_to_price_crud.get_products_with_prices_by_shop_id(shop_id=shop_id)
-#     #
-#     # for item in order_items:
-#     #     found_product = False  # Start False
-#     #     for product in products:
-#     #         if item.kind_id == str(product.kind_id):
-#     #             if product.active:
-#     #                 if item.description == "0,5 gram" and (not product.use_half or not product.price.half):
-#     #                     logger.warning("Product is currently not available in 0.5 gram", kind_name=item.kind_name)
-#     #                 elif item.description == "1 gram" and (not product.use_one or not product.price.one):
-#     #                     logger.warning("Product is currently not available in 1 gram", kind_name=item.kind_name)
-#     #                 elif item.description == "2,5 gram" and (not product.use_two_five or not product.price.two_five):
-#     #                     logger.warning("Product is currently not available in 2.5 gram", kind_name=item.kind_name)
-#     #                 elif item.description == "5 gram" and (not product.use_five or not product.price.five):
-#     #                     logger.warning("Product is currently not available in 5 gram", kind_name=item.kind_name)
-#     #                 elif item.description == "1 joint" and (not product.use_joint or not product.price.joint):
-#     #                     logger.warning("Product is currently not available as joint", kind_name=item.kind_name)
-#     #                 else:
-#     #                     logger.info(
-#     #                         "Found product in order item and in available products",
-#     #                         kind_id=item.kind_id,
-#     #                         kind_name=item.kind_name,
-#     #                     )
-#     #                     found_product = True
-#     #             else:
-#     #                 logger.warning("Product is currently not available", kind_name=item.kind_name)
-#     #         if item.product_id == str(product.product_id):
-#     #             if product.active:
-#     #                 if not product.use_piece or not product.price.piece:
-#     #                     logger.warning("Product is currently not available as piece", product_name=item.product_name)
-#     #                 else:
-#     #                     logger.info(
-#     #                         "Found horeca product in order item and in available products",
-#     #                         product_id=item.product_id,
-#     #                         product_name=item.product_name,
-#     #                     )
-#     #                     found_product = True
-#     #             else:
-#     #                 logger.warning("Horeca product is currently not available", product_name=item.product_name)
-#     #     if not found_product:
-#     #         return item.kind_name if item.kind_name else item.product_name
-#     return None
-
-
-@router.get("/", response_model=List[OrderSchema])
+@router.get(
+    "/",
+    response_model=List[OrderSchema],
+    summary="List all orders",
+    description="Returns all orders across all shops. Requires authentication. Supports pagination, filtering (e.g. `status:pending`), and sorting.",
+)
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[OrderSchema]:
     orders, header_range = order_crud.get_multi(
         skip=common["skip"], limit=common["limit"], filter_parameters=common["filter"], sort_parameters=common["sort"]
@@ -121,12 +65,17 @@ def get_multi(
     return orders
 
 
-@router.get("/shop/{shop_id}/pending", response_model=List[OrderSchema])
+@router.get(
+    "/shop/{shop_id}/pending",
+    response_model=List[OrderSchema],
+    summary="List pending orders for a shop",
+    description="Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment.",
+)
 def show_all_pending_orders_per_shop(
     shop_id: UUID,
     response: Response,
     common: dict = Depends(common_parameters),
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[OrderSchema]:
     query = OrderTable.query.filter(OrderTable.shop_id == shop_id).filter(OrderTable.status == "pending")
     orders, header_range = order_crud.get_multi(
@@ -147,12 +96,17 @@ def show_all_pending_orders_per_shop(
     return orders
 
 
-@router.get("/shop/{shop_id}/complete", response_model=List[OrderSchema])
+@router.get(
+    "/shop/{shop_id}/complete",
+    response_model=List[OrderSchema],
+    summary="List completed orders for a shop",
+    description="Returns all orders with status `complete` or `cancelled` for the given shop. Used for order history and reporting.",
+)
 def show_all_complete_orders_per_shop(
     shop_id: UUID,
     response: Response,
     common: dict = Depends(common_parameters),
-    current_user: UserTable = Depends(auth_required),
+    current_user: CustomCognitoToken = Depends(auth_required),
 ) -> List[OrderSchema]:
     query = OrderTable.query.filter(OrderTable.shop_id == shop_id).filter(
         or_(OrderTable.status == "complete", OrderTable.status == "cancelled")
@@ -177,7 +131,11 @@ def show_all_complete_orders_per_shop(
     return orders
 
 
-@router.get("/{id}")
+@router.get(
+    "/{id}",
+    summary="Get order",
+    description="Retrieve a single order by its UUID, including line items, account name, and shop name.",
+)
 def get_by_id(id: UUID) -> OrderSchema:
     order = order_crud.get(id)
     if not order:
@@ -193,7 +151,12 @@ def get_by_id(id: UUID) -> OrderSchema:
     return order
 
 
-@router.get("/check/{ids}", response_model=List[OrderCreated])
+@router.get(
+    "/check/{ids}",
+    response_model=List[OrderCreated],
+    summary="Check order statuses",
+    description="Retrieve the status and totals of up to 10 orders by passing a comma-separated list of UUIDs. All orders must belong to the same shop. Used by the checkout confirmation page.",
+)
 def check(
     ids: str,
 ) -> List[OrderCreated]:
@@ -236,7 +199,17 @@ def check(
     return items_with_schema
 
 
-@router.post("/", response_model=OrderCreated, status_code=HTTPStatus.CREATED)
+@router.post(
+    "/",
+    response_model=OrderCreated,
+    status_code=HTTPStatus.CREATED,
+    summary="Create order",
+    description=(
+        "Submit a new customer order. The caller's IP is validated against the shop's allowlist. "
+        "If stock tracking is enabled the product availability is verified before the order is created. "
+        "A Stripe customer is auto-created for new account names when the shop has Stripe configured."
+    ),
+)
 def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     logger.info("Saving order", data=data)
 
@@ -280,12 +253,6 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     if not is_ip_allowed(request, shop) and str(data.account_id) != "0999fbcd-a72b-4cc2-abbe-41ccd466cdaf":
         # allow test table to bypass IP check if any
         raise_status(HTTPStatus.BAD_REQUEST, "NOT_ON_SHOP_WIFI")
-
-    # 5 gram check
-    total_cannabis = get_price_rules_total(data.order_info)
-    logger.info("Checked order weight", weight=total_cannabis)
-    if total_cannabis > 5:
-        raise_status(HTTPStatus.BAD_REQUEST, "MAX_5_GRAMS_ALLOWED")
 
     # Availability check
     if shop.config["toggles"]["enable_stock_on_products"]:
@@ -339,12 +306,23 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     return created_order
 
 
-@router.patch("/{order_id}", response_model=OrderUpdated, status_code=HTTPStatus.CREATED)
+# TODO mention discord in documentation?
+@router.patch(
+    "/{order_id}",
+    response_model=OrderUpdated,
+    status_code=HTTPStatus.CREATED,
+    summary="Update order status",
+    description=(
+        "Partially update an order — typically to mark it `complete` or `cancelled`. "
+        "Setting status to `complete` triggers stock deduction (if enabled), a Discord webhook "
+        "notification, and an order confirmation email. Idempotent: setting the same status twice is a no-op."
+    ),
+)
 def patch(
     *,
     order_id: UUID,
     item_in: OrderBase,
-    # current_user: UserTable = Depends(auth_required)
+    # current_user: CustomCognitoToken = Depends(auth_required)
 ) -> OrderUpdated:
     order = order_crud.get(order_id)
     if not order:
@@ -447,15 +425,23 @@ def update_stock_on_order_complete(order_id: UUID):
         raise HTTPException(status_code=404, detail="Order not found")
 
 
-@router.put("/{order_id}", response_model=OrderUpdated, status_code=HTTPStatus.CREATED)
-def update(*, order_id: UUID, item_in: OrderUpdate, current_user: UserTable = Depends(auth_required)) -> OrderUpdated:
+@router.put(
+    "/{order_id}",
+    response_model=OrderUpdated,
+    status_code=HTTPStatus.CREATED,
+    summary="Full order update",
+    description="Fully replace an order's fields. Requires authentication. Also sets `completed_at` when transitioning to `complete` or `cancelled`.",
+)
+def update(
+    *, order_id: UUID, item_in: OrderUpdate, current_user: CustomCognitoToken = Depends(auth_required)
+) -> OrderUpdated:
     order = order_crud.get(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
     if item_in.status and (item_in.status == "complete" or item_in.status == "cancelled") and not order.completed_at:
         order.completed_at = datetime.now()
-        order.completed_by = current_user.id
+        order.completed_by = None
 
     order = order_crud.update(
         db_obj=order,
@@ -476,12 +462,23 @@ def update(*, order_id: UUID, item_in: OrderUpdate, current_user: UserTable = De
     return updated_order
 
 
-@router.delete("/{order_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
-def delete(order_id: UUID, current_user: UserTable = Depends(auth_required)) -> None:
+@router.delete(
+    "/{order_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Delete order",
+    description="Permanently remove an order record. Requires authentication.",
+)
+def delete(order_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     return order_crud.delete(id=order_id)
 
 
-@router.get("/stock/{order_id}", response_model=bool)
+@router.get(
+    "/stock/{order_id}",
+    response_model=bool,
+    summary="Check order stock availability",
+    description="Returns `true` if all products in the order have sufficient stock, `false` otherwise. Only meaningful when the shop has stock tracking enabled.",
+)
 def get_order_products_in_stock(order_id: UUID) -> bool:
     order = order_crud.get(order_id)
     if not order:

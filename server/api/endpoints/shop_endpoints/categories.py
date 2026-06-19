@@ -66,6 +66,8 @@ def get_shop(shop_id: UUID):
     response_model=List[CategorySchema],
     tags=[AgentTag.EXPOSED, AgentTag.LARGE],
     operation_id="list_categories",
+    summary="List categories",
+    description="Returns paginated categories for a shop, ordered by `order_number`. Supports filtering and sorting.",
 )
 def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_parameters)) -> List[CategorySchema]:
     # shop = get_shop(shop_id)
@@ -85,6 +87,8 @@ def get_multi(shop_id: UUID, response: Response, common: dict = Depends(common_p
     response_model=CategorySchema,
     tags=[AgentTag.EXPOSED],
     operation_id="get_category",
+    summary="Get category",
+    description="Retrieve a single category by its UUID within a shop.",
 )
 def get_by_id(shop_id: UUID, category_id: UUID) -> CategorySchema:
     category = category_crud.get_id_by_shop_id(shop_id, category_id)
@@ -102,7 +106,12 @@ def get_by_id(shop_id: UUID, category_id: UUID) -> CategorySchema:
 #         return CategoryIsDeletable(is_deletable=True)
 
 
-@router.get("/name/{name}", response_model=CategorySchema)
+@router.get(
+    "/name/{name}",
+    response_model=CategorySchema,
+    summary="Get category by name",
+    description="Retrieve a category using its human-readable name (exact match, case-sensitive).",
+)
 def get_by_name(name: str, shop_id: UUID) -> CategorySchema:
     category = category_crud.get_by_name(name=name, shop_id=shop_id)
 
@@ -117,6 +126,8 @@ def get_by_name(name: str, shop_id: UUID) -> CategorySchema:
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="create_category",
+    summary="Create category",
+    description="Add a new category to a shop. The `order_number` is automatically set to the next available value.",
 )
 def create(shop_id: UUID, data: CategoryCreate = Body(...)) -> None:
     category = CategoryTable.query.filter_by(shop_id=shop_id).order_by(CategoryTable.order_number.desc()).first()
@@ -132,6 +143,8 @@ def create(shop_id: UUID, data: CategoryCreate = Body(...)) -> None:
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="update_category",
+    summary="Update category",
+    description="Update an existing category's details and translations.",
 )
 def update(*, category_id: UUID, shop_id: UUID, item_in: CategoryUpdate) -> Any:
     category = category_crud.get_id_by_shop_id(shop_id, category_id)
@@ -150,7 +163,13 @@ def update(*, category_id: UUID, shop_id: UUID, item_in: CategoryUpdate) -> Any:
     return category
 
 
-@router.put("/{category_id}/swap", response_model=None, status_code=HTTPStatus.CREATED)
+@router.put(
+    "/{category_id}/swap",
+    response_model=None,
+    status_code=HTTPStatus.CREATED,
+    summary="Reorder category",
+    description="Move a category up (`move_up=true`) or down (`move_up=false`) in the display order. Swaps `order_number` with the adjacent category.",
+)
 def swap(shop_id: UUID, category_id: UUID, move_up: bool):
     category = category_crud.get_id_by_shop_id(shop_id, category_id)
     if not category:
@@ -188,6 +207,8 @@ def swap(shop_id: UUID, category_id: UUID, move_up: bool):
     status_code=HTTPStatus.NO_CONTENT,
     tags=[AgentTag.EXPOSED],
     operation_id="delete_category",
+    summary="Delete category",
+    description="Remove a category from the shop. Fails if any products are still assigned to it.",
 )
 def delete(category_id: UUID, shop_id: UUID) -> None:
     return category_crud.delete_by_shop_id(shop_id=shop_id, id=category_id)

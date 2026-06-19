@@ -9,7 +9,7 @@ def test_faq_create(test_client):
         "category": "Account",
     }
 
-    response = test_client.post("/faq", data=json_dumps(body))
+    response = test_client.post("/faq", content=json_dumps(body))
     assert response.status_code == 201
     faq = FaqTable.query.first()
     assert faq.question == "How do I reset my password?"
@@ -23,7 +23,7 @@ def test_faq_create_missing_fields(test_client):
         # Missing 'answer' and 'category'
     }
 
-    response = test_client.post("/faq", data=json_dumps(body))
+    response = test_client.post("/faq", content=json_dumps(body))
     assert response.status_code == 422
     assert "Field required" in response.json()["detail"][0]["msg"]
 
@@ -35,6 +35,6 @@ def test_faq_create_invalid_type(test_client):
         "category": "Orders",
     }
 
-    response = test_client.post("/faq", data=json_dumps(body))
+    response = test_client.post("/faq", content=json_dumps(body))
     assert response.status_code == 422
     assert "Input should be a valid string" in response.json()["detail"][0]["msg"]

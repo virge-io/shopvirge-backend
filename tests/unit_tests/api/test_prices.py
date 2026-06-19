@@ -22,7 +22,7 @@ def test_prices_get_multi_untranslated(
 def test_cart_prices_get_multi(shop_with_config, product, test_client):
     body = {"products": [product]}
 
-    response = test_client.post(f"/shops/{shop_with_config}/prices/?lang=main", data=json_dumps(body))
+    response = test_client.post(f"/shops/{shop_with_config}/prices/?lang=main", content=json_dumps(body))
     assert response.status_code == 200
     prices = response.json()
     assert 1 == len(prices)
@@ -31,7 +31,7 @@ def test_cart_prices_get_multi(shop_with_config, product, test_client):
 def test_cart_prices_get_multi_untranslated(shop_with_config, product, product_translated, test_client):
     body = {"products": [product, product_translated]}
 
-    response = test_client.post(f"/shops/{shop_with_config}/prices/?lang=alt1", data=json_dumps(body))
+    response = test_client.post(f"/shops/{shop_with_config}/prices/?lang=alt1", content=json_dumps(body))
     assert response.status_code == 200
     prices = response.json()
     # should be 2, but one should be English, the other Dutch
@@ -74,7 +74,7 @@ def test_cart_prices_get_multi_untranslated(shop_with_config, product, product_t
 #
 # def test_price_save(test_client, superuser_token_headers):
 #     body = {"internal_product_id": "101", "half": 5.50, "one": 10.0, "five": 45.0, "joint": 4.50}
-#     response = test_client.post("/api/prices/", data=json_dumps(body), headers=superuser_token_headers)
+#     response = test_client.post("/api/prices/", content=json_dumps(body), headers=superuser_token_headers)
 #     assert HTTPStatus.CREATED == response.status_code
 #     prices = test_client.get("/api/prices", headers=superuser_token_headers).json()
 #     assert 1 == len(prices)
@@ -82,7 +82,7 @@ def test_cart_prices_get_multi_untranslated(shop_with_config, product, product_t
 #
 # def test_price_update(price_1, test_client, superuser_token_headers):
 #     body = {"internal_product_id": "01", "half": 6.50, "one": 10.0, "five": 45.0, "joint": 4.50}
-#     response = test_client.put(f"/api/prices/{price_1.id}", data=json_dumps(body), headers=superuser_token_headers)
+#     response = test_client.put(f"/api/prices/{price_1.id}", content=json_dumps(body), headers=superuser_token_headers)
 #     assert HTTPStatus.CREATED == response.status_code
 #
 #     response_updated = test_client.get(f"/api/prices/{price_1.id}", headers=superuser_token_headers)

@@ -30,7 +30,7 @@ def test_categories_create(shop, test_client):
         "alt2_image": "",
     }
 
-    response = test_client.post(f"/shops/{shop}/categories/", data=json_dumps(body))
+    response = test_client.post(f"/shops/{shop}/categories/", content=json_dumps(body))
     assert response.status_code == 201
     category = CategoryTable.query.filter_by(id=response.json()["id"]).first()
     assert category.translation.main_name == "Create Category Test"
@@ -51,7 +51,7 @@ def test_categories_update(shop, category, test_client):
         "alt2_image": "",
     }
 
-    response = test_client.put(f"/shops/{shop}/categories/{category}", data=json_dumps(body))
+    response = test_client.put(f"/shops/{shop}/categories/{category}", content=json_dumps(body))
     assert response.status_code == 201
     category = CategoryTable.query.filter_by(id=category).first()
     assert category.translation.main_name == "Update Category Test"
@@ -101,7 +101,7 @@ def test_categories_delete(shop, category, test_client):
 #         "shop_id": shop_1.id,
 #         "main_category_id": main_category_1.id,
 #     }
-#     response = test_client.post("/api/categories/", data=json_dumps(body), headers=superuser_token_headers)
+#     response = test_client.post("/api/categories/", content=json_dumps(body), headers=superuser_token_headers)
 #     assert HTTPStatus.CREATED == response.status_code
 #     categories = test_client.get("/api/categories", headers=superuser_token_headers).json()
 #     assert 3 == len(categories)
@@ -117,7 +117,7 @@ def test_categories_delete(shop, category, test_client):
 #         "main_category_id": main_category_1.id,
 #     }
 #     response = test_client.put(
-#         f"/api/categories/{category_1.id}", data=json_dumps(body), headers=superuser_token_headers
+#         f"/api/categories/{category_1.id}", content=json_dumps(body), headers=superuser_token_headers
 #     )
 #     assert HTTPStatus.CREATED == response.status_code
 #

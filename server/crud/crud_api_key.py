@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from passlib.context import CryptContext
+import bcrypt as _bcrypt
 
 from server.db import db
 from server.db.models import ApiKeyTable
@@ -31,7 +31,13 @@ from server.db.models import ApiKeyTable
 KEY_PLAINTEXT_PREFIX = "sv"
 PREFIX_LEN = 8
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _bcrypt_hash(plaintext: str) -> str:
+    return _bcrypt.hashpw(plaintext.encode("utf-8")[:72], _bcrypt.gensalt()).decode("utf-8")
+
+
+def _bcrypt_verify(plaintext: str, hashed: str) -> bool:
+    return _bcrypt.checkpw(plaintext.encode("utf-8")[:72], hashed.encode("utf-8"))
 
 
 def _fingerprint(plaintext: str) -> str:
@@ -56,7 +62,7 @@ class CRUDApiKey:
             name=name,
             prefix=prefix,
             fingerprint=_fingerprint(plaintext),
-            encrypted_key=_pwd_context.hash(plaintext),
+            encrypted_key=_bcrypt_hash(plaintext),
             created_by_sub=created_by_sub,
         )
         db.session.add(api_key)
@@ -75,7 +81,7 @@ class CRUDApiKey:
         row = db.session.query(ApiKeyTable).filter(ApiKeyTable.fingerprint == _fingerprint(plaintext)).first()
         if row is None or row.revoked_at is not None:
             return None
-        if not _pwd_context.verify(plaintext, row.encrypted_key):
+        if not _bcrypt_verify(plaintext, row.encrypted_key):
             return None
         row.last_used_at = datetime.now(timezone.utc)
         db.session.commit()

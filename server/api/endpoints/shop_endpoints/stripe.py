@@ -36,7 +36,16 @@ def get_stripe_prices(product_ids: list[UUID], yearly: bool):
     return items
 
 
-@router.post("/", status_code=HTTPStatus.CREATED)
+@router.post(
+    "/",
+    status_code=HTTPStatus.CREATED,
+    summary="Create payment intent",
+    description=(
+        "Create a Stripe PaymentIntent for a one-time purchase. "
+        "Uses the shop's own `stripe_secret_key`. The `price` is in euro cents. "
+        "Returns a `clientSecret` to complete the payment on the frontend."
+    ),
+)
 def create_payment_intent(shop_id: UUID, price: int, account_id: UUID):
     try:
         shop = shop_crud.get(shop_id)
@@ -55,7 +64,16 @@ def create_payment_intent(shop_id: UUID, price: int, account_id: UUID):
         return e
 
 
-@router.post("/subscription", status_code=HTTPStatus.CREATED)
+@router.post(
+    "/subscription",
+    status_code=HTTPStatus.CREATED,
+    summary="Create subscription",
+    description=(
+        "Create a Stripe Subscription for one or more products. Price lookup keys are resolved as "
+        "`monthly-<product_id>` or `yearly-<product_id>`. "
+        "Returns `clientSecret` and `subscriptionId` to confirm payment on the frontend."
+    ),
+)
 def create_subscription_intent(shop_id: UUID, product_ids: list[UUID], account_id: UUID, yearly: bool = False):
     try:
         shop = shop_crud.get(shop_id)
@@ -81,7 +99,13 @@ def create_subscription_intent(shop_id: UUID, product_ids: list[UUID], account_i
         return e
 
 
-@router.delete("/subscription/{subscription_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
+@router.delete(
+    "/subscription/{subscription_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Cancel subscription",
+    description="Immediately cancel a Stripe Subscription. Uses the shop's `stripe_secret_key`.",
+)
 def cancel_subscription(shop_id: UUID, subscription_id: str):
     try:
         shop = shop_crud.get(shop_id)

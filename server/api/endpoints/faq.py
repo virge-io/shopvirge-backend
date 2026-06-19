@@ -9,15 +9,19 @@ from starlette.responses import Response
 
 from server.api.deps import common_parameters
 from server.crud.crud_faq import faq_crud
-from server.db.models import UserTable
 from server.schemas.faq import FaqCreate, FaqCreated, FaqSchema, FaqUpdate, FaqUpdated
-from server.security import auth_required
+from server.security import CustomCognitoToken, auth_required
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/", response_model=List[FaqSchema])
+@router.get(
+    "/",
+    response_model=List[FaqSchema],
+    summary="List FAQ entries",
+    description="Returns all FAQ question/answer entries. Supports pagination, filtering, and sorting.",
+)
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
@@ -32,7 +36,12 @@ def get_multi(
     return faqs
 
 
-@router.get("/{id}", response_model=FaqSchema)
+@router.get(
+    "/{id}",
+    response_model=FaqSchema,
+    summary="Get FAQ entry",
+    description="Retrieve a single FAQ entry by its UUID.",
+)
 def get_by_id(id: UUID) -> FaqSchema:
     faq = faq_crud.get(id)
     if not faq:
@@ -40,8 +49,14 @@ def get_by_id(id: UUID) -> FaqSchema:
     return faq
 
 
-@router.post("/", response_model=FaqCreated, status_code=HTTPStatus.CREATED)
-def create(data: FaqCreate = Body(...), current_user: UserTable = Depends(auth_required)) -> Any:
+@router.post(
+    "/",
+    response_model=FaqCreated,
+    status_code=HTTPStatus.CREATED,
+    summary="Create FAQ entry",
+    description="Add a new FAQ question and answer. Requires authentication. Returns 409 if a FAQ with the same question already exists.",
+)
+def create(data: FaqCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> Any:
 
     logger.info("Creating FAQ entry", data=data)
 
@@ -57,8 +72,16 @@ def create(data: FaqCreate = Body(...), current_user: UserTable = Depends(auth_r
     return faq
 
 
-@router.put("/{faq_id}", response_model=FaqUpdated, status_code=HTTPStatus.CREATED)
-def update(*, faq_id: UUID, item_in: FaqUpdate, current_user: UserTable = Depends(auth_required)) -> FaqUpdated:
+@router.put(
+    "/{faq_id}",
+    response_model=FaqUpdated,
+    status_code=HTTPStatus.CREATED,
+    summary="Update FAQ entry",
+    description="Update an existing FAQ entry's question, answer, or category. Returns 409 if another entry already uses the same question.",
+)
+def update(
+    *, faq_id: UUID, item_in: FaqUpdate, current_user: CustomCognitoToken = Depends(auth_required)
+) -> FaqUpdated:
 
     faq = faq_crud.get(faq_id)
     if not faq:
@@ -84,6 +107,12 @@ def update(*, faq_id: UUID, item_in: FaqUpdate, current_user: UserTable = Depend
     return updated_faq
 
 
-@router.delete("/{faq_id}", response_model=None, status_code=HTTPStatus.NO_CONTENT)
-def delete(faq_id: UUID, current_user: UserTable = Depends(auth_required)) -> None:
+@router.delete(
+    "/{faq_id}",
+    response_model=None,
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Delete FAQ entry",
+    description="Remove a FAQ entry. Requires authentication.",
+)
+def delete(faq_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
     return faq_crud.delete(id=faq_id)
