@@ -25,7 +25,6 @@ from server.api.endpoints import (
     health,
     images,
     licenses,
-    login,
     mail_test,
     oauth_discovery,
     sentry_test,
@@ -55,7 +54,6 @@ from server.settings import mail_settings
 
 api_router = APIRouter()
 
-api_router.include_router(login.router, tags=["login"])
 api_router.include_router(oauth_discovery.router, tags=["oauth"])
 api_router.include_router(health.router, prefix="/health", tags=["system"])
 api_router.include_router(

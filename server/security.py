@@ -12,8 +12,9 @@
 # limitations under the License.
 from typing import List, Optional
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, HTTPException, Request, Security
 from fastapi.param_functions import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_cognito import CognitoAuth, CognitoSettings, CognitoToken
 from pydantic import BaseModel, Field, HttpUrl
 from structlog import get_logger
@@ -45,8 +46,13 @@ class CustomCognitoToken(BaseModel):
 
 cognito_eu = CognitoAuth(settings=CognitoSettings.from_global_settings(auth_settings), custom_model=CustomCognitoToken)
 
+_bearer_scheme = HTTPBearer(auto_error=False)
 
-def auth_required(token: CognitoToken = Depends(cognito_eu.auth_required)):
+
+def auth_required(
+    token: CognitoToken = Depends(cognito_eu.auth_required),
+    _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+):
     user_client_ids = {
         app_settings.AWS_COGNITO_CLIENT_ID,
         app_settings.AWS_COGNITO_MCP_CLIENT_ID,
