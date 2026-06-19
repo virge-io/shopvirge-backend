@@ -250,28 +250,6 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     if not product:
         raise_status(HTTPStatus.NOT_FOUND, f"Product with id {product_id} not found")
 
-    # TODO remove me?
-    # product.prices = []
-    # for price_relation in product.shop_to_price:
-    #     if price_relation.shop_id == shop_id:
-    #         product.prices.append(
-    #             {
-    #                 "id": price_relation.price.id,
-    #                 "internal_product_id": price_relation.price.internal_product_id,
-    #                 "active": price_relation.active,
-    #                 "new": price_relation.new,
-    #                 # In flask's serializer there is no half
-    #                 # "half": price_relation.price.half if price_relation.use_half else None,
-    #                 "one": price_relation.price.one if price_relation.use_one else None,
-    #                 "two_five": price_relation.price.two_five if price_relation.use_two_five else None,
-    #                 "five": price_relation.price.five if price_relation.use_five else None,
-    #                 "joint": price_relation.price.joint if price_relation.use_joint else None,
-    #                 "piece": price_relation.price.piece if price_relation.use_piece else None,
-    #                 "created_at": price_relation.created_at,
-    #                 "modified_at": price_relation.modified_at,
-    #             }
-    #         )
-
     product.images_amount = 0
     for i in [1, 2, 3, 4, 5, 6]:
         if getattr(product, f"image_{i}"):
