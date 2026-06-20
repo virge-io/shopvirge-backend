@@ -15,7 +15,6 @@
 
 from fastapi import APIRouter, Depends
 
-from server.api import deps
 from server.api.endpoints import (
     admin_accounts,
     downloads,
@@ -205,10 +204,3 @@ api_router.include_router(faq.router, prefix="/faq", tags=["faq"])
 
 if mail_settings.MAIL_TEST_ENDPOINT_ENABLED:
     api_router.include_router(mail_test.router, prefix="/mail-test", tags=["mail-test"])
-
-# api_router.include_router(
-#     shops_users.router,
-#     prefix="/shops/{shop_id}/shops-users",
-#     tags=["shops-users"],
-#     dependencies=[Depends(deps.get_current_active_superuser)],
-# )

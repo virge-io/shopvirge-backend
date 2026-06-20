@@ -26,9 +26,6 @@ exclude = '''
 omit = [
     "server/main.py",
     "server/types.py",
-    "server/reset_password_user.py",
-    "server/initial_data.py",
     "server/version.py",
     "server/forms/*",
-    "server/api/endpoints/login.py"
     ]
