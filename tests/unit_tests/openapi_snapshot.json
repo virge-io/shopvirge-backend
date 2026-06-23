@@ -7193,6 +7193,24 @@
       "post": {
         "description": "Submit a new customer order. The caller's IP is validated against the shop's allowlist. If stock tracking is enabled the product availability is verified before the order is created. A Stripe customer is auto-created for new account names when the shop has Stripe configured.",
         "operationId": "create_orders__post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Order-Api-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Order-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
