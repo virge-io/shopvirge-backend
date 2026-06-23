@@ -40,6 +40,9 @@ class AppSettings(BaseSettings):
     TESTING: bool = True
     EMAILS_ENABLED: bool = False
     MCP_ENABLED: bool = False
+    # When set, POST /orders requires a matching X-Order-Api-Key header.
+    # Leave unset in dev; set to a random string in production per deployment.
+    ORDER_API_KEY: Optional[str] = None
     # SESSION_SECRET: str = "".join(secrets.choice(string.ascii_letters) for i in range(16))  # noqa: S311
     SESSION_SECRET: str = "CHANGEME"
 
