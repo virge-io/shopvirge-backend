@@ -36,7 +36,7 @@ public_router = APIRouter()
 
 
 def get_shop(shop_id: UUID):
-    shop = crud_shop.get(id=shop_id)
+    shop = crud_shop.shop_crud.get(id=shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop
