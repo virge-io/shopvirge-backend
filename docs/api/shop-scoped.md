@@ -25,7 +25,7 @@ The files under `server/api/endpoints/shop_endpoints/`:
 
 | File | Resource |
 |------|----------|
-| `orders.py` | Orders — checkout-facing order creation and status management. Implemented in `shop_endpoints/`, but mounted at `/orders` instead of `/shops/{shop_id}/orders`. `PATCH /{order_id}` transitions an order to `complete` or `cancelled`: triggers stock deduction (if enabled), a Discord webhook notification, and an order confirmation email. `POST /orders` is additionally protected by an optional `X-Order-Api-Key` header (set `ORDER_API_KEY` env var to enable; requests without the matching key return 403). |
+| `orders.py` | Orders — checkout-facing order creation and status management. Implemented in `shop_endpoints/`, but mounted at `/orders` instead of `/shops/{shop_id}/orders`. `PATCH /{order_id}` transitions an order to `complete` or `cancelled`: triggers stock deduction (if enabled), a Discord webhook notification, and an order confirmation email. |
 | `products.py` | Products (public router split out for unauthenticated catalog browsing). When the shop config toggle `force_unique_product_names` is enabled, `POST` and `PUT` reject duplicate `main_name` values with HTTP 409. Each product also carries a `short_id` (12-char UUID prefix) and an optional `sku` for stable, collision-proof PDP URLs. |
 | `categories.py` | Categories (public router split out similarly). |
 | `tags.py` | Tags. |
