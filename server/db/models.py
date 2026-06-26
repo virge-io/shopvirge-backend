@@ -77,88 +77,6 @@ class UtcTimestamp(TypeDecorator):
         return value.astimezone(timezone.utc) if value else value
 
 
-class ShopUserTable(BaseModel):
-    __tablename__ = "shops_users"
-    id = Column(
-        UUIDType,
-        server_default=text("uuid_generate_v4()"),
-        primary_key=True,
-        index=True,
-    )
-    user_id = Column("user_id", UUIDType, ForeignKey("users.id"))
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"))
-
-
-class RoleUserTable(BaseModel):
-    __tablename__ = "roles_users"
-    id = Column(
-        UUIDType,
-        server_default=text("uuid_generate_v4()"),
-        primary_key=True,
-        index=True,
-    )
-    user_id = Column("user_id", UUIDType, ForeignKey("users.id"))
-    role_id = Column("role_id", UUIDType, ForeignKey("roles.id"))
-
-
-class RoleTable(BaseModel):
-    __tablename__ = "roles"
-    id = Column(
-        UUIDType,
-        server_default=text("uuid_generate_v4()"),
-        primary_key=True,
-        index=True,
-    )
-    name = Column(String(80), unique=True)
-    description = Column(String(255))
-
-    # __str__ is required by Flask-Admin, so we can have human-readable values for the Role when editing a User.
-    def __str__(self):
-        return self.name
-
-    # __hash__ is required to avoid the exception TypeError: unhashable type: 'Role' when saving a User
-    def __hash__(self):
-        return hash(self.name)
-
-
-class UserTable(BaseModel):
-    __tablename__ = "users"
-    id = Column(
-        UUIDType,
-        server_default=text("uuid_generate_v4()"),
-        primary_key=True,
-        index=True,
-    )
-    email = Column(String(255), unique=True)
-    first_name = Column(String(255), index=True)
-    last_name = Column(String(255), index=True)
-    username = Column(String(255), unique=True)
-    password = Column(String(255))
-    active = Column(Boolean(), server_default=text("true"))
-    created_at = Column(UtcTimestamp, server_default=text("CURRENT_TIMESTAMP"))
-    confirmed_at = Column(UtcTimestamp)
-    roles = relationship("RoleTable", secondary="roles_users", backref=backref("users", lazy="dynamic"))
-    shops = relationship("ShopTable", secondary="shops_users", backref=backref("users", lazy="dynamic"))
-
-    mail_offers = Column(Boolean, default=False)
-
-    def __repr__(self):
-        return f"{self.username} : {self.email}"
-
-    @property
-    def is_active(self):
-        """Returns `True` if the user is active."""
-        return self.active
-
-    @property
-    def is_superuser(self):
-        """Returns `True` if the user is a member of the admin role."""
-        for role in self.roles:
-            if role.name == "admin":
-                return True
-        return False
-
-
 class ShopTable(BaseModel):
     __tablename__ = "shops"
     id = Column(
@@ -308,11 +226,9 @@ class OrderTable(BaseModel):
     shipping_fee_inc_btw = Column(Numeric(12, 2), nullable=True)
     status = Column(String(), default="pending")
     created_at = Column(DateTime, server_default=func.now())
-    completed_by = Column("completed_by", UUIDType, ForeignKey("users.id"), nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
     shop = relationship("ShopTable", lazy=True)
-    user = relationship("UserTable", backref=backref("orders", uselist=False))
     account = relationship("Account", backref=backref("accounts", uselist=False))
 
     def __repr__(self):

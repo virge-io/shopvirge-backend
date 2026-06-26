@@ -2609,29 +2609,6 @@
             ],
             "title": "Completed At"
           },
-          "completed_by": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed By"
-          },
-          "completed_by_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed By Name"
-          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2730,7 +2707,6 @@
           "shop_id",
           "order_info",
           "created_at",
-          "completed_by",
           "account_name",
           "shop_name"
         ],
@@ -5628,7 +5604,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.4"
+    "version": "0.3.5"
   },
   "openapi": "3.1.0",
   "paths": {

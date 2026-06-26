@@ -16,11 +16,9 @@ from server.schemas.category import CategoryCreate, CategorySchema, CategoryUpda
 from server.schemas.msg import Msg
 from server.schemas.product import ProductCreate, ProductSchema, ProductUpdate
 from server.schemas.product_to_tag import ProductToTagCreate, ProductToTagSchema, ProductToTagUpdate
-from server.schemas.role import RoleCreate, RoleSchema, RoleUpdate
 from server.schemas.shop import ShopCreate, ShopSchema, ShopUpdate
 from server.schemas.tag import TagCreate, TagSchema, TagUpdate
 from server.schemas.token import Token, TokenPayload
-from server.schemas.user import User, UserCreate, UserUpdate
 
 __all__ = (
     "AccountCreate",
@@ -46,11 +44,5 @@ __all__ = (
     "ProductToTagSchema",
     "Token",
     "TokenPayload",
-    "User",
-    "UserCreate",
-    "UserUpdate",
     "Msg",
-    "RoleCreate",
-    "RoleUpdate",
-    "RoleSchema",
 )

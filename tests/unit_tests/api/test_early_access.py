@@ -17,15 +17,3 @@ def test_early_access_create_wrong_email(test_client):
     response = test_client.post(f"/early-access", content=json_dumps(body))
     assert response.status_code == 422
     assert "value is not a valid email" in response.json()["detail"][0]["msg"]
-
-
-# def test_early_access_create_duplicate(test_client):
-#     body = {
-#         "email": "supportshopVirge.com"
-#     }
-#
-#     response = test_client.post(f"/early-access", content=json_dumps(body))
-#     assert response.status_code == 422
-#     assert "value is not a valid email" in response.json()["detail"][0]["msg"]
-#     # early_access = earlyAccessTable.query.filter_by(id=response.json()["id"]).first()
-#     # assert early_access.email == "support@shopVirge.com"

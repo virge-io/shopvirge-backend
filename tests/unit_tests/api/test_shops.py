@@ -1,8 +1,6 @@
 import json
 from http import HTTPStatus
 
-from more_itertools import one
-
 from server.db import ShopTable
 from server.utils.json import json_dumps
 
@@ -29,29 +27,6 @@ def test_shop_with_categories(shop_with_categories):
     assert len(shop.shop_to_category) == 2
 
 
-#
-#
-# def test_shop_save(test_client, superuser_token_headers):
-#     body = {"name": "New Test Shop", "description": "New Test Shop description"}
-#
-#     response = test_client.post("/api/shop_endpoints/", content=json_dumps(body), headers=superuser_token_headers)
-#     assert HTTPStatus.CREATED == response.status_code
-#     shops = test_client.get("/api/shop_endpoints").json()
-#     assert 1 == len(shops)
-#
-#
-# def test_shop_update(shop_1, test_client, superuser_token_headers):
-#     body = {"name": "Updated Shop", "description": "Shop description"}
-#     response = test_client.put(
-#         f"/api/shop_endpoints/{shop_1.id}", content=json_dumps(body), headers=superuser_token_headers
-#     )
-#     assert HTTPStatus.CREATED == response.status_code
-#
-#     response_updated = test_client.get(f"/api/shop_endpoints/{shop_1.id}", headers=superuser_token_headers)
-#     shop = response_updated.json()
-#     assert shop["name"] == "Updated Shop"
-
-
 def test_shop_create(test_client):
     body = {
         "name": "Test Shop",
@@ -68,114 +43,6 @@ def test_shop_create(test_client):
     item = ShopTable.query.filter_by(id=response.json()["id"]).first()
     assert item.name == "Test Shop"
     assert item.description == "Test Shop Description"
-
-
-# def test_shop_delete(shop_1, test_client, superuser_token_headers):
-#     response = test_client.delete(f"/api/shop_endpoints/{shop_1.id}", headers=superuser_token_headers)
-#     assert HTTPStatus.NO_CONTENT == response.status_code
-#     shops = test_client.get("/api/shop_endpoints", headers=superuser_token_headers).json()
-#     assert len(shops) == 1  # Changed to 1 because admin has 2 shop_endpoints now
-
-
-# def test_shop_get_config(test_client, shop_with_config):
-#     response = test_client.get(f"/shops/config/{shop_with_config}")
-#     assert 200 == response.status_code
-# config = response.json()
-# expected_config = {
-#     "config": {
-#         "short_shop_name": "string",
-#         "main_banner": "string",
-#         "alt1_banner": "string",
-#         "alt2_banner": "string",
-#         "languages": {
-#             "main": {
-#                 "language_name": "string",
-#                 "menu_items": {
-#                     "about": "string",
-#                     "cart": "string",
-#                     "checkout": "string",
-#                     "products": "string",
-#                     "contact": "string",
-#                     "policies": "string",
-#                     "terms": "string",
-#                     "privacy_policy": "string",
-#                     "return_policy": "string",
-#                     "website": "string",
-#                     "phone": "string",
-#                     "email": "string",
-#                     "address": "string",
-#                 },
-#                 "static_texts": {
-#                     "about": "string",
-#                     "terms": "string",
-#                     "privacy_policy": "string",
-#                     "return_policy": "string",
-#                 },
-#             },
-#             "alt1": {
-#                 "language_name": "string",
-#                 "menu_items": {
-#                     "about": "string",
-#                     "cart": "string",
-#                     "checkout": "string",
-#                     "products": "string",
-#                     "contact": "string",
-#                     "policies": "string",
-#                     "terms": "string",
-#                     "privacy_policy": "string",
-#                     "return_policy": "string",
-#                     "website": "string",
-#                     "phone": "string",
-#                     "email": "string",
-#                     "address": "string",
-#                 },
-#                 "static_texts": {
-#                     "about": "string",
-#                     "terms": "string",
-#                     "privacy_policy": "string",
-#                     "return_policy": "string",
-#                 },
-#             },
-#             "alt2": {
-#                 "language_name": "string",
-#                 "menu_items": {
-#                     "about": "string",
-#                     "cart": "string",
-#                     "checkout": "string",
-#                     "products": "string",
-#                     "contact": "string",
-#                     "policies": "string",
-#                     "terms": "string",
-#                     "privacy_policy": "string",
-#                     "return_policy": "string",
-#                     "website": "string",
-#                     "phone": "string",
-#                     "email": "string",
-#                     "address": "string",
-#                 },
-#                 "static_texts": {
-#                     "about": "string",
-#                     "terms": "string",
-#                     "privacy_policy": "string",
-#                     "return_policy": "string",
-#                 },
-#             },
-#         },
-#         "contact": {
-#             "company": "string",
-#             "website": "https://example.com/",
-#             "phone": "+31 6 12345678",
-#             "email": "user@example.com",
-#             "address": "string",
-#             "twitter": "https://example.com/",
-#             "facebook": "https://example.com/",
-#             "instagram": "https://example.com/",
-#         },
-#     },
-#     "config_version": 0,
-#     "stripe_public_key": "string",
-# }
-# assert config == expected_config
 
 
 def test_shop_create_config(test_client, shop):

@@ -80,14 +80,10 @@ def run_migrations(db_uri: str) -> None:
     alembic_cfg = Config(file_=path / "../../alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", db_uri)
 
-    version_locations = alembic_cfg.get_main_option("version_locations")
     alembic_cfg.set_main_option(
         "version_locations",
         f"{os.path.join(path, '../../migrations/versions/schema')} {os.path.join(path, '../../migrations/versions/general')}",
     )
-    # alembic_cfg.set_main_option(
-    #     "version_locations", f"{version_locations} {os.path.dirname(orchestrator.__file__)}/migrations/versions/schema"
-    # )
 
     command.upgrade(alembic_cfg, "heads")
 
@@ -209,7 +205,6 @@ def fastapi_app(database, db_uri):
         expose_headers=app_settings.CORS_EXPOSE_HEADERS,
     )
 
-    # app.add_exception_handler(FormException, form_error_handler)
     app.add_exception_handler(ProblemDetailException, problem_detail_handler)
 
     def get_current_active_superuser_override() -> CustomCognitoToken:
@@ -263,7 +258,6 @@ def fastapi_app_not_authenticated(database, db_uri):
         expose_headers=app_settings.CORS_EXPOSE_HEADERS,
     )
 
-    # app.add_exception_handler(FormException, form_error_handler)
     app.add_exception_handler(ProblemDetailException, problem_detail_handler)
 
     def get_current_active_superuser_override():
