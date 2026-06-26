@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from http import HTTPStatus
 from textwrap import dedent
@@ -283,7 +284,8 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
 )
 def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     shop = get_shop(shop_id)
-    config = ConfigurationV1.model_validate(shop.config) if shop.config else ConfigurationV1()
+    raw = json.loads(shop.config) if isinstance(shop.config, str) else shop.config
+    config = ConfigurationV1.model_validate(raw) if raw else ConfigurationV1()
     if config.toggles.force_unique_product_names:
         _assert_unique_name(shop_id, data.translation.main_name)
 
@@ -316,7 +318,8 @@ def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
         raise HTTPException(status_code=404, detail="Product not found")
 
     shop = get_shop(shop_id)
-    config = ConfigurationV1.model_validate(shop.config) if shop.config else ConfigurationV1()
+    raw = json.loads(shop.config) if isinstance(shop.config, str) else shop.config
+    config = ConfigurationV1.model_validate(raw) if raw else ConfigurationV1()
     if config.toggles.force_unique_product_names:
         _assert_unique_name(shop_id, item_in.translation.main_name, exclude_product_id=product_id)
 
