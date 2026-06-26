@@ -16,7 +16,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import String, cast, or_
 from sqlalchemy.orm import aliased
 
-from server.api.models import transform_json
 from server.crud.base import CRUDBase
 from server.db import db
 from server.db.models import (
@@ -25,7 +24,6 @@ from server.db.models import (
     AttributeTranslationTable,
     ProductAttributeValueTable,
     ProductTable,
-    ProductTranslationTable,
 )
 from server.schemas.product import ProductCreate, ProductUpdate
 
@@ -115,35 +113,9 @@ class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
             query_parameter=query,
         )
 
-    def create_by_shop_id(self, *, shop_id: any, obj_in: ProductCreate) -> ProductTable:
+    def _extra_create_fields(self) -> dict:
         new_id = _generate_uuid_with_unique_short_id(self.model)
-        obj_in_data = transform_json(obj_in.model_dump())
-        translation_data = None
-        try:
-            translation_data = obj_in_data.pop("translation")
-        except Exception:
-            pass
-
-        try:
-            db_obj = self.model(**{**obj_in_data, "shop_id": shop_id, "id": new_id, "short_id": str(new_id)[:12]})
-            db.session.add(db_obj)
-            db.session.flush()
-
-            if translation_data:
-                for field in translation_data:
-                    if translation_data[field] == "":
-                        translation_data[field] = None
-                translation_data["product_id"] = db_obj.id
-                translation = ProductTranslationTable(**translation_data)
-                db.session.add(translation)
-                db.session.commit()
-                db.session.refresh(db_obj)
-                db.session.refresh(translation)
-        except Exception:
-            db.session.rollback()
-            raise
-
-        return db_obj
+        return {"id": new_id, "short_id": str(new_id)[:12]}
 
 
 product_crud = CRUDProduct(ProductTable)

@@ -180,6 +180,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         return db_obj
 
+    def _extra_create_fields(self) -> dict:
+        return {}
+
     def create_by_shop_id(self, *, shop_id: any, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = transform_json(obj_in.model_dump())
         # Todo: remove translate from base? We should handle this in a more generic way, for now a UGLY hack:
@@ -190,7 +193,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             pass
 
         try:
-            db_obj = self.model(**{**obj_in_data, "shop_id": shop_id})
+            db_obj = self.model(**{**obj_in_data, "shop_id": shop_id, **self._extra_create_fields()})
             db.session.add(db_obj)
             db.session.flush()
 
