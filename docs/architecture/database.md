@@ -24,7 +24,7 @@ The main tables and what they hold:
 | `RoleTable` / `RoleUserTable` | Legacy RBAC tables from the pre-Cognito era. Retained in schema only. |
 | `ShopTable` | Shops: name, config, Stripe keys, VAT rates, webhooks. |
 | `ShopUserTable` | Legacy user ↔ shop join table. Shop access is now determined by Cognito group membership, not rows in this table. |
-| `ProductTable` | Products: price, tax category, stock, image URLs 1–6, featured/new flags, optional recurring pricing. |
+| `ProductTable` | Products: price, tax category, stock, image URLs 1–6, featured/new flags, optional recurring pricing. `short_id` (first 12 chars of UUID, globally unique) is backfilled on creation and used as a stable URL identifier. Optional `sku` (VARCHAR 64, unique per shop) can override `short_id` in URLs. |
 | `ProductTranslationTable` | Per-language product name and description. |
 | `CategoryTable` | Product categories with colour, icon, order number, images. |
 | `CategoryTranslationTable` | Per-language category name and description. |

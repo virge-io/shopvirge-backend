@@ -343,6 +343,8 @@ class ProductTable(BaseModel):
     new_product = Column(Boolean(), default=False)
     order_number = Column(Integer, default=0)
     stock = Column(Integer, default=1)
+    sku = Column(String(64), nullable=True)
+    short_id = Column(String(12), nullable=True, index=True)
     image_1 = Column(String(255), index=True)
     image_2 = Column(String(255), index=True)
     image_3 = Column(String(255), index=True)

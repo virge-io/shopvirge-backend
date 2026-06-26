@@ -61,6 +61,7 @@ class ProductBase(BoilerplateBaseModel):
     discounted_to: Optional[datetime] = None
     order_number: Optional[int] = None
     stock: Optional[int] = 1
+    sku: Optional[str] = None
     image_1: Union[Optional[dict], Optional[str]]
     image_2: Union[Optional[dict], Optional[str]]
     image_3: Union[Optional[dict], Optional[str]]
@@ -82,6 +83,7 @@ class ProductUpdate(ProductBase):
 
 class ProductInDBBase(ProductBase):
     id: UUID
+    short_id: Optional[str] = None
     # created_at: datetime
     modified_at: Optional[datetime] = None
     approved_at: Optional[datetime] = None

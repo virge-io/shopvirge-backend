@@ -11,10 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Any, List, Literal, Optional, Tuple
+from uuid import UUID, uuid4
 
-from sqlalchemy import or_
+from sqlalchemy import String, cast, or_
 from sqlalchemy.orm import aliased
 
+from server.api.models import transform_json
 from server.crud.base import CRUDBase
 from server.db import db
 from server.db.models import (
@@ -23,8 +25,18 @@ from server.db.models import (
     AttributeTranslationTable,
     ProductAttributeValueTable,
     ProductTable,
+    ProductTranslationTable,
 )
 from server.schemas.product import ProductCreate, ProductUpdate
+
+
+def _generate_uuid_with_unique_short_id(model: type) -> UUID:
+    new_id = uuid4()
+    short = str(new_id)[:12]
+    exists = db.session.query(model).filter(cast(model.id, String).startswith(short)).count() > 0
+    if exists:
+        return _generate_uuid_with_unique_short_id(model)
+    return new_id
 
 
 class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
@@ -102,6 +114,36 @@ class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
             sort_parameters=sort_parameters,
             query_parameter=query,
         )
+
+    def create_by_shop_id(self, *, shop_id: any, obj_in: ProductCreate) -> ProductTable:
+        new_id = _generate_uuid_with_unique_short_id(self.model)
+        obj_in_data = transform_json(obj_in.model_dump())
+        translation_data = None
+        try:
+            translation_data = obj_in_data.pop("translation")
+        except Exception:
+            pass
+
+        try:
+            db_obj = self.model(**{**obj_in_data, "shop_id": shop_id, "id": new_id, "short_id": str(new_id)[:12]})
+            db.session.add(db_obj)
+            db.session.flush()
+
+            if translation_data:
+                for field in translation_data:
+                    if translation_data[field] == "":
+                        translation_data[field] = None
+                translation_data["product_id"] = db_obj.id
+                translation = ProductTranslationTable(**translation_data)
+                db.session.add(translation)
+                db.session.commit()
+                db.session.refresh(db_obj)
+                db.session.refresh(translation)
+        except Exception:
+            db.session.rollback()
+            raise
+
+        return db_obj
 
 
 product_crud = CRUDProduct(ProductTable)
