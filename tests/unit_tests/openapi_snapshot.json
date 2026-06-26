@@ -3318,6 +3318,17 @@
             "title": "Shop Id",
             "type": "string"
           },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "stock": {
             "anyOf": [
               {
@@ -3566,6 +3577,28 @@
           "shippable": {
             "title": "Shippable",
             "type": "boolean"
+          },
+          "short_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
           },
           "stock": {
             "anyOf": [
@@ -4022,6 +4055,17 @@
             "title": "Shop Id",
             "type": "string"
           },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "stock": {
             "anyOf": [
               {
@@ -4335,6 +4379,28 @@
             "title": "Shop Id",
             "type": "string"
           },
+          "short_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "stock": {
             "anyOf": [
               {
@@ -4625,6 +4691,28 @@
             "format": "uuid",
             "title": "Shop Id",
             "type": "string"
+          },
+          "short_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
           },
           "stock": {
             "anyOf": [
@@ -5540,6 +5628,11 @@
             "title": "Enable Stock On Products",
             "type": "boolean"
           },
+          "force_unique_product_names": {
+            "default": false,
+            "title": "Force Unique Product Names",
+            "type": "boolean"
+          },
           "language_alt1_enabled": {
             "default": false,
             "title": "Language Alt1 Enabled",
@@ -5628,7 +5721,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.4"
+    "version": "0.3.5"
   },
   "openapi": "3.1.0",
   "paths": {

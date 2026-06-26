@@ -62,7 +62,9 @@ def make_translated_product(
     price=1.0,
 ):
     new_id = uuid4()
-    product = ProductTable(id=new_id, short_id=str(new_id)[:12], shop_id=shop_id, category_id=category_id, price=price, stock=1)
+    product = ProductTable(
+        id=new_id, short_id=str(new_id)[:12], shop_id=shop_id, category_id=category_id, price=price, stock=1
+    )
     db.session.add(product)
     db.session.commit()
 
