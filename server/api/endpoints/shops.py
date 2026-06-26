@@ -14,6 +14,7 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.api.helpers import load
 from server.crud.crud_shop import shop_crud
+from server.db import db
 from server.db.models import ShopTable
 from server.schemas.shop import (
     MyShopsResponse,
@@ -209,6 +210,25 @@ def update_config(
     logger.info("Updating shop", data=shop)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+
+    if item_in.config.toggles.force_unique_product_names:
+        from sqlalchemy import func
+
+        from server.db.models import ProductTable, ProductTranslationTable
+
+        duplicate = (
+            db.session.query(ProductTranslationTable.main_name)
+            .join(ProductTable, ProductTranslationTable.product_id == ProductTable.id)
+            .filter(ProductTable.shop_id == id)
+            .group_by(ProductTranslationTable.main_name)
+            .having(func.count(ProductTranslationTable.main_name) > 1)
+            .first()
+        )
+        if duplicate:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot enable force_unique_product_names: duplicate product name '{duplicate[0]}' exists in this shop.",
+            )
 
     shop = shop_crud.update(
         db_obj=shop,

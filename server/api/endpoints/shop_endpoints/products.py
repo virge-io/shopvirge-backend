@@ -7,6 +7,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
@@ -28,7 +29,7 @@ from server.schemas.product import (
     ProductWithDetailsAndPrices,
 )
 from server.schemas.product_attribute import ProductAttributeItem
-from server.schemas.shop import ConfigurationV1
+from server.schemas.shop import Toggles
 
 logger = structlog.get_logger(__name__)
 
@@ -284,9 +285,9 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
 )
 def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     shop = get_shop(shop_id)
-    raw = json.loads(shop.config) if isinstance(shop.config, str) else shop.config
-    config = ConfigurationV1.model_validate(raw) if raw else ConfigurationV1()
-    if config.toggles.force_unique_product_names:
+    raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
+    toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
+    if toggles.force_unique_product_names:
         _assert_unique_name(shop_id, data.translation.main_name)
 
     product = (
@@ -298,7 +299,11 @@ def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     data.order_number = (product.order_number + 1) if product is not None else 0
 
     logger.info("Saving product", data=data)
-    product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
+    try:
+        product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
+    except IntegrityError:
+        db.session.rollback()
+        raise_status(HTTPStatus.CONFLICT, f"A product with SKU '{data.sku}' already exists in this shop")
     return product
 
 
@@ -318,9 +323,9 @@ def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
         raise HTTPException(status_code=404, detail="Product not found")
 
     shop = get_shop(shop_id)
-    raw = json.loads(shop.config) if isinstance(shop.config, str) else shop.config
-    config = ConfigurationV1.model_validate(raw) if raw else ConfigurationV1()
-    if config.toggles.force_unique_product_names:
+    raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
+    toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
+    if toggles.force_unique_product_names:
         _assert_unique_name(shop_id, item_in.translation.main_name, exclude_product_id=product_id)
 
     item_in.modified_at = datetime.now(timezone.utc)

@@ -311,6 +311,12 @@ def _product_body(shop_id, category_id, name="Test Product", sku=None):
             "main_description": "desc",
             "main_description_short": "short",
         },
+        "image_1": "",
+        "image_2": "",
+        "image_3": "",
+        "image_4": "",
+        "image_5": "",
+        "image_6": "",
     }
     if sku is not None:
         body["sku"] = sku
@@ -351,10 +357,10 @@ def test_product_duplicate_sku_same_shop_rejected(shop, category, test_client):
 
 
 def test_product_duplicate_sku_different_shop_allowed(shop, category, test_client):
-    from tests.unit_tests.factories.category import make_category
+    from tests.unit_tests.factories.categories import make_category
     from tests.unit_tests.factories.shop import make_shop
 
-    shop2 = make_shop(with_config=False)
+    shop2 = make_shop(with_config=False, random_shop_name=True)
     category2 = make_category(shop_id=shop2)
     test_client.post(f"/shops/{shop}/products/", content=json_dumps(_product_body(shop, category, sku="XSH-001")))
     response = test_client.post(
@@ -370,9 +376,14 @@ def test_force_unique_names_rejects_duplicate(shop_with_config, category, test_c
     shop = ShopTable.query.filter_by(id=shop_with_config).first()
     import json
 
-    config = json.loads(shop.config)
+    import copy
+
+    from sqlalchemy.orm.attributes import flag_modified
+
+    config = json.loads(shop.config) if isinstance(shop.config, str) else copy.deepcopy(shop.config)
     config["toggles"]["force_unique_product_names"] = True
-    shop.config = json.dumps(config)
+    shop.config = config
+    flag_modified(shop, "config")
     from server.db import db
 
     db.session.commit()
