@@ -11,8 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Any, List, Literal, Optional, Tuple
+from uuid import UUID, uuid4
 
-from sqlalchemy import or_
+from sqlalchemy import String, cast, or_
 from sqlalchemy.orm import aliased
 
 from server.crud.base import CRUDBase
@@ -25,6 +26,15 @@ from server.db.models import (
     ProductTable,
 )
 from server.schemas.product import ProductCreate, ProductUpdate
+
+
+def _generate_uuid_with_unique_short_id(model: type) -> UUID:
+    new_id = uuid4()
+    short = str(new_id)[:12]
+    exists = db.session.query(model).filter(cast(model.id, String).startswith(short)).count() > 0
+    if exists:
+        return _generate_uuid_with_unique_short_id(model)
+    return new_id
 
 
 class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
@@ -102,6 +112,10 @@ class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
             sort_parameters=sort_parameters,
             query_parameter=query,
         )
+
+    def _extra_create_fields(self) -> dict:
+        new_id = _generate_uuid_with_unique_short_id(self.model)
+        return {"id": new_id, "short_id": str(new_id)[:12]}
 
 
 product_crud = CRUDProduct(ProductTable)

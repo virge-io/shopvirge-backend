@@ -21,6 +21,19 @@ This renders and sends two mails:
 1. **Customer confirmation** — `mail_order_confirmation_customer.html.j2`.
 2. **Shop-owner notification** — `mail_order_confirmation_owner.html.j2`.
 
+### Configurable routing (`ConfigurationOrderStatusMails`)
+
+By default the owner notification goes to `shop.config.contact.email`. This can be overridden per shop via `config.order_status_mails`:
+
+| Field | Default | Effect |
+|-------|---------|--------|
+| `owner_notification_enabled` | `true` | Disable to suppress owner notifications entirely. |
+| `owner_notification_email` | `null` (uses `contact.email`) | Override the recipient for owner notifications. |
+| `copy_enabled` | `false` | Send a BCC-style copy to a second address (support archive). |
+| `copy_email` | `null` | Recipient for the copy; required when `copy_enabled` is `true`. |
+
+If `order_status_mails` is absent from the config the old behaviour is preserved (owner notification to `contact.email`, no copy).
+
 ```mermaid
 sequenceDiagram
     autonumber

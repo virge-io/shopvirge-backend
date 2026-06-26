@@ -154,6 +154,7 @@ def test_shop_create_config(test_client, shop):
                 "product_call_to_action_enabled": False,
                 "enable_stock_on_products": True,
                 "enable_attributes_for_categories": False,
+                "force_unique_product_names": False,
             },
             "legal": {
                 "kvk_number": "string",
@@ -280,6 +281,7 @@ def test_shop_update_config(test_client, shop_with_config):
                 "product_call_to_action_enabled": False,
                 "enable_stock_on_products": True,
                 "enable_attributes_for_categories": False,
+                "force_unique_product_names": False,
             },
             "legal": {
                 "kvk_number": "string",
@@ -351,6 +353,7 @@ def test_shop_update_config_with_shipping(test_client, shop_with_config):
                 "product_call_to_action_enabled": False,
                 "enable_stock_on_products": True,
                 "enable_attributes_for_categories": False,
+                "force_unique_product_names": False,
             },
             "legal": None,
             "shipping": {

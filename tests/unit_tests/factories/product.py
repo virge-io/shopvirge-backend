@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 
@@ -17,13 +17,18 @@ def make_product(
     price=1.0,
     tax_category="vat_standard",
     stock: int = 1,
+    shippable: bool = True,
 ):
+    new_id = uuid4()
     product = ProductTable(
+        id=new_id,
+        short_id=str(new_id)[:12],
         shop_id=shop_id,
         category_id=category_id,
         price=price,
         stock=stock,
         tax_category=tax_category,
+        shippable=shippable,
     )
     db.session.add(product)
     db.session.commit()
@@ -56,7 +61,10 @@ def make_translated_product(
     alt2_description_short="Test Produkt Kurzbeschreibung",
     price=1.0,
 ):
-    product = ProductTable(shop_id=shop_id, category_id=category_id, price=price, stock=1)
+    new_id = uuid4()
+    product = ProductTable(
+        id=new_id, short_id=str(new_id)[:12], shop_id=shop_id, category_id=category_id, price=price, stock=1
+    )
     db.session.add(product)
     db.session.commit()
 

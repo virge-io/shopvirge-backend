@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from http import HTTPStatus
 from textwrap import dedent
@@ -6,6 +7,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
@@ -14,7 +16,8 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud import crud_shop
 from server.crud.crud_product import product_crud
-from server.db.models import ProductTable
+from server.db import db
+from server.db.models import ProductTable, ProductTranslationTable
 from server.schemas.product import (
     AttributeFilters,
     ProductCreate,
@@ -26,6 +29,7 @@ from server.schemas.product import (
     ProductWithDetailsAndPrices,
 )
 from server.schemas.product_attribute import ProductAttributeItem
+from server.schemas.shop import Toggles
 
 logger = structlog.get_logger(__name__)
 
@@ -34,10 +38,22 @@ public_router = APIRouter()
 
 
 def get_shop(shop_id: UUID):
-    shop = crud_shop.get_by_id(id=shop_id)
+    shop = crud_shop.shop_crud.get(id=shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop
+
+
+def _assert_unique_name(shop_id: UUID, main_name: str, exclude_product_id: UUID | None = None) -> None:
+    query = (
+        db.session.query(ProductTable)
+        .join(ProductTranslationTable, ProductTranslationTable.product_id == ProductTable.id)
+        .filter(ProductTable.shop_id == shop_id, ProductTranslationTable.main_name == main_name)
+    )
+    if exclude_product_id:
+        query = query.filter(ProductTable.id != exclude_product_id)
+    if query.first():
+        raise_status(HTTPStatus.CONFLICT, f"A product named '{main_name}' already exists in this shop")
 
 
 @router.get(
@@ -268,6 +284,12 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     description="Add a new product to a shop category. The `order_number` is automatically set to the next available value within the category.",
 )
 def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
+    shop = get_shop(shop_id)
+    raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
+    toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
+    if toggles.force_unique_product_names:
+        _assert_unique_name(shop_id, data.translation.main_name)
+
     product = (
         ProductTable.query.filter_by(shop_id=shop_id)
         .filter_by(category_id=data.category_id)
@@ -277,7 +299,11 @@ def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     data.order_number = (product.order_number + 1) if product is not None else 0
 
     logger.info("Saving product", data=data)
-    product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
+    try:
+        product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
+    except IntegrityError:
+        db.session.rollback()
+        raise_status(HTTPStatus.CONFLICT, f"A product with SKU '{data.sku}' already exists in this shop")
     return product
 
 
@@ -295,6 +321,12 @@ def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
     logger.info("Updating product", data=product)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    shop = get_shop(shop_id)
+    raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
+    toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
+    if toggles.force_unique_product_names:
+        _assert_unique_name(shop_id, item_in.translation.main_name, exclude_product_id=product_id)
 
     item_in.modified_at = datetime.now(timezone.utc)
 

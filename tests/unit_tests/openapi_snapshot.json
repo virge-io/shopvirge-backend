@@ -3294,6 +3294,17 @@
             "title": "Shop Id",
             "type": "string"
           },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "stock": {
             "anyOf": [
               {
@@ -3542,6 +3553,28 @@
           "shippable": {
             "title": "Shippable",
             "type": "boolean"
+          },
+          "short_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
           },
           "stock": {
             "anyOf": [
@@ -3998,6 +4031,17 @@
             "title": "Shop Id",
             "type": "string"
           },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "stock": {
             "anyOf": [
               {
@@ -4311,6 +4355,28 @@
             "title": "Shop Id",
             "type": "string"
           },
+          "short_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
           "stock": {
             "anyOf": [
               {
@@ -4601,6 +4667,28 @@
             "format": "uuid",
             "title": "Shop Id",
             "type": "string"
+          },
+          "short_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
           },
           "stock": {
             "anyOf": [
@@ -5514,6 +5602,11 @@
           "enable_stock_on_products": {
             "default": false,
             "title": "Enable Stock On Products",
+            "type": "boolean"
+          },
+          "force_unique_product_names": {
+            "default": false,
+            "title": "Force Unique Product Names",
             "type": "boolean"
           },
           "language_alt1_enabled": {

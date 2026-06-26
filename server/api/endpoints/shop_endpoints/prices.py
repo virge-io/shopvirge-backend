@@ -38,6 +38,8 @@ class Lang(str, Enum):
 
 class ProductResponse(BaseModel):
     id: str
+    short_id: str | None = None
+    sku: str | None = None
     category: str
     category_image: str | None = None
     category_order_number: int
@@ -80,6 +82,8 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
     if lang == Lang.MAIN:
         product_response = ProductResponse(
             id=str(product.id),
+            short_id=product.short_id,
+            sku=product.sku,
             category=product.category.translation.main_name,
             category_image=product.category.main_image,
             category_order_number=product.category.order_number,
@@ -99,6 +103,8 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
     elif lang == Lang.ALT1:
         product_response = ProductResponse(
             id=str(product.id),
+            short_id=product.short_id,
+            sku=product.sku,
             category=product.category.translation.alt1_name,
             category_image=(
                 product.category.alt1_image if product.category.alt1_image else product.category.main_image
@@ -122,6 +128,8 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
     elif lang == Lang.ALT2:
         product_response = ProductResponse(
             id=str(product.id),
+            short_id=product.short_id,
+            sku=product.sku,
             category=product.category.translation.alt2_name,
             category_image=(
                 product.category.alt2_image if product.category.alt2_image else product.category.main_image

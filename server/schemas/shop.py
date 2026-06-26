@@ -173,6 +173,7 @@ class Toggles(BoilerplateBaseModel):
     product_call_to_action_enabled: bool = False
     enable_stock_on_products: bool = False
     enable_attributes_for_categories: bool = False
+    force_unique_product_names: bool = False
 
 
 class ConfigurationShipping(BoilerplateBaseModel):
