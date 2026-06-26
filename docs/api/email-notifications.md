@@ -23,7 +23,7 @@ This renders and sends two mails:
 
 ### Configurable routing (`ConfigurationOrderStatusMails`)
 
-By default the owner notification goes to `shop.config.contact.email`. Since PR #124 this can be overridden per shop via `config.order_status_mails`:
+By default the owner notification goes to `shop.config.contact.email`. This can be overridden per shop via `config.order_status_mails`:
 
 | Field | Default | Effect |
 |-------|---------|--------|
