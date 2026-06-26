@@ -374,9 +374,8 @@ def test_force_unique_names_rejects_duplicate(shop_with_config, category, test_c
     from server.db import ShopTable
 
     shop = ShopTable.query.filter_by(id=shop_with_config).first()
-    import json
-
     import copy
+    import json
 
     from sqlalchemy.orm.attributes import flag_modified
 
