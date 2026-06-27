@@ -8,7 +8,7 @@ from uuid import UUID
 import stripe
 import structlog
 from alembic.util import not_none
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -32,7 +32,7 @@ from server.security import CustomCognitoToken, auth_required
 from server.services import stripe_client
 from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
-from server.settings import mail_settings
+from server.settings import app_settings, mail_settings
 from server.utils.discord.discord import post_discord_order_complete
 
 logger = structlog.get_logger(__name__)
@@ -204,8 +204,15 @@ def check(
         "A Stripe customer is auto-created for new account names when the shop has Stripe configured."
     ),
 )
-def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
+def create(
+    request: Request,
+    data: OrderCreate = Body(...),
+    x_order_api_key: Optional[str] = Header(None, alias="X-Order-Api-Key"),
+) -> OrderCreated:
     logger.info("Saving order", data=data)
+
+    if app_settings.ORDER_API_KEY and x_order_api_key != app_settings.ORDER_API_KEY:
+        raise_status(HTTPStatus.FORBIDDEN, "Missing or invalid X-Order-Api-Key")
 
     if data.customer_order_id:
         del data.customer_order_id
