@@ -15,27 +15,6 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
 
-_JSON_CT = {"Content-Type": "application/json"}
-
-
-class TestClient(_TestClient):
-    """TestClient that auto-sets Content-Type: application/json when content= is used."""
-
-    def _inject_json_ct(self, kwargs: dict) -> dict:
-        if "content" in kwargs and "headers" not in kwargs:
-            return {**kwargs, "headers": _JSON_CT}
-        return kwargs
-
-    def post(self, *args, **kwargs):
-        return super().post(*args, **self._inject_json_ct(kwargs))
-
-    def put(self, *args, **kwargs):
-        return super().put(*args, **self._inject_json_ct(kwargs))
-
-    def patch(self, *args, **kwargs):
-        return super().patch(*args, **self._inject_json_ct(kwargs))
-
-
 from server.api.api import api_router
 from server.api.error_handling import ProblemDetailException
 from server.db import db, init_database
@@ -58,6 +37,26 @@ from tests.unit_tests.factories.order import make_pending_order
 from tests.unit_tests.factories.product import make_product, make_translated_product
 from tests.unit_tests.factories.shop import make_shop
 from tests.unit_tests.factories.tag import make_tag
+
+_JSON_CT = {"Content-Type": "application/json"}
+
+
+class TestClient(_TestClient):
+    """TestClient that auto-sets Content-Type: application/json when content= is used."""
+
+    def _inject_json_ct(self, kwargs: dict) -> dict:
+        if "content" in kwargs and "headers" not in kwargs:
+            return {**kwargs, "headers": _JSON_CT}
+        return kwargs
+
+    def post(self, *args, **kwargs):
+        return super().post(*args, **self._inject_json_ct(kwargs))
+
+    def put(self, *args, **kwargs):
+        return super().put(*args, **self._inject_json_ct(kwargs))
+
+    def patch(self, *args, **kwargs):
+        return super().patch(*args, **self._inject_json_ct(kwargs))
 
 
 def run_migrations(db_uri: str) -> None:
