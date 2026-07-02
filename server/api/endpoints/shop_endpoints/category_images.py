@@ -15,7 +15,7 @@ from server.crud.crud_category import category_crud
 from server.db import db
 from server.schemas.category import CategoryImageDelete, CategoryUpdate
 from server.security import auth_required
-from server.services.revisions import actor, record_category_revision
+from server.services.revisions import actor, ensure_baseline_category_revision, record_category_revision
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
@@ -61,6 +61,7 @@ def put(*, id: UUID, item_in: CategoryUpdate, request: Request, principal: Any =
             item_in.__setattr__(image_col, name)
 
     if category_update:
+        ensure_baseline_category_revision(item)
         item = category_crud.update(
             db_obj=item,
             obj_in=item_in,
@@ -89,6 +90,7 @@ def delete_image(*, id: UUID, col: CategoryImageDelete, request: Request, princi
 
     # Only the DB reference is cleared; the underlying S3 object is intentionally kept
     # so older revisions referencing this filename stay restorable.
+    ensure_baseline_category_revision(item)
     item = category_crud.update(
         db_obj=item,
         obj_in=item_in,

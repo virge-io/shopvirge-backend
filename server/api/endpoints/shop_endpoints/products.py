@@ -31,7 +31,7 @@ from server.schemas.product import (
 from server.schemas.product_attribute import ProductAttributeItem
 from server.schemas.shop import Toggles
 from server.security import auth_required_any
-from server.services.revisions import actor, record_product_revision
+from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -350,6 +350,7 @@ def update(
     item_in.modified_at = datetime.now(timezone.utc)
 
     created_by, source = actor(principal, request)
+    ensure_baseline_product_revision(product)
     product = product_crud.update(
         db_obj=product,
         obj_in=item_in,

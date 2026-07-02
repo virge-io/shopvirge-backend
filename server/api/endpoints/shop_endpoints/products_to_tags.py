@@ -16,7 +16,7 @@ from server.db import db
 from server.db.models import ProductToTagTable
 from server.schemas.product_to_tag import ProductToTagCreate, ProductToTagSchema, ProductToTagUpdate
 from server.security import auth_required
-from server.services.revisions import actor, record_product_revision
+from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -88,6 +88,7 @@ def create(request: Request, data: ProductToTagCreate = Body(...), principal: An
         raise_status(HTTPStatus.NOT_FOUND, "Tag or product not found")
 
     logger.info("Saving product_to_tag", data=data)
+    ensure_baseline_product_revision(product)
     db.session.add(ProductToTagTable(**data.model_dump()))
     created_by, source = actor(principal, request)
     record_product_revision(product, action="update", created_by=created_by, source=source)
@@ -110,12 +111,14 @@ def update(
     if not product_to_tag:
         raise HTTPException(status_code=404, detail="Shop not found")
 
+    product = product_crud.get(item_in.product_id)
+    if product is not None:
+        ensure_baseline_product_revision(product)
     product_to_tag = product_to_tag_crud.update(
         db_obj=product_to_tag,
         obj_in=item_in,
         commit=False,
     )
-    product = product_crud.get(item_in.product_id)
     if product is not None:
         created_by, source = actor(principal, request)
         record_product_revision(product, action="update", created_by=created_by, source=source)
@@ -135,6 +138,8 @@ def delete(product_to_tag_id: UUID, request: Request, principal: Any = Depends(a
     if not relation:
         raise_status(HTTPStatus.NOT_FOUND, f"ProductToTag with id {product_to_tag_id} not found")
     product = relation.product
+    if product is not None:
+        ensure_baseline_product_revision(product)
     db.session.delete(relation)
     if product is not None:
         created_by, source = actor(principal, request)

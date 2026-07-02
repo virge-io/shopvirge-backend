@@ -84,14 +84,16 @@ def test_updates_append_revisions_and_are_listable(shop_with_config, product, te
     resp = test_client.get(f"/shops/{shop_with_config}/products/{product}/revisions")
     assert resp.status_code == 200
     revisions = resp.json()
-    assert len(revisions) == 2
+    # The factory product predates revision tracking, so the first edit also captures a baseline
+    assert len(revisions) == 3
     # Newest first
-    assert revisions[0]["revision_no"] == 2
+    assert revisions[0]["revision_no"] == 3
     assert revisions[0]["action"] == "update"
     assert revisions[0]["name"] == "Name v1"
     assert revisions[1]["name"] == "Name v0"
+    assert revisions[2]["action"] == "baseline"
 
-    detail = test_client.get(f"/shops/{shop_with_config}/products/{product}/revisions/1").json()
+    detail = test_client.get(f"/shops/{shop_with_config}/products/{product}/revisions/2").json()
     assert detail["data"]["product"]["price"] == 2.0
     assert detail["data"]["translation"]["main_name"] == "Name v0"
     assert detail["data"]["category"] is not None
@@ -114,7 +116,10 @@ def test_tag_and_attribute_mutations_record_revisions(shop_with_config, product,
     assert resp.status_code == 204, resp.text
 
     rows = revision_rows(product)
-    assert [r.action for r in rows] == ["update", "update"]
+    assert [r.action for r in rows] == ["baseline", "update", "update"]
+    # The baseline holds the state before the first mutation: no tags, no attribute values
+    assert rows[0].data["tags"] == []
+    assert rows[0].data["attribute_values"] == []
     latest = rows[-1].data
     assert latest["tags"] == [{"id": str(tag_id), "name": "revtag"}]
     assert latest["attribute_values"] == [
@@ -138,12 +143,13 @@ def test_restore_previous_revision(shop_with_config, product, test_client):
         test_client.put(f"/shops/{shop_with_config}/products/{product}", content=json_dumps(body_v2)).status_code == 201
     )
 
-    resp = test_client.post(f"/shops/{shop_with_config}/products/{product}/revisions/1/restore")
+    # Revision 1 is the baseline of the pre-existing product; revision 2 is "Original name"
+    resp = test_client.post(f"/shops/{shop_with_config}/products/{product}/revisions/2/restore")
     assert resp.status_code == 200, resp.json()
     report = resp.json()
     assert report["restored"] is True
-    assert report["restored_from_revision_no"] == 1
-    assert report["new_revision_no"] == 3
+    assert report["restored_from_revision_no"] == 2
+    assert report["new_revision_no"] == 4
     assert report["unresolved"] == []
     assert report["skipped_fields"] == []
 

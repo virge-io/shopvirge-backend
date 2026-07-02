@@ -49,7 +49,13 @@ from server.schemas.product import (
 )
 from server.schemas.product_attribute import ProductAttributeItem
 from server.security import auth_required_any
-from server.services.revisions import actor, record_category_revision, record_product_revision
+from server.services.revisions import (
+    actor,
+    ensure_baseline_category_revision,
+    ensure_baseline_product_revision,
+    record_category_revision,
+    record_product_revision,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -170,6 +176,7 @@ def update(
         raise HTTPException(status_code=404, detail="Category not found")
 
     created_by, source = actor(principal, request)
+    ensure_baseline_category_revision(category)
     category = category_crud.update(
         db_obj=category,
         obj_in=item_in,
@@ -286,6 +293,7 @@ def delete(
         category_name = category.translation.main_name if category.translation else None
         detached_from = {"id": str(category_id), "name": category_name}
         for product in products:
+            ensure_baseline_product_revision(product)
             product.category_id = None
             record_product_revision(
                 product,

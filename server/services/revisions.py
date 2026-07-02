@@ -189,6 +189,51 @@ def _record_revision(
     return revision
 
 
+def _has_revision(entity_type: str, entity_id: UUID) -> bool:
+    query = db.session.query(RevisionTable.id).filter(
+        RevisionTable.entity_type == entity_type, RevisionTable.entity_id == entity_id
+    )
+    return db.session.query(query.exists()).scalar()
+
+
+def _ensure_baseline(entity_type: str, entity: Any, snapshot: Any) -> Optional[RevisionTable]:
+    # Autoflush stays off for the whole capture so mutations already pending in the
+    # session (new tag links, attribute values) cannot leak into the baseline.
+    with db.session.no_autoflush:
+        if _has_revision(entity_type, entity.id):
+            return None
+        return _record_revision(
+            shop_id=entity.shop_id,
+            entity_type=entity_type,
+            entity_id=entity.id,
+            action="baseline",
+            data=snapshot(entity),
+            created_by=None,
+            source="rest",
+        )
+
+
+def ensure_baseline_product_revision(product: ProductTable) -> Optional[RevisionTable]:
+    """Capture the pre-mutation state of a product that predates the revisions feature.
+
+    Entities created before revision tracking shipped have no revision rows, so their
+    first edit would otherwise be un-undoable: the first recorded revision would hold
+    the *post*-edit state. This records the current state as revision 1
+    (``action="baseline"``) and is a no-op once any revision exists.
+
+    Call it BEFORE applying the mutation: in-memory column changes are visible to the
+    snapshot regardless of flushing. ``created_by`` stays empty because the captured
+    state was authored before tracking existed, not by the actor triggering the capture.
+    Deletes don't need a baseline — a delete revision already snapshots the pre-delete state.
+    """
+    return _ensure_baseline(ENTITY_PRODUCT, product, snapshot_product)
+
+
+def ensure_baseline_category_revision(category: CategoryTable) -> Optional[RevisionTable]:
+    """Category counterpart of ``ensure_baseline_product_revision`` — same contract."""
+    return _ensure_baseline(ENTITY_CATEGORY, category, snapshot_category)
+
+
 def record_product_revision(
     product: ProductTable,
     *,

@@ -20,10 +20,11 @@ def test_retention_prunes_old_revisions(shop_with_config, product, test_client, 
 
     _update_n_times(test_client, shop_with_config, product, category, 15)
 
+    # 16 revisions were written (baseline + 15 updates); the newest 12 survive
     rows = revision_rows(product)
     assert len(rows) == 12
     # The highest, contiguous revision numbers survive
-    assert [r.revision_no for r in rows] == list(range(4, 16))
+    assert [r.revision_no for r in rows] == list(range(5, 17))
     assert rows[-1].data["translation"]["main_name"] == "Retention v14"
 
 
@@ -33,6 +34,7 @@ def test_retention_never_drops_below_minimum(shop_with_config, product, test_cli
 
     _update_n_times(test_client, shop_with_config, product, category, 12)
 
+    # 13 revisions were written (baseline + 12 updates); the floor keeps the newest 10
     rows = revision_rows(product)
     assert len(rows) == 10
-    assert [r.revision_no for r in rows] == list(range(3, 13))
+    assert [r.revision_no for r in rows] == list(range(4, 14))

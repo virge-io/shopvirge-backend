@@ -27,7 +27,7 @@ from server.schemas.product_attribute_value import (
     ProductAttributeValueSchema,
 )
 from server.security import auth_required
-from server.services.revisions import actor, record_product_revision
+from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -135,6 +135,7 @@ def create_product_attribute_values(
         raise_status(HTTPStatus.CONFLICT, "Product attribute value already exists for this product/attribute/option")
 
     # Create + record a product revision in the same transaction
+    ensure_baseline_product_revision(product)
     db.session.add(ProductAttributeValueTable(**data.model_dump()))
     created_by, source = actor(principal, request)
     record_product_revision(product, action="update", created_by=created_by, source=source)
@@ -206,6 +207,7 @@ def create_product_attribute_values_for_product(
     new_pavs = _create_product_attribute_values(product_id, options, {pav.option_id for pav in existing_pavs})
 
     if new_pavs:
+        ensure_baseline_product_revision(product)
         db.session.add_all(new_pavs)
         created_by, source = actor(principal, request)
         record_product_revision(product, action="update", created_by=created_by, source=source)
@@ -332,6 +334,8 @@ def put_selected_product_attribute_values_by_product(
             )
 
     # Batch execute changes
+    if to_add_objs or to_delete_objs:
+        ensure_baseline_product_revision(product)
     if to_add_objs:
         db.session.add_all(to_add_objs)
     for obj in to_delete_objs:
@@ -362,6 +366,7 @@ def delete_product_attribute_value(
     if not pav.product or pav.product.shop_id != shop_id:
         raise_status(HTTPStatus.NOT_FOUND, f"ProductAttributeValue with id {id} not found for this shop")
     product = pav.product
+    ensure_baseline_product_revision(product)
     db.session.delete(pav)
     created_by, source = actor(principal, request)
     record_product_revision(product, action="update", created_by=created_by, source=source)
