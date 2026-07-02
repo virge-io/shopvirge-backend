@@ -8,7 +8,7 @@ from typing import Any, List, Set, Union
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -26,6 +26,8 @@ from server.schemas.product_attribute_value import (
     ProductAttributeValueBase,
     ProductAttributeValueSchema,
 )
+from server.security import auth_required
+from server.services.revisions import actor, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -85,7 +87,12 @@ def get_product_attribute_value(shop_id: UUID, id: UUID) -> ProductAttributeValu
     summary="Create product attribute values (deprecated)",
     operation_id="product_attribute_values_create_deprecated",
 )
-def create_product_attribute_values(shop_id: UUID, data: ProductAttributeValueBase = Body(...)) -> None:
+def create_product_attribute_values(
+    shop_id: UUID,
+    request: Request,
+    data: ProductAttributeValueBase = Body(...),
+    principal: Any = Depends(auth_required),
+) -> None:
     """
     DEPRECATED: Create a new product attribute value for a product within a shop.
 
@@ -127,10 +134,11 @@ def create_product_attribute_values(shop_id: UUID, data: ProductAttributeValueBa
     if existing:
         raise_status(HTTPStatus.CONFLICT, "Product attribute value already exists for this product/attribute/option")
 
-    # Create
-    product_attribute_value_crud.create(
-        obj_in=data,
-    )
+    # Create + record a product revision in the same transaction
+    db.session.add(ProductAttributeValueTable(**data.model_dump()))
+    created_by, source = actor(principal, request)
+    record_product_revision(product, action="update", created_by=created_by, source=source)
+    db.session.commit()
 
 
 def get_attribute_options_by_ids(option_ids: list[UUID], shop_id: UUID) -> list[AttributeOptionTable]:
@@ -158,7 +166,9 @@ def get_attribute_options_by_ids(option_ids: list[UUID], shop_id: UUID) -> list[
 def create_product_attribute_values_for_product(
     shop_id: UUID,
     product_id: UUID,
+    request: Request,
     data: ProductAttributeOptionSelectionAdd = Body(...),
+    principal: Any = Depends(auth_required),
 ) -> None:
     """Create new product attribute value(s) for a specific product using product_id in the URL.
 
@@ -197,6 +207,8 @@ def create_product_attribute_values_for_product(
 
     if new_pavs:
         db.session.add_all(new_pavs)
+        created_by, source = actor(principal, request)
+        record_product_revision(product, action="update", created_by=created_by, source=source)
         db.session.commit()
 
     return None
@@ -238,7 +250,9 @@ def _create_product_attribute_values(
 def put_selected_product_attribute_values_by_product(
     shop_id: UUID,
     product_id: UUID,
+    request: Request,
     data: ProductAttributeOptionSelectionReplace = Body(...),
+    principal: Any = Depends(auth_required),
 ) -> None:
     """New version of selected options endpoint addressed by product_id in the path.
 
@@ -324,6 +338,8 @@ def put_selected_product_attribute_values_by_product(
         db.session.delete(obj)
 
     if to_add_objs or to_delete_objs:
+        created_by, source = actor(principal, request)
+        record_product_revision(product, action="update", created_by=created_by, source=source)
         db.session.commit()
 
     return None
@@ -336,12 +352,18 @@ def put_selected_product_attribute_values_by_product(
     summary="Delete product attribute value",
     operation_id="product_attribute_values_delete",
 )
-def delete_product_attribute_value(shop_id: UUID, id: UUID) -> None:
+def delete_product_attribute_value(
+    shop_id: UUID, id: UUID, request: Request, principal: Any = Depends(auth_required)
+) -> None:
     """Delete a product attribute value if it belongs to the given shop."""
     pav = product_attribute_value_crud.get(id)
     if not pav:
         raise_status(HTTPStatus.NOT_FOUND, f"ProductAttributeValue with id {id} not found")
     if not pav.product or pav.product.shop_id != shop_id:
         raise_status(HTTPStatus.NOT_FOUND, f"ProductAttributeValue with id {id} not found for this shop")
-    product_attribute_value_crud.delete(id=str(id))
+    product = pav.product
+    db.session.delete(pav)
+    created_by, source = actor(principal, request)
+    record_product_revision(product, action="update", created_by=created_by, source=source)
+    db.session.commit()
     return None

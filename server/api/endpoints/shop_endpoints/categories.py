@@ -1,11 +1,12 @@
 import json
 from collections import defaultdict
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.param_functions import Body, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
@@ -47,6 +48,8 @@ from server.schemas.product import (
     ProductWithDefaultPrice,
 )
 from server.schemas.product_attribute import ProductAttributeItem
+from server.security import auth_required_any
+from server.services.revisions import actor, record_category_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -129,12 +132,19 @@ def get_by_name(name: str, shop_id: UUID) -> CategorySchema:
     summary="Create category",
     description="Add a new category to a shop. The `order_number` is automatically set to the next available value.",
 )
-def create(shop_id: UUID, data: CategoryCreate = Body(...)) -> None:
+def create(
+    shop_id: UUID, request: Request, data: CategoryCreate = Body(...), principal: Any = Depends(auth_required_any)
+) -> None:
     category = CategoryTable.query.filter_by(shop_id=shop_id).order_by(CategoryTable.order_number.desc()).first()
     data.order_number = (category.order_number + 1) if category is not None else 0
 
     logger.info("Saving category", data=data)
-    return category_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
+    created_by, source = actor(principal, request)
+    category = category_crud.create_by_shop_id(obj_in=data, shop_id=shop_id, commit=False)
+    record_category_revision(category, action="create", created_by=created_by, source=source)
+    db.session.commit()
+    db.session.refresh(category)
+    return category
 
 
 @router.put(
@@ -146,16 +156,27 @@ def create(shop_id: UUID, data: CategoryCreate = Body(...)) -> None:
     summary="Update category",
     description="Update an existing category's details and translations.",
 )
-def update(*, category_id: UUID, shop_id: UUID, item_in: CategoryUpdate) -> Any:
-    category = category_crud.get_id_by_shop_id(shop_id, category_id)
+def update(
+    *,
+    category_id: UUID,
+    shop_id: UUID,
+    item_in: CategoryUpdate,
+    request: Request,
+    principal: Any = Depends(auth_required_any),
+) -> Any:
+    category = category_crud.get_id_by_shop_id(shop_id, category_id, for_update=True)
     logger.info("Updating category", data=category)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
+    created_by, source = actor(principal, request)
     category = category_crud.update(
         db_obj=category,
         obj_in=item_in,
+        commit=False,
     )
+    record_category_revision(category, action="update", created_by=created_by, source=source)
+    db.session.commit()
 
     # if category.shop_id is not None:
     #     invalidateShopCache(category.shop_id)
@@ -207,11 +228,78 @@ def swap(shop_id: UUID, category_id: UUID, move_up: bool):
     status_code=HTTPStatus.NO_CONTENT,
     tags=[AgentTag.EXPOSED],
     operation_id="delete_category",
-    summary="Delete category",
-    description="Remove a category from the shop. Fails if any products are still assigned to it.",
+    summary="Delete category (moves to trash)",
+    description=(
+        "Moves a category to the trash (restorable with `restore_category`). If products are still "
+        "assigned to it the request fails with 409 and the product count; retry with `force=true` to "
+        "also move all those products to the trash (restorable as one batch), or with `detach=true` to "
+        "keep the products but clear their category. `force` and `detach` are mutually exclusive."
+    ),
 )
-def delete(category_id: UUID, shop_id: UUID) -> None:
-    return category_crud.delete_by_shop_id(shop_id=shop_id, id=category_id)
+def delete(
+    category_id: UUID,
+    shop_id: UUID,
+    request: Request,
+    force: bool = Query(False, description="Also move all products in this category to the trash."),
+    detach: bool = Query(False, description="Keep the products; clear their category reference instead."),
+    principal: Any = Depends(auth_required_any),
+) -> None:
+    if force and detach:
+        raise HTTPException(status_code=422, detail="force and detach are mutually exclusive")
+
+    category = category_crud.get_id_by_shop_id(shop_id, category_id, for_update=True)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    products = (
+        db.session.query(ProductTable)
+        .filter(ProductTable.shop_id == shop_id, ProductTable.category_id == category_id)
+        .with_for_update()
+        .all()
+    )
+
+    if products and not force and not detach:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": f"Category still has {len(products)} product(s); deleting it affects all of them.",
+                "product_count": len(products),
+                "hint": (
+                    "Retry with force=true to move the products to the trash too (restorable as one batch), "
+                    "or detach=true to keep the products without a category."
+                ),
+            },
+        )
+
+    created_by, source = actor(principal, request)
+    now = datetime.now(timezone.utc)
+    extra_data = None
+
+    if products and force:
+        batch_id = uuid4()
+        for product in products:
+            record_product_revision(product, action="delete", created_by=created_by, source=source)
+            product.deleted_at = now
+            product.deleted_batch_id = batch_id
+        extra_data = {"deleted_batch_id": str(batch_id), "deleted_product_count": len(products)}
+    elif products and detach:
+        category_name = category.translation.main_name if category.translation else None
+        detached_from = {"id": str(category_id), "name": category_name}
+        for product in products:
+            product.category_id = None
+            record_product_revision(
+                product,
+                action="update",
+                created_by=created_by,
+                source=source,
+                extra_data={"detached_from_category": detached_from},
+            )
+        extra_data = {"detached_product_count": len(products)}
+
+    record_category_revision(category, action="delete", created_by=created_by, source=source, extra_data=extra_data)
+    category.deleted_at = now
+    db.session.commit()
+    return None
 
 
 @public_router.get(

@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -117,7 +118,12 @@ def create_option(shop_id: UUID, attribute_id: UUID, data: dict = Body(...)) -> 
     description="Remove an attribute option. This will fail if the option is currently used by any product values.",
     deprecated=True,
 )
-def delete_option(shop_id: UUID, attribute_id: UUID, option_id: UUID) -> None:
+def delete_option(
+    shop_id: UUID,
+    attribute_id: UUID,
+    option_id: UUID,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+) -> None:
     """Delete an attribute option."""
     # Ensure attribute belongs to shop
     attribute = attribute_crud.get_id_by_shop_id(shop_id=shop_id, id=attribute_id)
@@ -128,13 +134,18 @@ def delete_option(shop_id: UUID, attribute_id: UUID, option_id: UUID) -> None:
     if not option or option.attribute_id != attribute_id:
         raise_status(HTTPStatus.NOT_FOUND, f"Option with id {option_id} not found for this attribute")
 
-    try:
-        attribute_option_crud.delete(id=str(option_id))
-    except IntegrityError:
-        raise_status(
-            HTTPStatus.CONFLICT,
-            detail={"message": "Attribute option is in use and cannot be deleted"},
-        )
+    if force:
+        try:
+            attribute_option_crud.delete(id=str(option_id))
+        except IntegrityError:
+            raise_status(
+                HTTPStatus.CONFLICT,
+                detail={"message": "Attribute option is in use and cannot be deleted"},
+            )
+        return None
+
+    option.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
     return None
 
 
@@ -236,22 +247,32 @@ def update_option_v2(shop_id: UUID, option_id: UUID, data: AttributeOptionUpdate
     summary="Delete attribute option",
     description="Remove an attribute option, ensuring it belongs to the shop.",
 )
-def delete_option_v2(shop_id: UUID, option_id: UUID) -> None:
+def delete_option_v2(
+    shop_id: UUID,
+    option_id: UUID,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+) -> None:
     """Delete an attribute option."""
     option = (
         db.session.query(AttributeOptionTable)
         .join(AttributeTable)
         .filter(AttributeOptionTable.id == option_id, AttributeTable.shop_id == shop_id)
+        .execution_options(include_deleted=force)
         .first()
     )
     if not option:
         raise_status(HTTPStatus.NOT_FOUND, f"Option with id {option_id} not found for this shop")
 
-    try:
-        attribute_option_crud.delete(id=str(option_id))
-    except IntegrityError:
-        raise_status(
-            HTTPStatus.CONFLICT,
-            detail={"message": "Attribute option is in use and cannot be deleted"},
-        )
+    if force:
+        try:
+            attribute_option_crud.delete(id=str(option_id))
+        except IntegrityError:
+            raise_status(
+                HTTPStatus.CONFLICT,
+                detail={"message": "Attribute option is in use and cannot be deleted"},
+            )
+        return None
+
+    option.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
     return None

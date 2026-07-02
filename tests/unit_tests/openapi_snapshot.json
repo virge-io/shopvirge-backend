@@ -4730,6 +4730,279 @@
         "title": "ProductWithDetailsAndPrices",
         "type": "object"
       },
+      "RestoreReport": {
+        "description": "What a restore actually did \u2014 agents should read this to see what didn't come back.",
+        "properties": {
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "new_revision_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Revision No"
+          },
+          "restored": {
+            "title": "Restored",
+            "type": "boolean"
+          },
+          "restored_from_revision_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restored From Revision No"
+          },
+          "resurrected": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ResurrectedEntity"
+            },
+            "title": "Resurrected",
+            "type": "array"
+          },
+          "skipped_fields": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped Fields",
+            "type": "array"
+          },
+          "unresolved": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/UnresolvedReference"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "restored",
+          "entity_type",
+          "entity_id"
+        ],
+        "title": "RestoreReport",
+        "type": "object"
+      },
+      "ResurrectedEntity": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "ResurrectedEntity",
+        "type": "object"
+      },
+      "RevisionDetail": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "revision_no": {
+            "title": "Revision No",
+            "type": "integer"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "entity_id",
+          "revision_no",
+          "action",
+          "schema_version",
+          "source",
+          "data"
+        ],
+        "title": "RevisionDetail",
+        "type": "object"
+      },
+      "RevisionSummary": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "revision_no": {
+            "title": "Revision No",
+            "type": "integer"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "entity_id",
+          "revision_no",
+          "action",
+          "schema_version",
+          "source"
+        ],
+        "title": "RevisionSummary",
+        "type": "object"
+      },
       "ShippingCalculateRequest": {
         "properties": {
           "order_info": {
@@ -5653,6 +5926,96 @@
         "title": "Toggles",
         "type": "object"
       },
+      "TrashItem": {
+        "properties": {
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "deleted_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted Batch Id"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "entity_type",
+          "id"
+        ],
+        "title": "TrashItem",
+        "type": "object"
+      },
+      "UnresolvedReference": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "UnresolvedReference",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -5697,7 +6060,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.3.5"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -9150,6 +9513,18 @@
               "title": "Option Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Permanently purge instead of moving to trash. Irreversible.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Permanently purge instead of moving to trash. Irreversible.",
+              "title": "Force",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -9818,7 +10193,7 @@
     },
     "/shops/{shop_id}/attributes/{attribute_id}": {
       "delete": {
-        "description": "Remove an attribute from a shop. This will fail if the attribute is currently in use by any products.",
+        "description": "Moves an attribute to the trash: it disappears from listings but existing product values keep their data, so restoring the attribute brings everything back. This action is reversible. Only `force=true` permanently purges the attribute (fails with 409 while products still use it); that is irreversible and requires user (Cognito) credentials \u2014 API keys get 403.",
         "operationId": "delete_attribute",
         "parameters": [
           {
@@ -9839,6 +10214,18 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Permanently purge instead of moving to trash. Irreversible.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Permanently purge instead of moving to trash. Irreversible.",
+              "title": "Force",
+              "type": "boolean"
             }
           },
           {
@@ -9873,7 +10260,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete attribute",
+        "summary": "Delete attribute (moves to trash)",
         "tags": [
           "shops",
           "attributes",
@@ -10179,6 +10566,18 @@
               "format": "uuid",
               "title": "Option Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Permanently purge instead of moving to trash. Irreversible.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Permanently purge instead of moving to trash. Irreversible.",
+              "title": "Force",
+              "type": "boolean"
             }
           }
         ],
@@ -10846,7 +11245,7 @@
     },
     "/shops/{shop_id}/categories/{category_id}": {
       "delete": {
-        "description": "Remove a category from the shop. Fails if any products are still assigned to it.",
+        "description": "Moves a category to the trash (restorable with `restore_category`). If products are still assigned to it the request fails with 409 and the product count; retry with `force=true` to also move all those products to the trash (restorable as one batch), or with `detach=true` to keep the products but clear their category. `force` and `detach` are mutually exclusive.",
         "operationId": "delete_category",
         "parameters": [
           {
@@ -10867,6 +11266,30 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Also move all products in this category to the trash.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Also move all products in this category to the trash.",
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Keep the products; clear their category reference instead.",
+            "in": "query",
+            "name": "detach",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Keep the products; clear their category reference instead.",
+              "title": "Detach",
+              "type": "boolean"
             }
           },
           {
@@ -10901,7 +11324,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete category",
+        "summary": "Delete category (moves to trash)",
         "tags": [
           "categories",
           "agent-exposed"
@@ -11286,6 +11709,165 @@
         "summary": "List products in a category with attribute filters",
         "tags": [
           "categories"
+        ]
+      }
+    },
+    "/shops/{shop_id}/categories/{category_id}/restore": {
+      "post": {
+        "description": "Brings a trashed (deleted) category back. With `restore_products=true` (default) it also restores every product that was moved to the trash together with the category by a `delete_category` with `force=true`.",
+        "operationId": "restore_category",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Also restore the products trashed together with this category.",
+            "in": "query",
+            "name": "restore_products",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "Also restore the products trashed together with this category.",
+              "title": "Restore Products",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore category from trash",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/categories/{category_id}/revisions": {
+      "get": {
+        "description": "Returns the revision history of a category, newest first.",
+        "operationId": "list_category_revisions_shops__shop_id__categories__category_id__revisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RevisionSummary"
+                  },
+                  "title": "Response List Category Revisions Shops  Shop Id  Categories  Category Id  Revisions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List category revisions",
+        "tags": [
+          "shops",
+          "revisions"
         ]
       }
     },
@@ -12656,7 +13238,7 @@
     },
     "/shops/{shop_id}/products/{product_id}": {
       "delete": {
-        "description": "Permanently remove a product from the shop.",
+        "description": "Moves the product to the trash. The product disappears from all listings but can be restored with `restore_product` or via its revisions \u2014 this action is reversible. Only `force=true` permanently purges the product; that is irreversible and requires user (Cognito) credentials \u2014 API keys get 403.",
         "operationId": "delete_product",
         "parameters": [
           {
@@ -12677,6 +13259,18 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Permanently purge instead of moving to trash. Irreversible.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Permanently purge instead of moving to trash. Irreversible.",
+              "title": "Force",
+              "type": "boolean"
             }
           },
           {
@@ -12711,7 +13305,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete product",
+        "summary": "Delete product (moves to trash)",
         "tags": [
           "shops",
           "products",
@@ -12847,6 +13441,329 @@
         "tags": [
           "shops",
           "products",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/products/{product_id}/restore": {
+      "post": {
+        "description": "Brings a trashed (deleted) product back, including its tags and attribute values. If the product's category is also in the trash it is restored as well.",
+        "operationId": "restore_product",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore product from trash",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/products/{product_id}/revisions": {
+      "get": {
+        "description": "Returns the revision history of a product, newest first. Every change to the product (fields, translation, tags, attribute values, images) recorded one revision. Use `get_product_revision` to inspect a revision and `restore_product_revision` to roll back to it.",
+        "operationId": "list_product_revisions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RevisionSummary"
+                  },
+                  "title": "Response List Product Revisions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List product revisions",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed",
+          "agent-large"
+        ]
+      }
+    },
+    "/shops/{shop_id}/products/{product_id}/revisions/{revision_no}": {
+      "get": {
+        "description": "Returns one product revision including the full snapshot data (all fields, tags, attribute values and image references at that point in time).",
+        "operationId": "get_product_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_no",
+            "required": true,
+            "schema": {
+              "title": "Revision No",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get product revision",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/products/{product_id}/revisions/{revision_no}/restore": {
+      "post": {
+        "description": "Rolls the product back to the state captured in the given revision: fields, translation, category, tags, attribute values and image references. Soft-deleted categories/tags/attributes referenced by the snapshot are automatically restored from the trash; references that were permanently purged are matched by name where possible, otherwise reported in `unresolved`. The restore itself is recorded as a new revision, so it can be undone too. Read the returned report to see what could not be brought back.",
+        "operationId": "restore_product_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_no",
+            "required": true,
+            "schema": {
+              "title": "Revision No",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Recreate the product from the snapshot even if it was permanently purged (user credentials required).",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Recreate the product from the snapshot even if it was permanently purged (user credentials required).",
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore product to a revision",
+        "tags": [
+          "shops",
+          "revisions",
           "agent-exposed"
         ]
       }
@@ -13423,7 +14340,7 @@
     },
     "/shops/{shop_id}/tags/{tag_id}": {
       "delete": {
-        "description": "Remove a tag from a shop. Fails with 400 if products still reference this tag.",
+        "description": "Moves a tag to the trash: it disappears from listings and from the products carrying it, but its product links are kept so restoring the tag brings everything back. This action is reversible. Only `force=true` permanently purges the tag (and its product links); that is irreversible and requires user (Cognito) credentials \u2014 API keys get 403.",
         "operationId": "delete_tag",
         "parameters": [
           {
@@ -13444,6 +14361,18 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Permanently purge instead of moving to trash. Irreversible.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Permanently purge instead of moving to trash. Irreversible.",
+              "title": "Force",
+              "type": "boolean"
             }
           },
           {
@@ -13478,7 +14407,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete tag",
+        "summary": "Delete tag (moves to trash)",
         "tags": [
           "shops",
           "products",
@@ -13631,6 +14560,71 @@
           "shops",
           "products",
           "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/trash": {
+      "get": {
+        "description": "Returns all soft-deleted products and categories of the shop, so they can be inspected and restored.",
+        "operationId": "list_trash_shops__shop_id__trash_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrashItem"
+                  },
+                  "title": "Response List Trash Shops  Shop Id  Trash Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List trashed products and categories",
+        "tags": [
+          "shops",
+          "revisions"
         ]
       }
     },

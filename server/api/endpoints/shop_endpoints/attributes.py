@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import List
+from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -14,7 +15,7 @@ from server.api.error_handling import raise_status
 from server.crud.base import NotFound
 from server.crud.crud_attribute import attribute_crud
 from server.db import db
-from server.db.models import AttributeOptionTable
+from server.db.models import ApiKeyTable, AttributeOptionTable
 from server.schemas.attribute import (
     AttributeBase,
     AttributeCreate,
@@ -23,6 +24,7 @@ from server.schemas.attribute import (
     AttributeUpdate,
     AttributeWithOptionsSchema,
 )
+from server.security import auth_required_any
 
 logger = structlog.get_logger(__name__)
 
@@ -205,19 +207,43 @@ def update(attribute_id: UUID, shop_id: UUID, data: AttributeUpdate = Body(...))
     "/{attribute_id}",
     response_model=None,
     status_code=HTTPStatus.NO_CONTENT,
-    summary="Delete attribute",
-    description="Remove an attribute from a shop. This will fail if the attribute is currently in use by any products.",
+    summary="Delete attribute (moves to trash)",
+    description=(
+        "Moves an attribute to the trash: it disappears from listings but existing product values keep "
+        "their data, so restoring the attribute brings everything back. This action is reversible. "
+        "Only `force=true` permanently purges the attribute (fails with 409 while products still use it); "
+        "that is irreversible and requires user (Cognito) credentials — API keys get 403."
+    ),
     tags=[AgentTag.EXPOSED],
     operation_id="delete_attribute",
 )
-def delete(attribute_id: UUID, shop_id: UUID) -> None:
+def delete(
+    attribute_id: UUID,
+    shop_id: UUID,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+    principal: Any = Depends(auth_required_any),
+) -> None:
     """Delete an attribute for a shop."""
-    try:
-        return attribute_crud.delete_by_shop_id(shop_id=shop_id, id=attribute_id)
-    except NotFound:
+    attribute = attribute_crud.get_id_by_shop_id(shop_id, attribute_id, for_update=True, include_deleted=force)
+    if not attribute:
         raise_status(HTTPStatus.NOT_FOUND, f"Attribute with id {attribute_id} not found")
-    except IntegrityError as e:
-        raise_status(
-            HTTPStatus.CONFLICT,
-            detail={"message": "Attribute is in use and cannot be deleted"},
-        )
+
+    if force:
+        if isinstance(principal, ApiKeyTable):
+            raise HTTPException(
+                status_code=403,
+                detail="Purging an attribute is irreversible and requires user credentials; API keys may only trash.",
+            )
+        try:
+            return attribute_crud.delete_by_shop_id(shop_id=shop_id, id=attribute_id, include_deleted=True)
+        except NotFound:
+            raise_status(HTTPStatus.NOT_FOUND, f"Attribute with id {attribute_id} not found")
+        except IntegrityError:
+            raise_status(
+                HTTPStatus.CONFLICT,
+                detail={"message": "Attribute is in use and cannot be deleted"},
+            )
+
+    attribute.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return None

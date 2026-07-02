@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -11,7 +12,10 @@ from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.crud_tag import tag_crud
+from server.db import db
+from server.db.models import ApiKeyTable
 from server.schemas.tag import TagCreate, TagSchema, TagUpdate
+from server.security import auth_required_any
 
 logger = structlog.get_logger(__name__)
 
@@ -110,12 +114,36 @@ def update(*, tag_id: UUID, shop_id: UUID, item_in: TagUpdate) -> Any:
     status_code=HTTPStatus.NO_CONTENT,
     tags=[AgentTag.EXPOSED],
     operation_id="delete_tag",
-    summary="Delete tag",
-    description="Remove a tag from a shop. Fails with 400 if products still reference this tag.",
+    summary="Delete tag (moves to trash)",
+    description=(
+        "Moves a tag to the trash: it disappears from listings and from the products carrying it, but its "
+        "product links are kept so restoring the tag brings everything back. This action is reversible. "
+        "Only `force=true` permanently purges the tag (and its product links); that is irreversible and "
+        "requires user (Cognito) credentials — API keys get 403."
+    ),
 )
-def delete(tag_id: UUID, shop_id: UUID) -> None:
-    try:
-        tag_crud.delete_by_shop_id(shop_id=shop_id, id=tag_id)
-    except Exception as e:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, detail=f"{e.__cause__}")
-    return
+def delete(
+    tag_id: UUID,
+    shop_id: UUID,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+    principal: Any = Depends(auth_required_any),
+) -> None:
+    tag = tag_crud.get_id_by_shop_id(shop_id, tag_id, for_update=True, include_deleted=force)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+
+    if force:
+        if isinstance(principal, ApiKeyTable):
+            raise HTTPException(
+                status_code=403,
+                detail="Purging a tag is irreversible and requires user credentials; API keys may only trash.",
+            )
+        try:
+            tag_crud.delete_by_shop_id(shop_id=shop_id, id=tag_id, include_deleted=True)
+        except Exception as e:
+            raise HTTPException(HTTPStatus.BAD_REQUEST, detail=f"{e.__cause__}")
+        return None
+
+    tag.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return None

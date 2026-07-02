@@ -6,7 +6,7 @@ from typing import Any, List, Literal, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
@@ -17,7 +17,7 @@ from server.api.error_handling import raise_status
 from server.crud import crud_shop
 from server.crud.crud_product import product_crud
 from server.db import db
-from server.db.models import ProductTable, ProductTranslationTable
+from server.db.models import ApiKeyTable, ProductTable, ProductTranslationTable
 from server.schemas.product import (
     AttributeFilters,
     ProductCreate,
@@ -30,6 +30,8 @@ from server.schemas.product import (
 )
 from server.schemas.product_attribute import ProductAttributeItem
 from server.schemas.shop import Toggles
+from server.security import auth_required_any
+from server.services.revisions import actor, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -283,7 +285,12 @@ def get_by_id(product_id: UUID, shop_id: UUID) -> ProductWithDetailsAndPrices:
     summary="Create product",
     description="Add a new product to a shop category. The `order_number` is automatically set to the next available value within the category.",
 )
-def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
+def create(
+    shop_id: UUID,
+    request: Request,
+    data: ProductCreate = Body(...),
+    principal: Any = Depends(auth_required_any),
+) -> None:
     shop = get_shop(shop_id)
     raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
     toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
@@ -299,8 +306,13 @@ def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     data.order_number = (product.order_number + 1) if product is not None else 0
 
     logger.info("Saving product", data=data)
+    created_by, source = actor(principal, request)
     try:
-        product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id)
+        product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id, commit=False)
+        db.session.flush()
+        record_product_revision(product, action="create", created_by=created_by, source=source)
+        db.session.commit()
+        db.session.refresh(product)
     except IntegrityError:
         db.session.rollback()
         raise_status(HTTPStatus.CONFLICT, f"A product with SKU '{data.sku}' already exists in this shop")
@@ -316,8 +328,15 @@ def create(shop_id: UUID, data: ProductCreate = Body(...)) -> None:
     summary="Update product",
     description="Update an existing product's details, including name, description, pricing, stock, and feature flags.",
 )
-def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
-    product = product_crud.get_id_by_shop_id(shop_id, product_id)
+def update(
+    *,
+    product_id: UUID,
+    shop_id: UUID,
+    item_in: ProductUpdate,
+    request: Request,
+    principal: Any = Depends(auth_required_any),
+) -> Any:
+    product = product_crud.get_id_by_shop_id(shop_id, product_id, for_update=True)
     logger.info("Updating product", data=product)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -330,10 +349,15 @@ def update(*, product_id: UUID, shop_id: UUID, item_in: ProductUpdate) -> Any:
 
     item_in.modified_at = datetime.now(timezone.utc)
 
+    created_by, source = actor(principal, request)
     product = product_crud.update(
         db_obj=product,
         obj_in=item_in,
+        commit=False,
     )
+    db.session.flush()
+    record_product_revision(product, action="update", created_by=created_by, source=source)
+    db.session.commit()
     return product
 
 
@@ -396,8 +420,37 @@ def swap(shop_id: UUID, product_id: UUID, move_up: bool):
     status_code=HTTPStatus.NO_CONTENT,
     tags=[AgentTag.EXPOSED],
     operation_id="delete_product",
-    summary="Delete product",
-    description="Permanently remove a product from the shop.",
+    summary="Delete product (moves to trash)",
+    description=(
+        "Moves the product to the trash. The product disappears from all listings but can be "
+        "restored with `restore_product` or via its revisions — this action is reversible. "
+        "Only `force=true` permanently purges the product; that is irreversible and requires "
+        "user (Cognito) credentials — API keys get 403."
+    ),
 )
-def delete(product_id: UUID, shop_id: UUID) -> None:
-    return product_crud.delete_by_shop_id(shop_id=shop_id, id=product_id)
+def delete(
+    product_id: UUID,
+    shop_id: UUID,
+    request: Request,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+    principal: Any = Depends(auth_required_any),
+) -> None:
+    product = product_crud.get_id_by_shop_id(shop_id, product_id, for_update=True, include_deleted=force)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if force:
+        if isinstance(principal, ApiKeyTable):
+            raise HTTPException(
+                status_code=403,
+                detail="Purging a product is irreversible and requires user credentials; API keys may only trash.",
+            )
+        # Hard purge: removes the row (+ translation, tag links, attribute values via
+        # cascades). Revision rows are intentionally kept.
+        return product_crud.delete_by_shop_id(shop_id=shop_id, id=product_id, include_deleted=True)
+
+    created_by, source = actor(principal, request)
+    record_product_revision(product, action="delete", created_by=created_by, source=source)
+    product.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return None
