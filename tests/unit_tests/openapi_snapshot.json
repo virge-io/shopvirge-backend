@@ -3073,9 +3073,16 @@
       "ProductCreate": {
         "properties": {
           "category_id": {
-            "format": "uuid",
-            "title": "Category Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
           },
           "digital": {
             "anyOf": [
@@ -3327,7 +3334,6 @@
         },
         "required": [
           "shop_id",
-          "category_id",
           "max_one",
           "shippable",
           "featured",
@@ -3798,9 +3804,16 @@
       "ProductUpdate": {
         "properties": {
           "category_id": {
-            "format": "uuid",
-            "title": "Category Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
           },
           "digital": {
             "anyOf": [
@@ -4064,7 +4077,6 @@
         },
         "required": [
           "shop_id",
-          "category_id",
           "max_one",
           "shippable",
           "featured",
@@ -4117,9 +4129,16 @@
             "title": "Approved At"
           },
           "category_id": {
-            "format": "uuid",
-            "title": "Category Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
           },
           "digital": {
             "anyOf": [
@@ -4399,7 +4418,6 @@
         },
         "required": [
           "shop_id",
-          "category_id",
           "max_one",
           "shippable",
           "featured",
@@ -4432,9 +4450,16 @@
             "title": "Approved At"
           },
           "category_id": {
-            "format": "uuid",
-            "title": "Category Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
           },
           "digital": {
             "anyOf": [
@@ -4712,7 +4737,6 @@
         },
         "required": [
           "shop_id",
-          "category_id",
           "max_one",
           "shippable",
           "featured",
@@ -6060,7 +6084,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.4.2"
+    "version": "0.4.3"
   },
   "openapi": "3.1.0",
   "paths": {

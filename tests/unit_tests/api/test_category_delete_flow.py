@@ -99,6 +99,15 @@ def test_detach_keeps_products_without_category(shop_with_config, test_client):
     assert row.deleted_at is None
     assert row.category_id is None
 
+    # Product endpoints must keep serializing detached products (category_id is None)
+    resp = test_client.get(f"/shops/{shop_with_config}/products/")
+    assert resp.status_code == 200, resp.text
+    listed = {item["id"]: item for item in resp.json()}
+    assert listed[str(product_id)]["category_id"] is None
+    resp = test_client.get(f"/shops/{shop_with_config}/products/{product_id}")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["category_id"] is None
+
     # The detach was recorded on the product with a pointer to the old category
     last = (
         db.session.query(RevisionTable)
