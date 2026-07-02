@@ -30,16 +30,17 @@ from sqlalchemy import (
     Numeric,
     String,
     TypeDecorator,
+    event,
     func,
     text,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Dialect
 from sqlalchemy.exc import DontWrapMixin
-from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm import backref, relationship, with_loader_criteria
 from sqlalchemy_utils import UUIDType
 
-from server.db.database import BaseModel, Database
+from server.db.database import BaseModel, Database, WrappedSession
 from server.schemas.shop import ShopType
 from server.settings import app_settings
 
@@ -75,6 +76,20 @@ class UtcTimestamp(TypeDecorator):
 
     def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
         return value.astimezone(timezone.utc) if value else value
+
+
+class SoftDeleteMixin:
+    """Soft delete support: rows with a non-NULL ``deleted_at`` are trashed, not gone.
+
+    NOTE: every SELECT that runs through the ORM session automatically excludes
+    soft-deleted rows via the ``do_orm_execute`` listener at the bottom of this
+    module. Code that must see trashed rows (trash listing, restore, purge) opts
+    out per statement with ``.execution_options(include_deleted=True)``.
+    ``Session.get()`` (identity-map lookups) can bypass the listener, so
+    ``CRUDBase.get``/``get_id`` re-check ``deleted_at`` explicitly.
+    """
+
+    deleted_at = Column(UtcTimestamp, nullable=True, index=True)
 
 
 class ShopTable(BaseModel):
@@ -114,7 +129,7 @@ class ShopTable(BaseModel):
         return self.name
 
 
-class TagTable(BaseModel):
+class TagTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "tags"
     id = Column(
         UUIDType,
@@ -168,7 +183,7 @@ class Account(BaseModel):
         return f"{self.shop.name}: {self.name}"
 
 
-class CategoryTable(BaseModel):
+class CategoryTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "categories"
     id = Column(
         UUIDType,
@@ -235,7 +250,7 @@ class OrderTable(BaseModel):
         return "<Order for shop: %s with total: %s>" % (self.shop.name, self.total)
 
 
-class ProductTable(BaseModel):
+class ProductTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "products"
     id = Column(
         UUIDType,
@@ -267,6 +282,9 @@ class ProductTable(BaseModel):
     image_4 = Column(String(255), index=True)
     image_5 = Column(String(255), index=True)
     image_6 = Column(String(255), index=True)
+    # Groups products trashed together by one category cascade-delete, so the
+    # whole batch can be restored in a single operation.
+    deleted_batch_id = Column(UUIDType, nullable=True, index=True)
     created_at = Column(UtcTimestamp, server_default=text("CURRENT_TIMESTAMP"))
     modified_at = Column(
         UtcTimestamp,
@@ -413,7 +431,7 @@ class FaqTable(BaseModel):
     )
 
 
-class AttributeTable(BaseModel):
+class AttributeTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "attributes"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
@@ -474,7 +492,7 @@ class AttributeTranslationTable(BaseModel):
     attribute = relationship("AttributeTable", back_populates="translation")
 
 
-class AttributeOptionTable(BaseModel):
+class AttributeOptionTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "attribute_options"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
@@ -519,6 +537,37 @@ class ProductAttributeValueTable(BaseModel):
     )
 
 
+class RevisionTable(BaseModel):
+    __tablename__ = "revisions"
+
+    id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
+    shop_id = Column(UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
+    # 'product' | 'category' | 'tag' | 'attribute'. entity_id has no FK on purpose:
+    # revisions must survive hard purges of the entity and future model churn.
+    entity_type = Column(String(30), nullable=False)
+    entity_id = Column(UUIDType, nullable=False)
+    # Monotonic per (entity_type, entity_id), starting at 1
+    revision_no = Column(Integer, nullable=False)
+    # create | update | delete | restore | baseline
+    action = Column(String(20), nullable=False)
+    # Version of the snapshot structure in `data`. Bump only for structural reshapes
+    # (renamed/nested keys); plain column additions/removals are handled at restore
+    # time by intersecting snapshot keys with the current model columns.
+    schema_version = Column(Integer, nullable=False, server_default="1")
+    # Full aggregate snapshot; see server/services/revisions.py for the shape.
+    data = Column(postgresql.JSONB(), nullable=False)
+    # "cognito:<sub>" or "api_key:<uuid>"
+    created_by = Column(String(128), nullable=True)
+    # 'rest' | 'mcp'
+    source = Column(String(10), nullable=False, server_default="rest")
+    created_at = Column(UtcTimestamp, server_default=text("CURRENT_TIMESTAMP"))
+
+    __table_args__ = (
+        sqlalchemy.UniqueConstraint("entity_type", "entity_id", "revision_no", name="uq_revision_entity_no"),
+        sqlalchemy.Index("ix_revisions_entity", "entity_type", "entity_id", "revision_no"),
+    )
+
+
 class ApiKeyTable(BaseModel):
     __tablename__ = "api_keys"
 
@@ -540,3 +589,23 @@ class ApiKeyTable(BaseModel):
     revoked_at = Column(UtcTimestamp, nullable=True)
 
     shop = relationship("ShopTable", lazy=True)
+
+
+@event.listens_for(WrappedSession, "do_orm_execute")
+def _exclude_soft_deleted(execute_state) -> None:
+    """Exclude soft-deleted rows from every ORM SELECT by default.
+
+    Applies ``deleted_at IS NULL`` to all entities inheriting SoftDeleteMixin in the
+    statement, including their eager/lazy relationship loads (the criteria propagate
+    from the top-level statement). Opt out per statement with
+    ``.execution_options(include_deleted=True)``.
+    """
+    if (
+        execute_state.is_select
+        and not execute_state.is_column_load
+        and not execute_state.is_relationship_load
+        and not execute_state.execution_options.get("include_deleted", False)
+    ):
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(SoftDeleteMixin, lambda cls: cls.deleted_at.is_(None), include_aliases=True)
+        )

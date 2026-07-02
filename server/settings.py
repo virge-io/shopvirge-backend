@@ -40,6 +40,9 @@ class AppSettings(BaseSettings):
     TESTING: bool = True
     EMAILS_ENABLED: bool = False
     MCP_ENABLED: bool = False
+    # How many revisions to keep per entity (product/category). Pruned on write.
+    # The PIM undo story assumes at least 10; values below that are ignored.
+    REVISION_RETENTION: int = 25
     # SESSION_SECRET: str = "".join(secrets.choice(string.ascii_letters) for i in range(16))  # noqa: S311
     SESSION_SECRET: str = "CHANGEME"
 

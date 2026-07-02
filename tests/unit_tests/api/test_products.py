@@ -86,7 +86,7 @@ def test_products_delete(shop_with_config, product, test_client):
 
 
 def test_products_delete_cascade_cleanup(shop_with_config, product, category, test_client):
-    """Test that deleting a product also deletes its attribute values and tag associations, but NOT the tags/options."""
+    """Test that purging (force=true) a product also deletes its attribute values, but NOT the tags/options."""
     from server.db import db
     from server.db.models import AttributeOptionTable, AttributeTable, ProductAttributeValueTable
     from tests.unit_tests.factories.attribute import make_attribute, make_option, make_pav
@@ -103,12 +103,13 @@ def test_products_delete_cascade_cleanup(shop_with_config, product, category, te
     # Verify setup
     assert db.session.get(ProductAttributeValueTable, pav_id) is not None
 
-    # 2. Perform Delete
-    response = test_client.delete(f"/shops/{shop_with_config}/products/{product}")
+    # 2. Perform hard purge (a plain delete only moves to trash and keeps the PAVs)
+    response = test_client.delete(f"/shops/{shop_with_config}/products/{product}?force=true")
     assert response.status_code == 204
 
     # 3. Verify Cascade Deletion
     # These should be gone
+    assert db.session.get(ProductTable, product) is None
     assert db.session.get(ProductAttributeValueTable, pav_id) is None
 
     # These should still exist

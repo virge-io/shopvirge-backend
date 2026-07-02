@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import List
+from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, Request
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -15,11 +16,12 @@ from server.crud.crud_attribute_option import attribute_option_crud
 from server.db import db
 from server.db.models import AttributeOptionTable, AttributeTable
 from server.schemas.attribute_option import (
-    AttributeOptionBase,
     AttributeOptionCreate,
     AttributeOptionSchema,
     AttributeOptionUpdate,
 )
+from server.security import auth_required
+from server.services.revisions import actor, ensure_baseline_attribute_revision, record_attribute_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -83,7 +85,13 @@ def get_option(shop_id: UUID, attribute_id: UUID, option_id: UUID) -> AttributeO
     description="Create a new option for a specific attribute. The value_key should be a language-agnostic identifier (e.g., 'XL').",
     deprecated=True,
 )
-def create_option(shop_id: UUID, attribute_id: UUID, data: dict = Body(...)) -> AttributeOptionSchema:
+def create_option(
+    shop_id: UUID,
+    attribute_id: UUID,
+    request: Request,
+    data: dict = Body(...),
+    principal: Any = Depends(auth_required),
+) -> AttributeOptionSchema:
     """
     Create a new option for an attribute within a shop.
 
@@ -99,14 +107,20 @@ def create_option(shop_id: UUID, attribute_id: UUID, data: dict = Body(...)) -> 
     if not value_key:
         raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, "value_key is required")
 
-    payload = AttributeOptionBase(attribute_id=attribute_id, value_key=value_key)
-    logger.info("Saving attribute option", attribute_id=str(attribute_id), value_key=payload.value_key)
+    logger.info("Saving attribute option", attribute_id=str(attribute_id), value_key=value_key)
 
+    created_by, source = actor(principal, request)
+    ensure_baseline_attribute_revision(attribute)
+    option = AttributeOptionTable(attribute_id=attribute_id, value_key=value_key)
+    db.session.add(option)
     try:
-        option = attribute_option_crud.create(obj_in=payload)
-        return option
+        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        db.session.commit()
     except IntegrityError:
+        db.session.rollback()
         raise_status(HTTPStatus.CONFLICT, f"Option with value_key {value_key} already exists for this attribute")
+    db.session.refresh(option)
+    return option
 
 
 @deprecated_router.delete(
@@ -117,7 +131,14 @@ def create_option(shop_id: UUID, attribute_id: UUID, data: dict = Body(...)) -> 
     description="Remove an attribute option. This will fail if the option is currently used by any product values.",
     deprecated=True,
 )
-def delete_option(shop_id: UUID, attribute_id: UUID, option_id: UUID) -> None:
+def delete_option(
+    shop_id: UUID,
+    attribute_id: UUID,
+    option_id: UUID,
+    request: Request,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+    principal: Any = Depends(auth_required),
+) -> None:
     """Delete an attribute option."""
     # Ensure attribute belongs to shop
     attribute = attribute_crud.get_id_by_shop_id(shop_id=shop_id, id=attribute_id)
@@ -128,9 +149,26 @@ def delete_option(shop_id: UUID, attribute_id: UUID, option_id: UUID) -> None:
     if not option or option.attribute_id != attribute_id:
         raise_status(HTTPStatus.NOT_FOUND, f"Option with id {option_id} not found for this attribute")
 
+    return _delete_option(attribute, option, force, principal, request)
+
+
+def _delete_option(
+    attribute: AttributeTable, option: AttributeOptionTable, force: bool, principal: Any, request: Request
+) -> None:
+    """Shared delete flow: soft delete by default, hard purge with force; both record an attribute revision."""
+    created_by, source = actor(principal, request)
+    ensure_baseline_attribute_revision(attribute)
+
+    if force:
+        db.session.delete(option)
+    else:
+        option.deleted_at = datetime.now(timezone.utc)
+
     try:
-        attribute_option_crud.delete(id=str(option_id))
+        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        db.session.commit()
     except IntegrityError:
+        db.session.rollback()
         raise_status(
             HTTPStatus.CONFLICT,
             detail={"message": "Attribute option is in use and cannot be deleted"},
@@ -167,7 +205,9 @@ def list_options_for_shop(
     summary="Create attribute option",
     description="Create a new option for a specific attribute within a shop. The attribute_id must be provided in the request body.",
 )
-def create_option_v2(shop_id: UUID, data: AttributeOptionCreate = Body(...)) -> AttributeOptionSchema:
+def create_option_v2(
+    shop_id: UUID, request: Request, data: AttributeOptionCreate = Body(...), principal: Any = Depends(auth_required)
+) -> AttributeOptionSchema:
     """
     Create a new option for an attribute within a shop.
 
@@ -180,11 +220,18 @@ def create_option_v2(shop_id: UUID, data: AttributeOptionCreate = Body(...)) -> 
 
     logger.info("Saving attribute option", attribute_id=str(data.attribute_id), value_key=data.value_key)
 
+    created_by, source = actor(principal, request)
+    ensure_baseline_attribute_revision(attribute)
+    option = AttributeOptionTable(**data.model_dump())
+    db.session.add(option)
     try:
-        option = attribute_option_crud.create(obj_in=data)
-        return option
+        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        db.session.commit()
     except IntegrityError:
+        db.session.rollback()
         raise_status(HTTPStatus.CONFLICT, f"Option with value_key {data.value_key} already exists for this attribute")
+    db.session.refresh(option)
+    return option
 
 
 @router.get(
@@ -212,7 +259,13 @@ def get_option_v2(shop_id: UUID, option_id: UUID) -> AttributeOptionSchema:
     summary="Update attribute option",
     description="Update the details of an existing attribute option, ensuring it belongs to the shop.",
 )
-def update_option_v2(shop_id: UUID, option_id: UUID, data: AttributeOptionUpdate = Body(...)) -> AttributeOptionSchema:
+def update_option_v2(
+    shop_id: UUID,
+    option_id: UUID,
+    request: Request,
+    data: AttributeOptionUpdate = Body(...),
+    principal: Any = Depends(auth_required),
+) -> AttributeOptionSchema:
     """Update an attribute option."""
     option = (
         db.session.query(AttributeOptionTable)
@@ -223,9 +276,16 @@ def update_option_v2(shop_id: UUID, option_id: UUID, data: AttributeOptionUpdate
     if not option:
         raise_status(HTTPStatus.NOT_FOUND, f"Option with id {option_id} not found for this shop")
 
+    attribute = option.attribute
+    created_by, source = actor(principal, request)
+    ensure_baseline_attribute_revision(attribute)
     try:
-        return attribute_option_crud.update(db_obj=option, obj_in=data)
+        option = attribute_option_crud.update(db_obj=option, obj_in=data, commit=False)
+        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        db.session.commit()
+        return option
     except IntegrityError:
+        db.session.rollback()
         raise_status(HTTPStatus.CONFLICT, f"Option with value_key {data.value_key} already exists for this attribute")
 
 
@@ -236,22 +296,22 @@ def update_option_v2(shop_id: UUID, option_id: UUID, data: AttributeOptionUpdate
     summary="Delete attribute option",
     description="Remove an attribute option, ensuring it belongs to the shop.",
 )
-def delete_option_v2(shop_id: UUID, option_id: UUID) -> None:
+def delete_option_v2(
+    shop_id: UUID,
+    option_id: UUID,
+    request: Request,
+    force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
+    principal: Any = Depends(auth_required),
+) -> None:
     """Delete an attribute option."""
     option = (
         db.session.query(AttributeOptionTable)
         .join(AttributeTable)
         .filter(AttributeOptionTable.id == option_id, AttributeTable.shop_id == shop_id)
+        .execution_options(include_deleted=force)
         .first()
     )
     if not option:
         raise_status(HTTPStatus.NOT_FOUND, f"Option with id {option_id} not found for this shop")
 
-    try:
-        attribute_option_crud.delete(id=str(option_id))
-    except IntegrityError:
-        raise_status(
-            HTTPStatus.CONFLICT,
-            detail={"message": "Attribute option is in use and cannot be deleted"},
-        )
-    return None
+    return _delete_option(option.attribute, option, force, principal, request)

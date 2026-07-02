@@ -65,21 +65,23 @@ class CRUDAttribute(CRUDBase[AttributeTable, AttributeCreate, AttributeUpdate]):
             db.session.rollback()
             raise
 
-    def delete_by_shop_id(self, *, shop_id: UUID, id: UUID) -> None:
+    def delete_by_shop_id(self, *, shop_id: UUID, id: UUID, commit: bool = True, include_deleted: bool = False) -> None:
         """
         Delete an attribute for a shop.
         Does NOT delete related records automatically (no deep delete here anymore).
         Deletion will fail at DB level if relationships (PAVs) are still active (FK constraint).
         """
         # Fetch attribute first to validate shop ownership
-        obj = (
-            db.session.query(AttributeTable).filter(AttributeTable.shop_id == shop_id, AttributeTable.id == id).first()
-        )
+        query = db.session.query(AttributeTable).filter(AttributeTable.shop_id == shop_id, AttributeTable.id == id)
+        if include_deleted:
+            query = query.execution_options(include_deleted=True)
+        obj = query.first()
         if obj is None:
             raise NotFound
         try:
             db.session.delete(obj)
-            db.session.commit()
+            if commit:
+                db.session.commit()
         except:
             db.session.rollback()
             raise

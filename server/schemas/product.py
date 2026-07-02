@@ -45,7 +45,8 @@ class ProductBase(BoilerplateBaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     shop_id: UUID
-    category_id: UUID
+    # None for products detached from a deleted category (delete_category with detach=true)
+    category_id: Optional[UUID] = None
     price: Optional[Money] = None
     recurring_price_monthly: Optional[Money] = None
     recurring_price_yearly: Optional[Money] = None

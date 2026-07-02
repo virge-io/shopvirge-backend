@@ -43,6 +43,7 @@ from server.api.endpoints.shop_endpoints import (
     product_attribute_values,
     products,
     products_to_tags,
+    revisions,
     shipping,
     stripe,
     tags,
@@ -135,6 +136,12 @@ api_router.include_router(
     prefix="/shops/{shop_id}/products-to-tags",
     tags=["shops", "products"],
     dependencies=[Depends(auth_required)],
+)
+api_router.include_router(
+    revisions.router,
+    prefix="/shops/{shop_id}",
+    tags=["shops", "revisions"],
+    dependencies=[Depends(auth_required_any)],
 )
 api_router.include_router(
     tags.router,

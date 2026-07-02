@@ -55,13 +55,31 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.model = model
 
     def get(self, id: UUID | str) -> Optional[ModelType]:
-        return db.session.get(self.model, id)
+        obj = db.session.get(self.model, id)
+        # Session.get() can bypass the do_orm_execute soft-delete filter (identity map),
+        # so re-check deleted_at explicitly for soft-deletable models.
+        if obj is not None and getattr(obj, "deleted_at", None) is not None:
+            return None
+        return obj
 
     def get_id(self, id: UUID | str) -> Optional[ModelType]:
-        return db.session.get(self.model, id)
+        return self.get(id)
 
-    def get_id_by_shop_id(self, shop_id: UUID, id: UUID) -> Optional[ModelType]:
-        return db.session.query(self.model).filter(self.model.shop_id == shop_id, self.model.id == id).first()
+    def get_id_by_shop_id(
+        self,
+        shop_id: UUID,
+        id: UUID,
+        for_update: bool = False,
+        include_deleted: bool = False,
+    ) -> Optional[ModelType]:
+        query = db.session.query(self.model).filter(self.model.shop_id == shop_id, self.model.id == id)
+        if include_deleted:
+            query = query.execution_options(include_deleted=True)
+        if for_update:
+            # Row lock: serializes concurrent writers on the same entity so that
+            # revision numbering (max + 1) is race-free.
+            query = query.with_for_update()
+        return query.first()
 
     def get_multi(
         self,
@@ -183,7 +201,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def _extra_create_fields(self) -> dict:
         return {}
 
-    def create_by_shop_id(self, *, shop_id: any, obj_in: CreateSchemaType) -> ModelType:
+    def create_by_shop_id(self, *, shop_id: any, obj_in: CreateSchemaType, commit: bool = True) -> ModelType:
         obj_in_data = transform_json(obj_in.model_dump())
         # Todo: remove translate from base? We should handle this in a more generic way, for now a UGLY hack:
         translation_data = None
@@ -206,9 +224,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 translation_data[translation_name.lower() + "_id"] = db_obj.id
                 translation = translation_model(**translation_data)
                 db.session.add(translation)
-                db.session.commit()
-                db.session.refresh(db_obj)
-                db.session.refresh(translation)
+                if commit:
+                    db.session.commit()
+                    db.session.refresh(db_obj)
+                    db.session.refresh(translation)
+                else:
+                    db.session.flush()
         except:
             db.session.rollback()
             raise
@@ -261,8 +282,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.session.commit()
         return None
 
-    def delete_by_shop_id(self, *, shop_id: UUID, id: UUID) -> None:
-        obj = db.session.query(self.model).filter(self.model.shop_id == shop_id, self.model.id == id).first()
+    def delete_by_shop_id(self, *, shop_id: UUID, id: UUID, commit: bool = True, include_deleted: bool = False) -> None:
+        query = db.session.query(self.model).filter(self.model.shop_id == shop_id, self.model.id == id)
+        if include_deleted:
+            query = query.execution_options(include_deleted=True)
+        obj = query.first()
         if obj is None:
             raise NotFound
 
@@ -278,5 +302,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                     db.session.delete(translation_obj)
 
         db.session.delete(obj)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return None
