@@ -6060,7 +6060,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.4.1"
+    "version": "0.4.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -10677,6 +10677,171 @@
         ]
       }
     },
+    "/shops/{shop_id}/attributes/{attribute_id}/restore": {
+      "post": {
+        "description": "Brings a trashed (deleted) attribute back, including its options and all product values that used it. Options that were trashed individually before stay in the trash \u2014 restore an attribute revision to bring those back too.",
+        "operationId": "restore_attribute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attribute_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attribute Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore attribute from trash",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/attributes/{attribute_id}/revisions/{revision_no}/restore": {
+      "post": {
+        "description": "Rolls the attribute back to the state captured in the given revision: name, unit, translations and its option set. Trashed options in the snapshot are restored, purged ones are recreated under their original id, and live options that are not in the snapshot are moved to the trash (their product values survive). Use `list_shop_revisions` with `entity_type=attribute` to find revisions. If the attribute was permanently purged, `force=true` (user credentials required) recreates it. The restore is recorded as a new revision. Read the returned report for what was resurrected, recreated or trashed.",
+        "operationId": "restore_attribute_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attribute_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attribute Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_no",
+            "required": true,
+            "schema": {
+              "title": "Revision No",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Recreate the attribute from the snapshot even if it was permanently purged (user credentials required).",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Recreate the attribute from the snapshot even if it was permanently purged (user credentials required).",
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore attribute to a revision",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
     "/shops/{shop_id}/attributes/{attribute_id}/with-options": {
       "get": {
         "description": "Retrieve a specific attribute by its unique ID, including all of its defined options.",
@@ -14816,9 +14981,174 @@
         ]
       }
     },
+    "/shops/{shop_id}/tags/{tag_id}/restore": {
+      "post": {
+        "description": "Brings a trashed (deleted) tag back. Its product links were kept in the trash, so the tag reappears on all products that carried it.",
+        "operationId": "restore_tag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tag Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore tag from trash",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/tags/{tag_id}/revisions/{revision_no}/restore": {
+      "post": {
+        "description": "Rolls the tag back to the state captured in the given revision (name and translations). Use the `list_shop_revisions` feed with `entity_type=tag` to find revisions. If the tag was permanently purged, `force=true` (user credentials required) recreates it under its original id so existing product links in old snapshots resolve again. The restore is recorded as a new revision.",
+        "operationId": "restore_tag_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tag Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_no",
+            "required": true,
+            "schema": {
+              "title": "Revision No",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Recreate the tag from the snapshot even if it was permanently purged (user credentials required).",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Recreate the tag from the snapshot even if it was permanently purged (user credentials required).",
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore tag to a revision",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
+        ]
+      }
+    },
     "/shops/{shop_id}/trash": {
       "get": {
-        "description": "Returns all soft-deleted products and categories of the shop, so they can be inspected and restored.",
+        "description": "Returns all soft-deleted products, categories, tags and attributes of the shop, so they can be inspected and restored.",
         "operationId": "list_trash_shops__shop_id__trash_get",
         "parameters": [
           {
@@ -14874,7 +15204,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List trashed products and categories",
+        "summary": "List trashed products, categories, tags and attributes",
         "tags": [
           "shops",
           "revisions"

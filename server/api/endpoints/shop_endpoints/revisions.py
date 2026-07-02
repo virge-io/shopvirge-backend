@@ -18,17 +18,30 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.param_functions import Depends
+from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
 from server.db import db
-from server.db.models import ApiKeyTable, CategoryTable, ProductTable, ProductTranslationTable, RevisionTable
+from server.db.models import (
+    ApiKeyTable,
+    AttributeTable,
+    CategoryTable,
+    ProductTable,
+    ProductTranslationTable,
+    RevisionTable,
+    TagTable,
+)
 from server.schemas.revision import RestoreReport, RevisionDetail, RevisionSummary, TrashItem
 from server.security import auth_required_any
 from server.services.restore import (
+    restore_attribute_from_trash,
+    restore_attribute_revision,
     restore_category_from_trash,
     restore_product_from_trash,
     restore_product_revision,
+    restore_tag_from_trash,
+    restore_tag_revision,
 )
 from server.services.revisions import ENTITY_ATTRIBUTE, ENTITY_CATEGORY, ENTITY_PRODUCT, ENTITY_TAG, actor
 
@@ -293,11 +306,150 @@ def restore_category_endpoint(
     )
 
 
+@router.post(
+    "/tags/{tag_id}/revisions/{revision_no}/restore",
+    response_model=RestoreReport,
+    tags=[AgentTag.EXPOSED],
+    operation_id="restore_tag_revision",
+    summary="Restore tag to a revision",
+    description=(
+        "Rolls the tag back to the state captured in the given revision (name and translations). "
+        "Use the `list_shop_revisions` feed with `entity_type=tag` to find revisions. If the tag was "
+        "permanently purged, `force=true` (user credentials required) recreates it under its original id "
+        "so existing product links in old snapshots resolve again. The restore is recorded as a new revision."
+    ),
+)
+def restore_tag_revision_endpoint(
+    shop_id: UUID,
+    tag_id: UUID,
+    revision_no: int,
+    request: Request,
+    force: bool = Query(
+        False,
+        description="Recreate the tag from the snapshot even if it was permanently purged (user credentials required).",
+    ),
+    principal: Any = Depends(auth_required_any),
+) -> RestoreReport:
+    if force and isinstance(principal, ApiKeyTable):
+        raise HTTPException(
+            status_code=403,
+            detail="Recreating a purged tag requires user credentials; API keys cannot use force=true.",
+        )
+    created_by, source = actor(principal, request)
+    return restore_tag_revision(
+        shop_id=shop_id,
+        tag_id=tag_id,
+        revision_no=revision_no,
+        allow_recreate=force,
+        created_by=created_by,
+        source=source,
+    )
+
+
+@router.post(
+    "/tags/{tag_id}/restore",
+    response_model=RestoreReport,
+    tags=[AgentTag.EXPOSED],
+    operation_id="restore_tag",
+    summary="Restore tag from trash",
+    description=(
+        "Brings a trashed (deleted) tag back. Its product links were kept in the trash, "
+        "so the tag reappears on all products that carried it."
+    ),
+)
+def restore_tag_endpoint(
+    shop_id: UUID,
+    tag_id: UUID,
+    request: Request,
+    principal: Any = Depends(auth_required_any),
+) -> RestoreReport:
+    created_by, source = actor(principal, request)
+    return restore_tag_from_trash(shop_id=shop_id, tag_id=tag_id, created_by=created_by, source=source)
+
+
+@router.post(
+    "/attributes/{attribute_id}/revisions/{revision_no}/restore",
+    response_model=RestoreReport,
+    tags=[AgentTag.EXPOSED],
+    operation_id="restore_attribute_revision",
+    summary="Restore attribute to a revision",
+    description=(
+        "Rolls the attribute back to the state captured in the given revision: name, unit, translations "
+        "and its option set. Trashed options in the snapshot are restored, purged ones are recreated under "
+        "their original id, and live options that are not in the snapshot are moved to the trash (their "
+        "product values survive). Use `list_shop_revisions` with `entity_type=attribute` to find revisions. "
+        "If the attribute was permanently purged, `force=true` (user credentials required) recreates it. "
+        "The restore is recorded as a new revision. Read the returned report for what was resurrected, "
+        "recreated or trashed."
+    ),
+)
+def restore_attribute_revision_endpoint(
+    shop_id: UUID,
+    attribute_id: UUID,
+    revision_no: int,
+    request: Request,
+    force: bool = Query(
+        False,
+        description=(
+            "Recreate the attribute from the snapshot even if it was permanently purged " "(user credentials required)."
+        ),
+    ),
+    principal: Any = Depends(auth_required_any),
+) -> RestoreReport:
+    if force and isinstance(principal, ApiKeyTable):
+        raise HTTPException(
+            status_code=403,
+            detail="Recreating a purged attribute requires user credentials; API keys cannot use force=true.",
+        )
+    created_by, source = actor(principal, request)
+    try:
+        return restore_attribute_revision(
+            shop_id=shop_id,
+            attribute_id=attribute_id,
+            revision_no=revision_no,
+            allow_recreate=force,
+            created_by=created_by,
+            source=source,
+        )
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Restoring this revision collides with an option value_key that is still occupied "
+                "(possibly by a trashed option); purge or rename the conflicting option first."
+            ),
+        )
+
+
+@router.post(
+    "/attributes/{attribute_id}/restore",
+    response_model=RestoreReport,
+    tags=[AgentTag.EXPOSED],
+    operation_id="restore_attribute",
+    summary="Restore attribute from trash",
+    description=(
+        "Brings a trashed (deleted) attribute back, including its options and all product values that used "
+        "it. Options that were trashed individually before stay in the trash — restore an attribute revision "
+        "to bring those back too."
+    ),
+)
+def restore_attribute_endpoint(
+    shop_id: UUID,
+    attribute_id: UUID,
+    request: Request,
+    principal: Any = Depends(auth_required_any),
+) -> RestoreReport:
+    created_by, source = actor(principal, request)
+    return restore_attribute_from_trash(
+        shop_id=shop_id, attribute_id=attribute_id, created_by=created_by, source=source
+    )
+
+
 @router.get(
     "/trash",
     response_model=List[TrashItem],
-    summary="List trashed products and categories",
-    description="Returns all soft-deleted products and categories of the shop, so they can be inspected and restored.",
+    summary="List trashed products, categories, tags and attributes",
+    description="Returns all soft-deleted products, categories, tags and attributes of the shop, so they can be inspected and restored.",
 )
 def list_trash(shop_id: UUID) -> List[TrashItem]:
     items: List[TrashItem] = []
@@ -335,6 +487,28 @@ def list_trash(shop_id: UUID) -> List[TrashItem]:
                 id=category.id,
                 name=category.translation.main_name if category.translation else None,
                 deleted_at=category.deleted_at,
+            )
+        )
+
+    tags = (
+        db.session.query(TagTable)
+        .filter(TagTable.shop_id == shop_id, TagTable.deleted_at.isnot(None))
+        .execution_options(include_deleted=True)
+        .all()
+    )
+    for tag in tags:
+        items.append(TrashItem(entity_type=ENTITY_TAG, id=tag.id, name=tag.name, deleted_at=tag.deleted_at))
+
+    attributes = (
+        db.session.query(AttributeTable)
+        .filter(AttributeTable.shop_id == shop_id, AttributeTable.deleted_at.isnot(None))
+        .execution_options(include_deleted=True)
+        .all()
+    )
+    for attribute in attributes:
+        items.append(
+            TrashItem(
+                entity_type=ENTITY_ATTRIBUTE, id=attribute.id, name=attribute.name, deleted_at=attribute.deleted_at
             )
         )
 

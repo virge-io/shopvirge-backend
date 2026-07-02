@@ -44,6 +44,7 @@ from server.db import db
 from server.db.models import (
     AttributeOptionTable,
     AttributeTable,
+    AttributeTranslationTable,
     CategoryTable,
     CategoryTranslationTable,
     ProductTable,
@@ -51,14 +52,19 @@ from server.db.models import (
     ProductTranslationTable,
     RevisionTable,
     TagTable,
+    TagTranslationTable,
 )
 from server.schemas.revision import RestoreReport, ResurrectedEntity, UnresolvedReference
 from server.services.revisions import (
+    ENTITY_ATTRIBUTE,
     ENTITY_CATEGORY,
     ENTITY_PRODUCT,
+    ENTITY_TAG,
     SCHEMA_VERSION,
+    record_attribute_revision,
     record_category_revision,
     record_product_revision,
+    record_tag_revision,
 )
 
 logger = structlog.get_logger(__name__)
@@ -309,23 +315,26 @@ def restore_product_revision(
     revision = _get_revision(shop_id, ENTITY_PRODUCT, product_id, revision_no)
     data = _upconvert(dict(revision.data), revision.schema_version)
 
-    try:
-        product = (
-            db.session.query(ProductTable)
-            .filter(ProductTable.shop_id == shop_id, ProductTable.id == product_id)
-            .execution_options(include_deleted=True)
-            .with_for_update()
-            .first()
+    product = (
+        db.session.query(ProductTable)
+        .filter(ProductTable.shop_id == shop_id, ProductTable.id == product_id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .first()
+    )
+    # Control-flow errors are raised before the mutation phase so the rollback
+    # handler below only ever fires on genuine mid-mutation failures.
+    if product is None and not allow_recreate:
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "Product was permanently purged. Retry with force=true (user credentials required) "
+                "to recreate it from the snapshot."
+            ),
         )
+
+    try:
         if product is None:
-            if not allow_recreate:
-                raise HTTPException(
-                    status_code=410,
-                    detail=(
-                        "Product was permanently purged. Retry with force=true (user credentials required) "
-                        "to recreate it from the snapshot."
-                    ),
-                )
             product = ProductTable(id=product_id, shop_id=shop_id)
             db.session.add(product)
             report.warnings.append("Product row was purged; recreated from the snapshot.")
@@ -420,6 +429,274 @@ def restore_product_from_trash(
                 report.resurrected.append(ResurrectedEntity(kind="category", id=category.id))
 
         new_revision = record_product_revision(product, action="restore", created_by=created_by, source=source)
+        report.new_revision_no = new_revision.revision_no
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    report.restored = True
+    return report
+
+
+def restore_tag_revision(
+    *,
+    shop_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    revision_no: int,
+    allow_recreate: bool = False,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RestoreReport:
+    """Re-apply a tag revision snapshot. Commits on success, rolls back on error."""
+    report = RestoreReport(restored=False, entity_type=ENTITY_TAG, entity_id=tag_id)
+    report.restored_from_revision_no = revision_no
+
+    revision = _get_revision(shop_id, ENTITY_TAG, tag_id, revision_no)
+    data = _upconvert(dict(revision.data), revision.schema_version)
+
+    tag = (
+        db.session.query(TagTable)
+        .filter(TagTable.shop_id == shop_id, TagTable.id == tag_id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .first()
+    )
+    if tag is None and not allow_recreate:
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "Tag was permanently purged. Retry with force=true (user credentials required) "
+                "to recreate it from the snapshot."
+            ),
+        )
+
+    try:
+        if tag is None:
+            tag = TagTable(id=tag_id, shop_id=shop_id)
+            db.session.add(tag)
+            report.warnings.append("Tag row was purged; recreated from the snapshot.")
+
+        if tag.deleted_at is not None:
+            report.resurrected.append(ResurrectedEntity(kind="tag", id=tag.id, name=tag.name))
+        tag.deleted_at = None
+
+        _apply_columns(tag, data.get("tag") or {}, "tag", report)
+
+        translation_data = data.get("translation")
+        if translation_data:
+            translation = db.session.query(TagTranslationTable).filter(TagTranslationTable.tag_id == tag.id).first()
+            if translation is None:
+                translation = TagTranslationTable(tag_id=tag.id, main_name=translation_data.get("main_name") or "")
+                db.session.add(translation)
+            _apply_columns(translation, translation_data, "translation", report)
+
+        new_revision = record_tag_revision(tag, action="restore", created_by=created_by, source=source)
+        report.new_revision_no = new_revision.revision_no
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    report.restored = True
+    return report
+
+
+def restore_tag_from_trash(
+    *,
+    shop_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RestoreReport:
+    """Undelete a trashed tag. Its product links were never removed, so this only clears ``deleted_at``."""
+    report = RestoreReport(restored=False, entity_type=ENTITY_TAG, entity_id=tag_id)
+
+    tag = (
+        db.session.query(TagTable)
+        .filter(TagTable.shop_id == shop_id, TagTable.id == tag_id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .first()
+    )
+    if tag is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Tag not found (it may have been permanently purged; use a revision restore with force=true).",
+        )
+    if tag.deleted_at is None:
+        report.warnings.append("Tag was not in the trash; nothing to do.")
+        report.restored = True
+        return report
+
+    try:
+        tag.deleted_at = None
+        report.resurrected.append(ResurrectedEntity(kind="tag", id=tag.id, name=tag.name))
+        new_revision = record_tag_revision(tag, action="restore", created_by=created_by, source=source)
+        report.new_revision_no = new_revision.revision_no
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    report.restored = True
+    return report
+
+
+def _restore_attribute_options(attribute: AttributeTable, snapshot_options: list, report: RestoreReport) -> None:
+    """Make the attribute's options match the snapshot (replace-all semantics).
+
+    Options are matched by id first (soft-deleted ones are resurrected), then by
+    ``value_key``. Purged options are recreated under their snapshot id, so option
+    references inside old product revisions resolve again. Live options that are
+    not in the snapshot are moved to the trash, never purged — their product
+    attribute values survive for a later restore.
+    """
+    existing = (
+        db.session.query(AttributeOptionTable)
+        .filter(AttributeOptionTable.attribute_id == attribute.id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .all()
+    )
+    by_id = {option.id: option for option in existing}
+    by_key = {option.value_key: option for option in existing}
+
+    desired_ids: set[uuid.UUID] = set()
+    for option_ref in snapshot_options or []:
+        ref_id = uuid.UUID(option_ref["id"]) if option_ref.get("id") else None
+        option = by_id.get(ref_id) if ref_id else None
+        if option is None:
+            option = by_key.get(option_ref.get("value_key"))
+        if option is None:
+            option = AttributeOptionTable(id=ref_id, attribute_id=attribute.id, value_key=option_ref.get("value_key"))
+            db.session.add(option)
+            db.session.flush()
+            report.warnings.append(f"Option '{option_ref.get('value_key')}' was purged; recreated from the snapshot.")
+        else:
+            if option.deleted_at is not None:
+                option.deleted_at = None
+                report.resurrected.append(
+                    ResurrectedEntity(kind="attribute_option", id=option.id, name=option.value_key)
+                )
+            option.value_key = option_ref.get("value_key")
+        desired_ids.add(option.id)
+
+    now = datetime.now(timezone.utc)
+    for option in existing:
+        if option.id not in desired_ids and option.deleted_at is None:
+            option.deleted_at = now
+            report.warnings.append(f"Option '{option.value_key}' is not in the snapshot; moved to the trash.")
+
+
+def restore_attribute_revision(
+    *,
+    shop_id: uuid.UUID,
+    attribute_id: uuid.UUID,
+    revision_no: int,
+    allow_recreate: bool = False,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RestoreReport:
+    """Re-apply an attribute revision snapshot (attribute, translation and options).
+
+    Commits on success, rolls back on error.
+    """
+    report = RestoreReport(restored=False, entity_type=ENTITY_ATTRIBUTE, entity_id=attribute_id)
+    report.restored_from_revision_no = revision_no
+
+    revision = _get_revision(shop_id, ENTITY_ATTRIBUTE, attribute_id, revision_no)
+    data = _upconvert(dict(revision.data), revision.schema_version)
+
+    attribute = (
+        db.session.query(AttributeTable)
+        .filter(AttributeTable.shop_id == shop_id, AttributeTable.id == attribute_id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .first()
+    )
+    if attribute is None and not allow_recreate:
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "Attribute was permanently purged. Retry with force=true (user credentials required) "
+                "to recreate it from the snapshot."
+            ),
+        )
+
+    try:
+        if attribute is None:
+            attribute = AttributeTable(id=attribute_id, shop_id=shop_id)
+            db.session.add(attribute)
+            report.warnings.append("Attribute row was purged; recreated from the snapshot.")
+
+        if attribute.deleted_at is not None:
+            report.resurrected.append(ResurrectedEntity(kind="attribute", id=attribute.id, name=attribute.name))
+        attribute.deleted_at = None
+
+        _apply_columns(attribute, data.get("attribute") or {}, "attribute", report)
+
+        translation_data = data.get("translation")
+        if translation_data:
+            translation = (
+                db.session.query(AttributeTranslationTable)
+                .filter(AttributeTranslationTable.attribute_id == attribute.id)
+                .first()
+            )
+            if translation is None:
+                translation = AttributeTranslationTable(
+                    attribute_id=attribute.id, main_name=translation_data.get("main_name") or ""
+                )
+                db.session.add(translation)
+            _apply_columns(translation, translation_data, "translation", report)
+
+        db.session.flush()
+        _restore_attribute_options(attribute, data.get("options") or [], report)
+
+        new_revision = record_attribute_revision(attribute, action="restore", created_by=created_by, source=source)
+        report.new_revision_no = new_revision.revision_no
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    report.restored = True
+    return report
+
+
+def restore_attribute_from_trash(
+    *,
+    shop_id: uuid.UUID,
+    attribute_id: uuid.UUID,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RestoreReport:
+    """Undelete a trashed attribute. Its options and product values were never
+    removed, so this only clears ``deleted_at``. Options that were trashed
+    individually stay in the trash (restore a revision to bring those back)."""
+    report = RestoreReport(restored=False, entity_type=ENTITY_ATTRIBUTE, entity_id=attribute_id)
+
+    attribute = (
+        db.session.query(AttributeTable)
+        .filter(AttributeTable.shop_id == shop_id, AttributeTable.id == attribute_id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .first()
+    )
+    if attribute is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Attribute not found (it may have been permanently purged; use a revision restore with force=true).",
+        )
+    if attribute.deleted_at is None:
+        report.warnings.append("Attribute was not in the trash; nothing to do.")
+        report.restored = True
+        return report
+
+    try:
+        attribute.deleted_at = None
+        report.resurrected.append(ResurrectedEntity(kind="attribute", id=attribute.id, name=attribute.name))
+        new_revision = record_attribute_revision(attribute, action="restore", created_by=created_by, source=source)
         report.new_revision_no = new_revision.revision_no
         db.session.commit()
     except Exception:
