@@ -60,6 +60,7 @@ EXPECTED_TOOL_NAMES = {
     "restore_product_revision",
     "restore_product",
     "restore_category",
+    "restore_category_revision",
     "restore_tag_revision",
     "restore_tag",
     "restore_attribute_revision",

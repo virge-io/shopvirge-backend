@@ -1,9 +1,22 @@
-"""Tests for the category delete flow: 409 warning, force cascade, detach, and batch restore."""
+"""Tests for the category delete flow: 409 warning, force cascade, detach, batch restore
+and category revision restore."""
 
 from server.db import db
 from server.db.models import CategoryTable, ProductTable, RevisionTable
+from server.utils.json import json_dumps
 from tests.unit_tests.factories.categories import make_category
 from tests.unit_tests.factories.product import make_product
+
+
+def category_body(shop_id, main_name, color="#FFFFFF"):
+    return {
+        "shop_id": str(shop_id),
+        "color": color,
+        "translation": {"main_name": main_name, "main_description": f"{main_name} description"},
+        "main_image": "",
+        "alt1_image": "",
+        "alt2_image": "",
+    }
 
 
 def get_product(product_id, include_deleted=True):
@@ -119,6 +132,61 @@ def test_detach_keeps_products_without_category(shop_with_config, test_client):
     assert last.data["detached_from_category"]["id"] == str(category)
     assert last.data["detached_from_category"]["name"] == "Doomed category"
     assert last.data["category"] is None
+
+
+def test_restore_category_revision_undoes_rename(shop_with_config, test_client):
+    resp = test_client.post(
+        f"/shops/{shop_with_config}/categories/", content=json_dumps(category_body(shop_with_config, "Good name"))
+    )
+    assert resp.status_code == 201, resp.text
+    category_id = resp.json()["id"]
+
+    body = category_body(shop_with_config, "LLM made a mess", color="#000000")
+    resp = test_client.put(f"/shops/{shop_with_config}/categories/{category_id}", content=json_dumps(body))
+    assert resp.status_code == 201, resp.text
+
+    resp = test_client.post(f"/shops/{shop_with_config}/categories/{category_id}/revisions/1/restore")
+    assert resp.status_code == 200, resp.json()
+    report = resp.json()
+    assert report["restored"] is True
+    assert report["entity_type"] == "category"
+
+    db.session.expire_all()
+    row = db.session.query(CategoryTable).filter_by(id=category_id).one()
+    assert row.translation.main_name == "Good name"
+    assert row.color == "#FFFFFF"
+    last = (
+        db.session.query(RevisionTable)
+        .filter(RevisionTable.entity_type == "category", RevisionTable.entity_id == category_id)
+        .order_by(RevisionTable.revision_no.desc())
+        .first()
+    )
+    assert last.action == "restore"
+
+
+def test_restore_purged_category_revision_requires_force(shop_with_config, test_client):
+    resp = test_client.post(
+        f"/shops/{shop_with_config}/categories/", content=json_dumps(category_body(shop_with_config, "Purged"))
+    )
+    category_id = resp.json()["id"]
+
+    # Hard-purge the row directly (the API only ever trashes categories)
+    row = db.session.query(CategoryTable).filter_by(id=category_id).one()
+    if row.translation:
+        db.session.delete(row.translation)
+    db.session.delete(row)
+    db.session.commit()
+
+    assert (
+        test_client.post(f"/shops/{shop_with_config}/categories/{category_id}/revisions/1/restore").status_code == 410
+    )
+
+    resp = test_client.post(f"/shops/{shop_with_config}/categories/{category_id}/revisions/1/restore?force=true")
+    assert resp.status_code == 200, resp.json()
+    assert any("recreated" in w for w in resp.json()["warnings"])
+    db.session.expire_all()
+    row = db.session.query(CategoryTable).filter_by(id=category_id).one()
+    assert row.translation.main_name == "Purged"
 
 
 def test_restore_category_without_products_flag(shop_with_config, test_client):

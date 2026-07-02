@@ -6084,7 +6084,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.4.3"
+    "version": "0.4.4"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -12057,6 +12057,99 @@
         "tags": [
           "shops",
           "revisions"
+        ]
+      }
+    },
+    "/shops/{shop_id}/categories/{category_id}/revisions/{revision_no}/restore": {
+      "post": {
+        "description": "Rolls the category back to the state captured in the given revision: fields, translations and image references. Products are not touched \u2014 use `restore_category` for a trashed category with its product batch, or per-product revision restores to reattach detached products. If the category was permanently purged, `force=true` (user credentials required) recreates it under its original id. The restore is recorded as a new revision.",
+        "operationId": "restore_category_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_no",
+            "required": true,
+            "schema": {
+              "title": "Revision No",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Recreate the category from the snapshot even if it was permanently purged (user credentials required).",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Recreate the category from the snapshot even if it was permanently purged (user credentials required).",
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore category to a revision",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
         ]
       }
     },

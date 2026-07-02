@@ -38,6 +38,7 @@ from server.services.restore import (
     restore_attribute_from_trash,
     restore_attribute_revision,
     restore_category_from_trash,
+    restore_category_revision,
     restore_product_from_trash,
     restore_product_revision,
     restore_tag_from_trash,
@@ -301,6 +302,49 @@ def restore_category_endpoint(
         shop_id=shop_id,
         category_id=category_id,
         restore_products=restore_products,
+        created_by=created_by,
+        source=source,
+    )
+
+
+@router.post(
+    "/categories/{category_id}/revisions/{revision_no}/restore",
+    response_model=RestoreReport,
+    tags=[AgentTag.EXPOSED],
+    operation_id="restore_category_revision",
+    summary="Restore category to a revision",
+    description=(
+        "Rolls the category back to the state captured in the given revision: fields, translations and "
+        "image references. Products are not touched — use `restore_category` for a trashed category with "
+        "its product batch, or per-product revision restores to reattach detached products. If the "
+        "category was permanently purged, `force=true` (user credentials required) recreates it under its "
+        "original id. The restore is recorded as a new revision."
+    ),
+)
+def restore_category_revision_endpoint(
+    shop_id: UUID,
+    category_id: UUID,
+    revision_no: int,
+    request: Request,
+    force: bool = Query(
+        False,
+        description=(
+            "Recreate the category from the snapshot even if it was permanently purged " "(user credentials required)."
+        ),
+    ),
+    principal: Any = Depends(auth_required_any),
+) -> RestoreReport:
+    if force and isinstance(principal, ApiKeyTable):
+        raise HTTPException(
+            status_code=403,
+            detail="Recreating a purged category requires user credentials; API keys cannot use force=true.",
+        )
+    created_by, source = actor(principal, request)
+    return restore_category_revision(
+        shop_id=shop_id,
+        category_id=category_id,
+        revision_no=revision_no,
+        allow_recreate=force,
         created_by=created_by,
         source=source,
     )

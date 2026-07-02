@@ -707,6 +707,83 @@ def restore_attribute_from_trash(
     return report
 
 
+def restore_category_revision(
+    *,
+    shop_id: uuid.UUID,
+    category_id: uuid.UUID,
+    revision_no: int,
+    allow_recreate: bool = False,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RestoreReport:
+    """Re-apply a category revision snapshot (fields, translation, image references).
+
+    Products are deliberately left alone: reattaching or restoring them is the job of
+    the trash restore (batch) or of per-product revision restores. Commits on success,
+    rolls back on error.
+    """
+    report = RestoreReport(restored=False, entity_type=ENTITY_CATEGORY, entity_id=category_id)
+    report.restored_from_revision_no = revision_no
+
+    revision = _get_revision(shop_id, ENTITY_CATEGORY, category_id, revision_no)
+    data = _upconvert(dict(revision.data), revision.schema_version)
+
+    category = (
+        db.session.query(CategoryTable)
+        .filter(CategoryTable.shop_id == shop_id, CategoryTable.id == category_id)
+        .execution_options(include_deleted=True)
+        .with_for_update()
+        .first()
+    )
+    if category is None and not allow_recreate:
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "Category was permanently purged. Retry with force=true (user credentials required) "
+                "to recreate it from the snapshot."
+            ),
+        )
+
+    try:
+        if category is None:
+            category = CategoryTable(id=category_id, shop_id=shop_id)
+            db.session.add(category)
+            report.warnings.append("Category row was purged; recreated from the snapshot.")
+
+        if category.deleted_at is not None:
+            category_name = category.translation.main_name if category.translation else None
+            report.resurrected.append(ResurrectedEntity(kind="category", id=category.id, name=category_name))
+        category.deleted_at = None
+
+        _apply_columns(category, data.get("category") or {}, "category", report)
+
+        translation_data = data.get("translation")
+        if translation_data:
+            translation = (
+                db.session.query(CategoryTranslationTable)
+                .filter(CategoryTranslationTable.category_id == category.id)
+                .first()
+            )
+            if translation is None:
+                translation = CategoryTranslationTable(
+                    category_id=category.id,
+                    main_name=translation_data.get("main_name") or "",
+                    main_description=translation_data.get("main_description") or "",
+                )
+                db.session.add(translation)
+            _apply_columns(translation, translation_data, "translation", report)
+
+        new_revision = record_category_revision(category, action="restore", created_by=created_by, source=source)
+        report.new_revision_no = new_revision.revision_no
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    report.restored = True
+    return report
+
+
 def restore_category_from_trash(
     *,
     shop_id: uuid.UUID,
