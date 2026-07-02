@@ -43,7 +43,7 @@ from sqlalchemy import func
 from sqlalchemy.inspection import inspect as sa_inspect
 
 from server.db import db
-from server.db.models import CategoryTable, ProductTable, RevisionTable
+from server.db.models import AttributeOptionTable, AttributeTable, CategoryTable, ProductTable, RevisionTable, TagTable
 from server.settings import app_settings
 
 logger = structlog.get_logger(__name__)
@@ -52,10 +52,12 @@ SCHEMA_VERSION = 1
 
 ENTITY_PRODUCT = "product"
 ENTITY_CATEGORY = "category"
+ENTITY_TAG = "tag"
+ENTITY_ATTRIBUTE = "attribute"
 
 # Lifecycle/identity fields that are not part of an entity's content
 _EXCLUDED_KEYS = {"id", "shop_id", "deleted_at", "deleted_batch_id"}
-_EXCLUDED_TRANSLATION_KEYS = {"id", "product_id", "category_id"}
+_EXCLUDED_TRANSLATION_KEYS = {"id", "product_id", "category_id", "tag_id", "attribute_id"}
 
 # Minimum revisions to keep regardless of settings — the PIM undo story assumes it.
 _MIN_RETENTION = 10
@@ -126,6 +128,34 @@ def snapshot_category(category: CategoryTable) -> dict:
     return {
         "category": _columns_snapshot(category, _EXCLUDED_KEYS),
         "translation": _columns_snapshot(translation, _EXCLUDED_TRANSLATION_KEYS) if translation else None,
+    }
+
+
+def snapshot_tag(tag: TagTable) -> dict:
+    translation = tag.translation
+    return {
+        "tag": _columns_snapshot(tag, _EXCLUDED_KEYS),
+        "translation": _columns_snapshot(translation, _EXCLUDED_TRANSLATION_KEYS) if translation else None,
+    }
+
+
+def snapshot_attribute(attribute: AttributeTable) -> dict:
+    """Serialize the attribute aggregate: the attribute, its translation and its (live) options.
+
+    Option changes record an attribute revision, so one entity type covers the whole aggregate.
+    """
+    translation = attribute.translation
+    # Top-level query instead of the relationship so the soft-delete filter deterministically applies
+    options = (
+        db.session.query(AttributeOptionTable)
+        .filter(AttributeOptionTable.attribute_id == attribute.id)
+        .order_by(AttributeOptionTable.value_key)
+        .all()
+    )
+    return {
+        "attribute": _columns_snapshot(attribute, _EXCLUDED_KEYS),
+        "translation": _columns_snapshot(translation, _EXCLUDED_TRANSLATION_KEYS) if translation else None,
+        "options": [{"id": jsonable_encoder(option.id), "value_key": option.value_key} for option in options],
     }
 
 
@@ -234,6 +264,16 @@ def ensure_baseline_category_revision(category: CategoryTable) -> Optional[Revis
     return _ensure_baseline(ENTITY_CATEGORY, category, snapshot_category)
 
 
+def ensure_baseline_tag_revision(tag: TagTable) -> Optional[RevisionTable]:
+    """Tag counterpart of ``ensure_baseline_product_revision`` — same contract."""
+    return _ensure_baseline(ENTITY_TAG, tag, snapshot_tag)
+
+
+def ensure_baseline_attribute_revision(attribute: AttributeTable) -> Optional[RevisionTable]:
+    """Attribute counterpart of ``ensure_baseline_product_revision`` — same contract."""
+    return _ensure_baseline(ENTITY_ATTRIBUTE, attribute, snapshot_attribute)
+
+
 def record_product_revision(
     product: ProductTable,
     *,
@@ -281,6 +321,52 @@ def record_category_revision(
         entity_id=category.id,
         action=action,
         data=data,
+        created_by=created_by,
+        source=source,
+    )
+
+
+def record_tag_revision(
+    tag: TagTable,
+    *,
+    action: str,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RevisionTable:
+    """Record a snapshot of the tag. Does NOT commit — the caller owns the transaction."""
+    db.session.flush()
+    db.session.expire(tag)
+    return _record_revision(
+        shop_id=tag.shop_id,
+        entity_type=ENTITY_TAG,
+        entity_id=tag.id,
+        action=action,
+        data=snapshot_tag(tag),
+        created_by=created_by,
+        source=source,
+    )
+
+
+def record_attribute_revision(
+    attribute: AttributeTable,
+    *,
+    action: str,
+    created_by: Optional[str] = None,
+    source: str = "rest",
+) -> RevisionTable:
+    """Record a snapshot of the attribute aggregate (incl. options). Does NOT commit.
+
+    Option mutations record an attribute revision with ``action="update"``; the option
+    itself has no revision history of its own.
+    """
+    db.session.flush()
+    db.session.expire(attribute)
+    return _record_revision(
+        shop_id=attribute.shop_id,
+        entity_type=ENTITY_ATTRIBUTE,
+        entity_id=attribute.id,
+        action=action,
+        data=snapshot_attribute(attribute),
         created_by=created_by,
         source=source,
     )

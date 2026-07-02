@@ -18,6 +18,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.param_functions import Depends
+from starlette.responses import Response
 
 from server.agent_tags import AgentTag
 from server.db import db
@@ -29,16 +30,23 @@ from server.services.restore import (
     restore_product_from_trash,
     restore_product_revision,
 )
-from server.services.revisions import ENTITY_CATEGORY, ENTITY_PRODUCT, actor
+from server.services.revisions import ENTITY_ATTRIBUTE, ENTITY_CATEGORY, ENTITY_PRODUCT, ENTITY_TAG, actor
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
+_ENTITY_TYPES = (ENTITY_PRODUCT, ENTITY_CATEGORY, ENTITY_TAG, ENTITY_ATTRIBUTE)
+
 
 def _snapshot_name(revision: RevisionTable) -> Optional[str]:
-    translation = (revision.data or {}).get("translation") or {}
-    return translation.get("main_name")
+    data = revision.data or {}
+    translation = data.get("translation") or {}
+    if translation.get("main_name"):
+        return translation["main_name"]
+    # Tags and attributes also carry a machine-friendly name on the entity itself
+    entity = data.get(revision.entity_type) or {}
+    return entity.get("name")
 
 
 def _summaries(shop_id: UUID, entity_type: str, entity_id: UUID) -> List[RevisionSummary]:
@@ -58,6 +66,87 @@ def _summaries(shop_id: UUID, entity_type: str, entity_id: UUID) -> List[Revisio
         summary.name = _snapshot_name(revision)
         out.append(summary)
     return out
+
+
+@router.get(
+    "/revisions",
+    response_model=List[RevisionSummary],
+    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
+    operation_id="list_shop_revisions",
+    summary="List all revisions in a shop",
+    description=(
+        "Shop-wide change feed: every recorded revision of every product, category, tag and attribute, "
+        "newest first. Supports filtering by `entity_type` (product | category | tag | attribute), "
+        "`entity_id`, `action` (create | update | delete | restore | baseline), `source` (rest | mcp) and "
+        "`created_by`, plus `skip`/`limit` pagination (the total is returned in the Content-Range header). "
+        "Use `get_revision` to inspect a revision's full snapshot."
+    ),
+)
+def list_shop_revisions(
+    shop_id: UUID,
+    response: Response,
+    entity_type: Optional[str] = Query(None, description="Filter: product | category | tag | attribute."),
+    entity_id: Optional[UUID] = Query(None, description="Filter on one specific entity."),
+    action: Optional[str] = Query(None, description="Filter: create | update | delete | restore | baseline."),
+    source: Optional[str] = Query(None, description="Filter: rest | mcp."),
+    created_by: Optional[str] = Query(None, description='Filter on actor, e.g. "api_key:<uuid>" or "cognito:<sub>".'),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> List[RevisionSummary]:
+    if entity_type is not None and entity_type not in _ENTITY_TYPES:
+        raise HTTPException(status_code=422, detail=f"entity_type must be one of {', '.join(_ENTITY_TYPES)}")
+
+    query = db.session.query(RevisionTable).filter(RevisionTable.shop_id == shop_id)
+    if entity_type is not None:
+        query = query.filter(RevisionTable.entity_type == entity_type)
+    if entity_id is not None:
+        query = query.filter(RevisionTable.entity_id == entity_id)
+    if action is not None:
+        query = query.filter(RevisionTable.action == action)
+    if source is not None:
+        query = query.filter(RevisionTable.source == source)
+    if created_by is not None:
+        query = query.filter(RevisionTable.created_by == created_by)
+
+    total = query.count()
+    revisions = (
+        query.order_by(RevisionTable.created_at.desc(), RevisionTable.revision_no.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    response.headers["Content-Range"] = f"revisions {skip}-{skip + len(revisions) - 1}/{total}"
+
+    out = []
+    for revision in revisions:
+        summary = RevisionSummary.model_validate(revision)
+        summary.name = _snapshot_name(revision)
+        out.append(summary)
+    return out
+
+
+@router.get(
+    "/revisions/{revision_id}",
+    response_model=RevisionDetail,
+    tags=[AgentTag.EXPOSED],
+    operation_id="get_revision",
+    summary="Get one revision by id",
+    description=(
+        "Returns one revision (of any entity type) by its id, including the full snapshot data. "
+        "Use it to inspect entries from the `list_shop_revisions` feed."
+    ),
+)
+def get_revision(shop_id: UUID, revision_id: UUID) -> RevisionDetail:
+    revision = (
+        db.session.query(RevisionTable)
+        .filter(RevisionTable.shop_id == shop_id, RevisionTable.id == revision_id)
+        .first()
+    )
+    if revision is None:
+        raise HTTPException(status_code=404, detail=f"Revision {revision_id} not found")
+    detail = RevisionDetail.model_validate(revision)
+    detail.name = _snapshot_name(revision)
+    return detail
 
 
 @router.get(

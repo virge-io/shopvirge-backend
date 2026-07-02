@@ -542,13 +542,13 @@ class RevisionTable(BaseModel):
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
     shop_id = Column(UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
-    # 'product' | 'category'. entity_id has no FK on purpose: revisions must survive
-    # hard purges of the entity and future model churn.
+    # 'product' | 'category' | 'tag' | 'attribute'. entity_id has no FK on purpose:
+    # revisions must survive hard purges of the entity and future model churn.
     entity_type = Column(String(30), nullable=False)
     entity_id = Column(UUIDType, nullable=False)
     # Monotonic per (entity_type, entity_id), starting at 1
     revision_no = Column(Integer, nullable=False)
-    # create | update | delete | restore
+    # create | update | delete | restore | baseline
     action = Column(String(20), nullable=False)
     # Version of the snapshot structure in `data`. Bump only for structural reshapes
     # (renamed/nested keys); plain column additions/removals are handled at restore

@@ -4,7 +4,7 @@ from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -25,6 +25,7 @@ from server.schemas.attribute import (
     AttributeWithOptionsSchema,
 )
 from server.security import auth_required_any
+from server.services.revisions import actor, ensure_baseline_attribute_revision, record_attribute_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -165,7 +166,9 @@ def get_by_name(name: str, shop_id: UUID) -> AttributeSchema:
     tags=[AgentTag.EXPOSED],
     operation_id="create_attribute",
 )
-def create(shop_id: UUID, data: AttributeCreate = Body(...)) -> AttributeSchema:
+def create(
+    shop_id: UUID, request: Request, data: AttributeCreate = Body(...), principal: Any = Depends(auth_required_any)
+) -> AttributeSchema:
     """
     Create a new attribute for the given shop.
 
@@ -176,9 +179,14 @@ def create(shop_id: UUID, data: AttributeCreate = Body(...)) -> AttributeSchema:
     if data.translation is None or data.translation.main_name is None:
         data.translation = AttributeTranslationBase(main_name=data.name)
 
+    created_by, source = actor(principal, request)
     try:
-        attr = attribute_crud.create_by_shop_id(shop_id=shop_id, obj_in=data)
+        attr = attribute_crud.create_by_shop_id(shop_id=shop_id, obj_in=data, commit=False)
+        record_attribute_revision(attr, action="create", created_by=created_by, source=source)
+        db.session.commit()
+        db.session.refresh(attr)
     except IntegrityError:
+        db.session.rollback()
         raise_status(HTTPStatus.CONFLICT, f"Attribute with name {data.name} already exists for this shop")
     return attr
 
@@ -191,15 +199,27 @@ def create(shop_id: UUID, data: AttributeCreate = Body(...)) -> AttributeSchema:
     tags=[AgentTag.EXPOSED],
     operation_id="update_attribute",
 )
-def update(attribute_id: UUID, shop_id: UUID, data: AttributeUpdate = Body(...)) -> AttributeSchema:
+def update(
+    attribute_id: UUID,
+    shop_id: UUID,
+    request: Request,
+    data: AttributeUpdate = Body(...),
+    principal: Any = Depends(auth_required_any),
+) -> AttributeSchema:
     """Update an attribute for a shop."""
-    attribute = attribute_crud.get_id_by_shop_id(shop_id, attribute_id)
+    attribute = attribute_crud.get_id_by_shop_id(shop_id, attribute_id, for_update=True)
     if not attribute:
         raise_status(HTTPStatus.NOT_FOUND, f"Attribute with id {attribute_id} not found")
 
+    created_by, source = actor(principal, request)
+    ensure_baseline_attribute_revision(attribute)
     try:
-        return attribute_crud.update(db_obj=attribute, obj_in=data)
+        attribute = attribute_crud.update(db_obj=attribute, obj_in=data, commit=False)
+        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        db.session.commit()
+        return attribute
     except IntegrityError:
+        db.session.rollback()
         raise_status(HTTPStatus.CONFLICT, f"Attribute with name {data.name} already exists for this shop")
 
 
@@ -220,6 +240,7 @@ def update(attribute_id: UUID, shop_id: UUID, data: AttributeUpdate = Body(...))
 def delete(
     attribute_id: UUID,
     shop_id: UUID,
+    request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
     principal: Any = Depends(auth_required_any),
 ) -> None:
@@ -244,6 +265,8 @@ def delete(
                 detail={"message": "Attribute is in use and cannot be deleted"},
             )
 
+    created_by, source = actor(principal, request)
+    record_attribute_revision(attribute, action="delete", created_by=created_by, source=source)
     attribute.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
     return None

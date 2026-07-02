@@ -6060,7 +6060,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.4.0"
+    "version": "0.4.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -13898,6 +13898,259 @@
         "tags": [
           "shops",
           "products"
+        ]
+      }
+    },
+    "/shops/{shop_id}/revisions": {
+      "get": {
+        "description": "Shop-wide change feed: every recorded revision of every product, category, tag and attribute, newest first. Supports filtering by `entity_type` (product | category | tag | attribute), `entity_id`, `action` (create | update | delete | restore | baseline), `source` (rest | mcp) and `created_by`, plus `skip`/`limit` pagination (the total is returned in the Content-Range header). Use `get_revision` to inspect a revision's full snapshot.",
+        "operationId": "list_shop_revisions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter: product | category | tag | attribute.",
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter: product | category | tag | attribute.",
+              "title": "Entity Type"
+            }
+          },
+          {
+            "description": "Filter on one specific entity.",
+            "in": "query",
+            "name": "entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter on one specific entity.",
+              "title": "Entity Id"
+            }
+          },
+          {
+            "description": "Filter: create | update | delete | restore | baseline.",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter: create | update | delete | restore | baseline.",
+              "title": "Action"
+            }
+          },
+          {
+            "description": "Filter: rest | mcp.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter: rest | mcp.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Filter on actor, e.g. \"api_key:<uuid>\" or \"cognito:<sub>\".",
+            "in": "query",
+            "name": "created_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter on actor, e.g. \"api_key:<uuid>\" or \"cognito:<sub>\".",
+              "title": "Created By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RevisionSummary"
+                  },
+                  "title": "Response List Shop Revisions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List all revisions in a shop",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed",
+          "agent-large"
+        ]
+      }
+    },
+    "/shops/{shop_id}/revisions/{revision_id}": {
+      "get": {
+        "description": "Returns one revision (of any entity type) by its id, including the full snapshot data. Use it to inspect entries from the `list_shop_revisions` feed.",
+        "operationId": "get_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Revision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get one revision by id",
+        "tags": [
+          "shops",
+          "revisions",
+          "agent-exposed"
         ]
       }
     },

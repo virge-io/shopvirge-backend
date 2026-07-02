@@ -53,6 +53,8 @@ EXPECTED_TOOL_NAMES = {
     "update_attribute",
     "delete_attribute",
     # revisions / trash
+    "list_shop_revisions",
+    "get_revision",
     "list_product_revisions",
     "get_product_revision",
     "restore_product_revision",
