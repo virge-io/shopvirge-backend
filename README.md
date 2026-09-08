@@ -34,7 +34,7 @@ createdb shop-test -O shop  # only needed when your DB doesn't have Postgres sup
 
 Now you should be able to start a hot reloading, api server:
 ```bash
-PYTHONPATH=. uvicorn server.main:app --reload --port 8080
+PYTHONPATH=. uv run uvicorn server.main:app --reload --port 8080
 ```
 
 Or run a threaded server and auto-apply migrations on launch:
@@ -64,8 +64,11 @@ claude mcp add --transport http shopvirge https://api.shopvirge.com/mcp/ \
 
 ## Running tests
 ```bash
-PYTHONPATH=. pytest tests/unit_tests
+uv run pytest tests/unit_tests
 ```
+
+`pytest` finds the repo root through `[tool.pytest.ini_options] pythonpath` in
+`pyproject.toml`, so it does not need `PYTHONPATH=.`. alembic and uvicorn still do.
 
 ## Configuring the server
 
@@ -92,13 +95,13 @@ all needed data (e.g. examples etc.) and the Schema branch.
 Run this command prior to your first schema migration or let the webserver create you DB:
 
 ```bash
-PYTHONPATH=. alembic upgrade heads
+PYTHONPATH=. uv run alembic upgrade heads
 ```
 
 Then, to create a new schema migration:
 
 ```bash
-PYTHONPATH=. alembic revision --autogenerate -m "New schema"
+PYTHONPATH=. uv run alembic revision --autogenerate -m "New schema"
 ```
 
 This opens a new migration in `/migrations/versions/`
@@ -106,7 +109,7 @@ This opens a new migration in `/migrations/versions/`
 The initial scheme was created with:
 
 ```bash
-PYTHONPATH=. alembic revision --autogenerate -m "Initial scheme" --head=schema@head --version-path=migrations/versions/schema
+PYTHONPATH=. uv run alembic revision --autogenerate -m "Initial scheme" --head=schema@head --version-path=migrations/versions/schema
 ```
 
 ### General Migration
@@ -114,7 +117,7 @@ PYTHONPATH=. alembic revision --autogenerate -m "Initial scheme" --head=schema@h
 To create a data migration do the following:
 
 ```bash
-PYTHONPATH=. alembic revision --message "Name of the migration"
+PYTHONPATH=. uv run alembic revision --message "Name of the migration"
 ```
 
 This will also create a new revision file where normal SQL can be written like so:
@@ -124,28 +127,14 @@ conn = op.get_bind()
 res = conn.execute("INSERT INTO products VALUES ('x', 'y', 'z')")
 ```
 
-## Manual deploy
+## Deploying
 
-Activate a python env with SAM installed, fire up Docker if it's not already running and run:
+Deployment is AWS App Runner, configured by `apprunner.yaml` at the repo root. The build and pre-run steps install [uv](https://docs.astral.sh/uv/)
+and run `uv sync --locked --no-dev`, so the deployed dependency set is exactly the
+one pinned in `uv.lock`. Runtime configuration and secrets are read from the SSM
+parameters listed under `run.secrets` in that file.
 
-```
-sam validate
-sam build --use-container --debug
-sam package --s3-bucket YOUR_S3_BUCKET \
---output-template-file out.yml --region eu-central-1
-```
-
-And then deploy it with:
-
-```
-sam deploy --template-file out.yml \
---stack-name fastapi-postgres-boilerplate \
---region eu-central-1 --no-fail-on-empty-changeset \
---capabilities CAPABILITY_IAM
-```
-
-A more detailed explanation about the deployment on Amazon lambda can be found on:
-[renedohmen.nl/deploy-fastapi-on-amazon-serverless](https://www.renedohmen.nl/deploy-fastapi-on-amazon-serverless/)
+A `Dockerfile` is also provided and builds the same environment for container hosts.
 
 ## Reset staging DB
 
@@ -159,26 +148,12 @@ REASSIGN OWNED BY rds_super_user TO priceliststaging;
 
 Now a prepared prod dump can be imported.
 
-## Deployment problems
+# Creating a user
 
-Deployment is still a bit rough and I set the needed ENV vars from a local script.
-
-So after a deployment check if the login works in the swagger GUI. Sometimes the ENV var get reset and you have to
-run the `set-env.py` script for that environment.
-
-Currently, problems happened when:
-- upgrading to a new python version via the SAM template
-- when a build fails to deploy correctly (Noticed: when I added "-e requirement for pydantic-forms")
-
-Running the `set-env.py` sets vars immediately without the need to restart something.
-
-# Create a user
-
-Set up the ENV var for FIRST_USER and run this command:
-
-```bash
-PYTHONPATH=. python server/create_initial_user.py
-```
+Users are not created from this repo. Authentication is AWS Cognito, and the user
+pool, app clients and groups are managed outside this codebase — a user is granted
+access to a shop by being added to a Cognito group named after that shop's UUID.
+See [Authentication & Authorization](docs/api/authentication.md).
 
 # Updating architecture diagrams
 
@@ -257,7 +232,7 @@ createdb shop -U shop
 Migration DIDN'T work for me, but I believe this is the line to do migration:
 
 ```bash
-alembic upgrade heads
+PYTHONPATH=. uv run alembic upgrade heads
 ```
 
 So rather I imported the migration, asked for a dump from Rene and **import** it to the DB:
@@ -282,17 +257,17 @@ echo $env:DATABASE_URI #can try other variables
 
 ## Running Tests
 ```bash
-pytest
+uv run pytest
 ```
 
 ## Start hot reloading Fastapi
 ```bash
-uvicorn server.main:app --host 127.0.0.1 --port 8080 --reload  
+uv run uvicorn server.main:app --host 127.0.0.1 --port 8080 --reload
 ```
 
 Start non hot reloading Fastapi:
 ```bash
-uvicorn server.main:app --host 127.0.0.1 --port 8080
+uv run uvicorn server.main:app --host 127.0.0.1 --port 8080
 ```
 
 # License and copyright info

@@ -17,7 +17,9 @@ The `shop_virge_backend` is a FastAPI-based REST API designed to serve and manag
 - **Database:** PostgreSQL with SQLAlchemy ORM
 - **Migrations:** Alembic (supporting dual branches: `schema` and `data`)
 - **Authentication:** OAuth2 with JWT tokens, session-based middleware
-- **Deployment:** AWS Lambda (SAM/AppRunner compatibility), Docker
+- **Deployment:** AWS App Runner (`apprunner.yaml`), Docker
+- **Dependencies:** uv (`pyproject.toml` + `uv.lock`)
+- **Linting/Formatting:** ruff (config in `pyproject.toml`), enforced by pre-commit
 - **Testing:** Pytest (unit and integration tests)
 - **Monitoring:** Sentry integration
 - **Form Handling:** `pydantic-forms` for dynamic form generation and validation
@@ -51,12 +53,13 @@ The `shop_virge_backend` is a FastAPI-based REST API designed to serve and manag
 - **Shop Scoped API:** Many endpoints are scoped by `shop_id` (e.g., `/shops/{shop_id}/products`).
 - **Translations:** Support for multi-language content via translation tables (e.g., `ProductTranslationTable`).
 - **Development Workflow:**
-    - Use `PYTHONPATH=.` when running commands.
+    - Install with `uv sync --dev`; prefix commands with `uv run` (or activate `.venv`).
+    - `PYTHONPATH=.` is still needed for alembic and uvicorn; pytest resolves the repo root via `[tool.pytest.ini_options] pythonpath`.
     - Migrations are automatically applied on server start (via `lifespan` in `main.py`).
     - Configuration via environment variables (see `server/settings.py`).
 
 #### Code Style Guidelines
-- **Linting & Formatting:** Use `isort` and `black` for consistent code formatting and import sorting (line length is set to 120).
+- **Linting & Formatting:** Use `ruff` for both formatting and linting (line length 120, target py311). `uv run ruff format . && uv run ruff check --fix .`. It replaced the previous black + isort pair; all config lives in `pyproject.toml` under `[tool.ruff]`. Install the hooks once with `uv run pre-commit install` so this runs on every commit.
 - **General Style:** Follow [PEP 8](https://peps.python.org/pep-0008/) for general Python coding style.
 - **Docstrings:** Adhere to [PEP 257](https://peps.python.org/pep-0257/) for docstring conventions. Use descriptive triple-quoted strings for all modules, classes, and public functions.
 - **Naming Conventions:**
@@ -64,11 +67,13 @@ The `shop_virge_backend` is a FastAPI-based REST API designed to serve and manag
     - Functions, methods, and variables: `snake_case` (e.g., `get_multi`, `shop_id`).
     - Constants: `UPPER_SNAKE_CASE` (e.g., `APP_VERSION`).
 - **Indentation:** Use 4 spaces per indentation level.
-- **Type Hinting:** Use type hints for all function arguments and return types to improve code clarity and maintainability.
-- **Imports:** Group and sort imports using `isort` (profile="black"):
+- **Type Hinting:** Use type hints for all function arguments and return types. `uv run mypy .` is configured in `pyproject.toml` but is **not** a CI gate yet (~1200 pre-existing errors), so don't add new untyped code.
+- **Imports:** Sorted by ruff's `I` rules (same grouping isort produced):
     1. Standard library imports.
     2. Related third-party imports.
     3. Local application/library-specific imports.
+
+    Relative imports are banned (`ban-relative-imports = "all"`) — always import from `server.…`.
 - **Database Models:** Naming suffix `Table` is preferred for SQLAlchemy models (e.g., `ShopTable`) to distinguish from Pydantic schemas, though some legacy models may not have it (e.g., `Account`, `License`). All models should inherit from `server.db.database.BaseModel`.
 - **CRUD:** Use `CRUD<ModelName>` for CRUD class names and `<model_name>_crud` for instances. All CRUD classes typically inherit from `server.crud.base.CRUDBase`.
 

@@ -23,7 +23,7 @@ Three workflows run on push and PR:
 
 | Workflow | File | What it checks |
 |----------|------|----------------|
-| Unit tests | `.github/workflows/run-unit-tests.yml` | `pytest --cov-branch --cov=server tests/unit_tests` against a Postgres service container. |
+| Unit tests | `.github/workflows/run-unit-tests.yml` | `uv run pytest --cov-branch --cov=server tests/unit_tests` against a Postgres service container. |
 | Linting | `.github/workflows/run-linting-tests.yml` | `ruff check .` and `ruff format --check .` |
 | Docs build | `.github/workflows/docs-build.yml` | `mkdocs build --strict` — fails on broken links or config errors. |
 

@@ -10,7 +10,7 @@ Almost every resource in ShopVirge belongs to a specific shop. Most of those end
 /shops/{shop_id}/<resource>/<sub-resource>/{id}
 ```
 
-Every handler that accepts a `shop_id` path parameter is gated by an auth dependency (`auth_required` or `auth_required_any`). Which shops a caller may access is determined by their Cognito group membership — see [Authentication](authentication.md).
+Handlers that accept a `shop_id` path parameter are gated by an auth dependency (`auth_required` or `auth_required_any`), except for the deliberately public storefront reads listed under [Public sub-routers](#public-sub-routers). Which shops a caller may access is determined by their Cognito group membership — see [Authentication](authentication.md).
 
 CRUDs for shop-owned resources use the shop-aware helpers on `CRUDBase`:
 
@@ -45,4 +45,21 @@ The files under `server/api/endpoints/shop_endpoints/`:
 
 ## Public sub-routers
 
-Some resources expose a dedicated public router for unauthenticated reads (products, categories), so a storefront can render a catalogue without a session. These are mounted alongside the primary router in `server/api/api.py`.
+Some resources split their routes across two routers by auth posture, mounted
+alongside each other in `server/api/api.py`:
+
+- `router` carries `dependencies=[Depends(auth_required)]` (or
+  `auth_required_any`) at **router level**, so a route added to it cannot ship
+  unauthenticated by omission.
+- `public_router` carries no auth dependency, so a storefront can render a
+  catalogue without a session.
+
+This applies to `shop_endpoints/products.py`, `shop_endpoints/categories.py`
+and — as of the router split — `endpoints/shops.py`, whose public reads are
+`GET /shops/{id}`, `/shops/config/{id}`, `/shops/cache-status/{id}`,
+`/shops/last-completed-order/{id}` and `/shops/last-pending-order/{id}`.
+Storefronts poll those for cache invalidation before anyone signs in.
+
+Prefer this split over repeating a guard on each route.
+`tests/unit_tests/api/test_shops_router_posture.py` pins each `/shops` route to
+its posture.

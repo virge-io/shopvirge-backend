@@ -160,7 +160,7 @@ so form failures are returned as structured API errors instead of raw tracebacks
 Relevant source:
 
 - `server/main.py`
-- `server/exception_handlers.py`
+- `server/exception_handlers/generic_exception_handlers.py`
 
 ## Example flows
 

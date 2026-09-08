@@ -12,6 +12,8 @@ Repository: https://github.com/virge-io/shopvirge-backend
 - Overview: https://shopvirge.readthedocs.io/en/latest/
 - Quickstart: https://shopvirge.readthedocs.io/en/latest/quickstart/
 - Local development setup: https://shopvirge.readthedocs.io/en/latest/development/setup/
+- Code style and toolchain: https://shopvirge.readthedocs.io/en/latest/development/code-style/
+- Testing: https://shopvirge.readthedocs.io/en/latest/development/testing/
 - Contributing: https://shopvirge.readthedocs.io/en/latest/contributing/
 
 ## Architecture
@@ -33,6 +35,12 @@ Repository: https://github.com/virge-io/shopvirge-backend
 
 ## High-value retrieval notes
 
+- Dependencies are managed with uv: `pyproject.toml` plus a committed `uv.lock`. There is no `requirements/` directory. Install with `uv sync --dev`.
+- ruff is the formatter *and* linter; it replaced black and isort. mypy is configured but is not a CI gate.
+- `pytest` does not need a `PYTHONPATH=.` prefix (see `[tool.pytest.ini_options] pythonpath`); alembic and uvicorn still do.
+- The API version is `APP_VERSION` in `server/main.py`, not `server/version.py`. Any API surface change needs that bumped and `uv run python bin/regenerate_openapi_snapshot.py` re-run, or the OpenAPI drift guard fails.
+- Tokens from `AWS_COGNITO_MCP_CLIENT_ID` are *user* tokens, not M2M: they carry `cognito:groups` and face the same `admin_required` group check as web app-client tokens.
+- `endpoints/shops.py`, `shop_endpoints/products.py` and `shop_endpoints/categories.py` each split their routes across an authenticated `router` and an unauthenticated `public_router`.
 - Orders are mounted at `/orders`, not `/shops/{shop_id}/orders`, even though orders still belong to a shop.
 - The end-to-end storefront payment flow is documented in `architecture/checkout/`.
 - Stripe is configured per shop via `ShopTable.stripe_secret_key` and `stripe_public_key`.
