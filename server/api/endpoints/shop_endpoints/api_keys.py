@@ -83,4 +83,4 @@ def revoke(
     row = api_key_crud.revoke(shop_id=shop_id, key_id=key_id)
     if row is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="API key not found")
-    return None
+    return

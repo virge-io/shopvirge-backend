@@ -102,6 +102,13 @@ ignore = [
     "D107",
     "D202",
     "E501",
+    # The docstring convention in this codebase is a summary *sentence* that wraps
+    # over several lines rather than a one-line summary followed by a blank line.
+    # Enforcing D205 would mean rewriting ~18 docstrings' prose for no gain.
+    "D205",
+    # Renaming NotFound/ApiException/StripeNotConfigured & co. to an *Error suffix
+    # is a cross-cutting rename of names imported all over the codebase.
+    "N818",
     "N801",
     "N802",
     "N803",
@@ -113,14 +120,27 @@ ignore = [
 ]
 select = ["ASYNC", "B", "C", "D", "E", "F", "I", "N", "RET", "S", "T", "W"]
 
+[tool.ruff.lint.mccabe]
+# Ceiling, not a target: 19 is what the worst offender (_query_with_filters)
+# scores today. Ratchet this down as those functions get split up; never up.
+max-complexity = 19
+
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
 # FastAPI's dependency-injection idiom is a call in a default argument.
 "server/api/**" = ["B008"]
+"server/security.py" = ["B008"]
+# Operator scripts print to stdout on purpose.
+"bin/*" = ["T201"]
 "server/scripts/*" = ["S101", "T201"]
-"tests/*" = ["S101", "B033", "N816", "N802", "T201"]
+# conftest sets environment variables that the imports below it depend on (E402),
+# and the Cognito fixtures pass literal claim values that look like secrets (S105/S106).
+"tests/unit_tests/conftest.py" = ["E402", "S105", "S106"]
+"tests/*" = ["S101", "S105", "S106", "S603", "B033", "N816", "N802", "T201"]
+# Settings fields are named after the secrets they hold; the defaults are placeholders.
+"server/settings.py" = ["S105"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

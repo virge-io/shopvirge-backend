@@ -20,8 +20,6 @@ from server.schemas.base import quantize_money
 from server.schemas.product import ProductBase
 from server.settings import mail_settings, template_environment
 from server.utils.date_utils import nowtz
-
-# from formatics.utils.singledispatch import single_dispatch_base
 from server.utils.types import ConfirmationMail, InlineImage, MailAddress, MailAttachment, MailType
 
 loader = jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), "mail_templates"))
@@ -65,7 +63,8 @@ def _generate_subject(mail_type: MailType, language: str, product: str, shop: st
     Args:
         ticket_id: a ticket ID or not
         mail_type: CREATE, MODIFY, TERMINATE
-        model: The subscription Model
+        product: Name of the product the mail is about
+        shop: Name of the shop the mail is sent on behalf of
         language: English or Dutch
 
     Returns: a string with an e-mail subject
@@ -96,12 +95,11 @@ def _generate_subject(mail_type: MailType, language: str, product: str, shop: st
 
 
 def send_mail(
-    confirmation_mail: ConfirmationMail, attachments: list[MailAttachment] = [], allow_unsupervised: bool = False
+    confirmation_mail: ConfirmationMail,
+    attachments: list[MailAttachment] | None = None,
+    allow_unsupervised: bool = False,
 ) -> MIMEMultipart:
-    """
-
-    Send E-mail
-    """
+    """Send E-mail."""
     message = make_mime_mail(confirmation_mail, attachments, allow_unsupervised)
     if mail_settings.MAIL_ENABLED:
         logger.debug("Sending an email", message=message)
@@ -116,10 +114,11 @@ def send_mail(
 
 
 def make_mime_mail(
-    confirmation_mail: ConfirmationMail, attachments: list[MailAttachment] = [], allow_unsupervised: bool = False
+    confirmation_mail: ConfirmationMail,
+    attachments: list[MailAttachment] | None = None,
+    allow_unsupervised: bool = False,
 ) -> MIMEMultipart:
-    """
-    The MIME body has the following structure:
+    """The MIME body has the following structure:
     * mixed
       * alternative
         * plain text
@@ -128,7 +127,7 @@ def make_mime_mail(
           * inline image 1
           * inline image n
       * attachment 1
-      * attachment n
+      * attachment n.
     """
     if not confirmation_mail["to"]:
         raise ValueError("No recipients")
@@ -171,7 +170,7 @@ def make_mime_mail(
     alternative.attach(plain_text)
     alternative.attach(related)
     message.attach(alternative)
-    for attachment in attachments:
+    for attachment in attachments or []:
         content_type = attachment["content_type"]
         mime_type = content_type.split("/") if "/" in content_type else ("application", "octet-stream")
         part = MIMEBase(*mime_type)
@@ -268,7 +267,7 @@ def generate_product_summary(model: ProductBase, extra_content: str | None = Non
     more info about the confirmation email templates please consult: :ref:`email-confirmation-templates`
 
     Args:
-        product: Domain model for which to construct a payload.
+        model: Domain model for which to construct a payload.
         extra_content: Optional str to add extra text above the summary
 
     Returns:
@@ -289,7 +288,7 @@ def shop_product_summary(product: ProductBase, extra_content: str | None = None)
     """Create and return an ConfirmationMail for :class:`~products.product_types.ntd.NtdProvisioning`.
 
     Args:
-        model: NtdProvisioning
+        product: Domain model for which to construct a payload.
         extra_content: Optional str to add extra text above the summary
         kwargs: Extra arguments, only to be signature compatible
 

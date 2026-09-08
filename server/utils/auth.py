@@ -28,9 +28,11 @@ def send_email(
     email_to: str,
     subject_template: str = "",
     html_template: str = "",
-    environment: Dict[str, Any] = {},
+    environment: Optional[Dict[str, Any]] = None,
 ) -> None:
-    assert app_settings.SMTP_ENABLED, "no provided configuration for email variables"
+    if environment is None:
+        environment = {}
+    assert app_settings.SMTP_ENABLED, "no provided configuration for email variables"  # noqa: S101
     message = emails.Message(
         subject=JinjaTemplate(subject_template),
         html=JinjaTemplate(html_template),
@@ -43,7 +45,7 @@ def send_email(
         smtp_options["user"] = app_settings.SMTP_USER
     if app_settings.SMTP_PASSWORD:
         smtp_options["password"] = app_settings.SMTP_PASSWORD
-    response_ = message.send(to=email_to, render=environment, smtp=smtp_options)
+    message.send(to=email_to, render=environment, smtp=smtp_options)
     response = message.send(to=app_settings.EMAILS_CC, render=environment, smtp=smtp_options)
     logger.info("Sending mail", result=response)
 
@@ -124,12 +126,11 @@ def generate_password_reset_token(email: str) -> str:
     now = datetime.utcnow()
     expires = now + delta
     exp = expires.timestamp()
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         {"exp": exp, "nbf": now, "sub": email},
         app_settings.SESSION_SECRET,
         algorithm="HS256",
     )
-    return encoded_jwt
 
 
 def verify_password_reset_token(token: str) -> Optional[str]:

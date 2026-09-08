@@ -10,9 +10,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import uuid
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from server.schemas.base import BoilerplateBaseModel, Money
@@ -26,20 +25,7 @@ class OrderItem(BoilerplateBaseModel):
     # kind_name: Optional[str]
     product_id: UUID  # Was optional
     product_name: str  # Was optional
-    # internal_product_id: Optional[str]
     quantity: int  # Was optional
-
-    # @root_validator
-    # def check_order_item_if_has_both(cls, values):
-    #     if (values.get("kind_id") is None) and (values.get("product_id") is None):
-    #         raise ValueError("Order item should have at least one kind_id or one product_id!")
-    #     if (values.get("kind_name") is None) and (values.get("product_name") is None):
-    #         raise ValueError("Order item should have at least one kind_name or one product_name!")
-    #     if bool(values.get("kind_id")) == bool(values.get("product_id")):
-    #         raise ValueError("Order item can have either kind_id or product_id but not both!")
-    #     if bool(values.get("kind_name")) == bool(values.get("product_name")):
-    #         raise ValueError("Order item can have either kind_name or product_name but not both!")
-    #     return values
 
 
 class OrderBase(BoilerplateBaseModel):

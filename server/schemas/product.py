@@ -15,7 +15,7 @@ from http import HTTPStatus
 from typing import List, Optional, Union
 from uuid import UUID
 
-from pydantic import ConfigDict, Field, ValidationError, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from server.api.error_handling import raise_status
 from server.schemas.base import BoilerplateBaseModel, Money

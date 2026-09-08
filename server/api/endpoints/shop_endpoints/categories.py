@@ -1,5 +1,4 @@
 import json
-from collections import defaultdict
 from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any, List, Optional
@@ -15,7 +14,6 @@ from starlette.responses import Response
 from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
-from server.api.helpers import invalidateShopCache
 from server.crud import crud_shop
 from server.crud.crud_category import category_crud
 from server.crud.crud_product import product_crud
@@ -36,11 +34,9 @@ from server.schemas.attribute import (
 )
 from server.schemas.category import (
     CategoryCreate,
-    CategoryIsDeletable,
     CategoryOrder,
     CategorySchema,
     CategoryUpdate,
-    CategoryWithNames,
 )
 from server.schemas.product import (
     AttributeFilters,
@@ -104,15 +100,6 @@ def get_by_id(shop_id: UUID, category_id: UUID) -> CategorySchema:
     if not category:
         raise_status(HTTPStatus.NOT_FOUND, f"Category with id {category_id} not found")
     return category
-
-
-# @router.get("/is-deletable/{id}", response_model=CategoryIsDeletable)
-# def get_id(id: UUID) -> CategoryIsDeletable:
-#     shop_to_price = shop_to_price_crud.get_shops_to_prices_by_category(category_id=id)
-#     if shop_to_price:
-#         return CategoryIsDeletable(is_deletable=False)
-#     else:
-#         return CategoryIsDeletable(is_deletable=True)
 
 
 @router.get(
@@ -189,9 +176,6 @@ def update(
     )
     record_category_revision(category, action="update", created_by=created_by, source=source)
     db.session.commit()
-
-    # if category.shop_id is not None:
-    #     invalidateShopCache(category.shop_id)
 
     return category
 
@@ -312,7 +296,7 @@ def delete(
     record_category_revision(category, action="delete", created_by=created_by, source=source, extra_data=extra_data)
     category.deleted_at = now
     db.session.commit()
-    return None
+    return
 
 
 @public_router.get(
@@ -520,7 +504,7 @@ def get_category_products(
         else:
             end = start - 1
         response.headers["Content-Range"] = f"{kind} {start}-{end}/{total_part}"
-    except Exception:
+    except Exception:  # noqa: S110 -- best-effort header; on failure leave it as-is
         pass
 
     return out

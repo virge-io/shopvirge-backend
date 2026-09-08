@@ -13,8 +13,7 @@ router = APIRouter()
 
 @router.get("", response_model=list[str])
 def get_forms() -> list[str]:
-    """
-    Retrieve all forms.
+    """Retrieve all forms.
 
     Args:
         response: Response
@@ -34,5 +33,4 @@ async def new_form(
     # user: OIDCUserModel or None = Depends(),  # type: ignore
 ) -> dict[str, UUID]:
     # Todo: determine what to do with user?
-    state = start_form(form_key, user_inputs=json_data, user="Just a user", extra_state={"shop_id": shop_id})
-    return state
+    return start_form(form_key, user_inputs=json_data, user="Just a user", extra_state={"shop_id": shop_id})

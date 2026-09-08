@@ -1,4 +1,3 @@
-from datetime import datetime
 from http import HTTPStatus
 from typing import Any
 from uuid import UUID
@@ -25,7 +24,7 @@ router = APIRouter()
 
 @router.get("/")
 def get_multi(response: Response, common: dict = Depends(common_parameters)):
-    """List all product category images"""
+    """List all product category images."""
     categories, header_range = category_crud.get_multi(
         skip=common["skip"],
         limit=common["limit"],
@@ -55,7 +54,7 @@ def put(*, id: UUID, item_in: CategoryUpdate, request: Request, principal: Any =
     category_update = False
     image_cols = ["image_1", "image_2"]
     for image_col in image_cols:
-        if data.get(image_col) and type(data[image_col]) == dict:
+        if data.get(image_col) and isinstance(data[image_col], dict):
             name = name_file(image_col, item.name, getattr(item, image_col))
             upload_file(data[image_col]["src"], name) if item.name != "Test Category" else None
             category_update = True

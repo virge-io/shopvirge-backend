@@ -1,5 +1,6 @@
 """Tests for the category delete flow: 409 warning, force cascade, detach, batch restore
-and category revision restore."""
+and category revision restore.
+"""
 
 from server.db import db
 from server.db.models import CategoryTable, ProductTable, RevisionTable

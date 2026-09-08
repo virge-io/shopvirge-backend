@@ -2,7 +2,6 @@ import re
 import uuid
 
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from server.security import has_admin_group

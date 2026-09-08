@@ -1,6 +1,6 @@
 from server.db import db
 from server.db.models import AttributeOptionTable, AttributeTable, AttributeTranslationTable, ProductAttributeValueTable
-from tests.unit_tests.factories.attribute import make_attribute, make_option, make_pav
+from tests.unit_tests.factories.attribute import make_pav
 
 
 def test_delete_attribute_soft_deletes_by_default(test_client, shop_with_products_and_attributes):

@@ -10,8 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional
-from uuid import UUID
 
 from server.crud.base import CRUDBase
 from server.db.models import CategoryTable
@@ -20,8 +18,6 @@ from server.schemas.category import CategoryCreate, CategoryUpdate
 
 class CRUDCategory(CRUDBase[CategoryTable, CategoryCreate, CategoryUpdate]):
     pass
-    # def get_by_name(self, *, name: str, shop_id: UUID) -> Optional[Category]:
-    #     return Category.query.filter(Category.shop_id == shop_id).filter(Category.name == name).first()
 
 
 category_crud = CRUDCategory(CategoryTable)

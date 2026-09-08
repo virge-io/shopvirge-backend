@@ -2,21 +2,19 @@ from datetime import datetime
 from decimal import Decimal
 from http import HTTPStatus
 from operator import or_
-from typing import Any, List, Optional
+from typing import Any, List
 from uuid import UUID
 
 import stripe
 import structlog
-from alembic.util import not_none
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
-from server.api import deps
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
-from server.api.helpers import _query_with_filters, invalidateCompletedOrdersCache, invalidatePendingOrdersCache, load
+from server.api.helpers import invalidateCompletedOrdersCache, invalidatePendingOrdersCache, load
 from server.api.utils import is_ip_allowed, validate_uuid4
 from server.crud.crud_account import account_crud
 from server.crud.crud_order import order_crud
@@ -28,7 +26,6 @@ from server.schemas import ProductUpdate
 from server.schemas.account import AccountCreate
 from server.schemas.base import quantize_money
 from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdate, OrderUpdated
-from server.schemas.product import ProductTranslationBase
 from server.security import CustomCognitoToken, auth_required, auth_required_any_for_shop
 from server.services import stripe_client
 from server.services.shipping import compute_shipping_for_cart

@@ -1,10 +1,9 @@
-from datetime import datetime
 from http import HTTPStatus
-from typing import Any, List, Optional
+from typing import Any, List
 from uuid import UUID
 
 from fastapi import APIRouter
-from fastapi.param_functions import Body, Depends
+from fastapi.param_functions import Depends
 from starlette.responses import Response
 
 from server.api.deps import common_parameters
@@ -57,7 +56,7 @@ def get_by_improviser_user_id(improviser_user_id: str) -> LicenseSchema:
     license = license_crud.get_by_improviser_user_id(improviser_user_id=improviser_user_id)
 
     if not license:
-        raise_status(HTTPStatus.NOT_FOUND, f"License not found")
+        raise_status(HTTPStatus.NOT_FOUND, "License not found")
     return license
 
 
@@ -70,10 +69,9 @@ def get_by_improviser_user_id(improviser_user_id: str) -> LicenseSchema:
 )
 def create(data: LicenseCreate, _: object = Depends(auth_required)) -> None:
     if data.is_recurring and data.end_date is not None:
-        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, f"Recurring licenses cannot have an end_date")
+        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, "Recurring licenses cannot have an end_date")
 
-    license = license_crud.create(obj_in=data)
-    return license
+    return license_crud.create(obj_in=data)
 
 
 @router.put(
@@ -88,9 +86,8 @@ def edit(id: UUID, data: LicenseUpdate, _: object = Depends(auth_required)) -> A
     if not license:
         raise_status(HTTPStatus.NOT_FOUND, f"License with id {id} not found")
     if license.is_recurring and data.end_date is not None:
-        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, f"Recurring licenses cannot have an end_date")
-    license = license_crud.update(db_obj=license, obj_in=data)
-    return license
+        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, "Recurring licenses cannot have an end_date")
+    return license_crud.update(db_obj=license, obj_in=data)
 
 
 @router.delete(

@@ -1,10 +1,7 @@
 from http import HTTPStatus
-from uuid import UUID, uuid4
-
-import pytest
 
 from server.db import db
-from server.db.models import AttributeOptionTable, AttributeTable
+from server.db.models import AttributeOptionTable
 
 
 def test_list_attribute_options(test_client, shop_with_products_and_attributes):

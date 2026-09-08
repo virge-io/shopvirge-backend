@@ -34,7 +34,7 @@ def test_categories_create(shop, test_client):
     assert response.status_code == 201
     category = CategoryTable.query.filter_by(id=response.json()["id"]).first()
     assert category.translation.main_name == "Create Category Test"
-    assert category.translation.alt1_name == None
+    assert category.translation.alt1_name is None
 
 
 def test_categories_update(shop, category, test_client):
@@ -55,7 +55,7 @@ def test_categories_update(shop, category, test_client):
     assert response.status_code == 201
     category = CategoryTable.query.filter_by(id=category).first()
     assert category.translation.main_name == "Update Category Test"
-    assert category.translation.alt1_name == None
+    assert category.translation.alt1_name is None
 
 
 def test_categories_partial_update(shop, category, test_client):

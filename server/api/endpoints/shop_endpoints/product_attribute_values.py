@@ -4,7 +4,7 @@ All routes are scoped by shop_id to ensure resources belong to the specified sho
 """
 
 from http import HTTPStatus
-from typing import Any, List, Set, Union
+from typing import Any, List, Set
 from uuid import UUID
 
 import structlog
@@ -94,8 +94,7 @@ def create_product_attribute_values(
     data: ProductAttributeValueBase = Body(...),
     principal: Any = Depends(auth_required),
 ) -> None:
-    """
-    DEPRECATED: Create a new product attribute value for a product within a shop.
+    """DEPRECATED: Create a new product attribute value for a product within a shop.
 
     Notes:
     - This endpoint is deprecated; prefer using the selected options endpoint when possible.
@@ -211,14 +210,13 @@ def create_product_attribute_values_for_product(
         record_product_revision(product, action="update", created_by=created_by, source=source)
         db.session.commit()
 
-    return None
+    return
 
 
 def _create_product_attribute_values(
     product_id: UUID, options: List[AttributeOptionTable], existing_option_ids: Set[UUID]
 ) -> list[Any]:
-    """
-    Creates product attribute values by identifying new options that are not in the existing set
+    """Creates product attribute values by identifying new options that are not in the existing set
     of option IDs and preparing a list of product attribute value entries for these options.
     """
     new_pavs = []
@@ -345,7 +343,7 @@ def put_selected_product_attribute_values_by_product(
         record_product_revision(product, action="update", created_by=created_by, source=source)
         db.session.commit()
 
-    return None
+    return
 
 
 @router.delete(
@@ -373,4 +371,4 @@ def delete_product_attribute_value(
     created_by, source = actor(principal, request)
     record_product_revision(product, action="update", created_by=created_by, source=source)
     db.session.commit()
-    return None
+    return

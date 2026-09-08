@@ -14,7 +14,6 @@ from typing import Any, cast
 
 from structlog import get_logger
 
-from server.db.database import BaseModel as DbBaseModel
 from server.db.database import Database, transactional
 from server.db.models import ProductTable, ShopTable, UtcTimestamp, UtcTimestampException  # noqa: F401
 from server.settings import AppSettings

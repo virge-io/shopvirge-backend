@@ -1,6 +1,7 @@
 """Regression: deleting images via update (the shop UI sends image_X: ''),
 then restoring the with-images revision must bring the images back — both on
-the product row and in the new restore revision's snapshot."""
+the product row and in the new restore revision's snapshot.
+"""
 
 from uuid import UUID
 

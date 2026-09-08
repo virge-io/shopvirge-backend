@@ -1,11 +1,8 @@
-from server.db import db
-from server.db.models import ProductAttributeValueTable
 from server.utils.json import json_dumps
 
 
 def test_put_product_attribute_values_with_duplicate_option_ids(test_client, shop_with_products_and_attributes):
-    """
-    Test that sending duplicate option_ids in the PUT endpoint is handled gracefully.
+    """Test that sending duplicate option_ids in the PUT endpoint is handled gracefully.
     The endpoint should deduplicate them using a set and only create one record per unique option.
     """
     ids = shop_with_products_and_attributes
@@ -27,8 +24,7 @@ def test_put_product_attribute_values_with_duplicate_option_ids(test_client, sho
 def test_put_product_attribute_values_with_duplicates_and_pre_existing_data(
     test_client, shop_with_products_and_attributes
 ):
-    """
-    Test PUT with duplicates when some of the options already exist in the database.
+    """Test PUT with duplicates when some of the options already exist in the database.
     It should still handle it correctly and not try to re-create existing ones (idempotency).
     """
     ids = shop_with_products_and_attributes

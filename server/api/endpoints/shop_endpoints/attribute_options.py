@@ -93,8 +93,7 @@ def create_option(
     data: dict = Body(...),
     principal: Any = Depends(auth_required),
 ) -> AttributeOptionSchema:
-    """
-    Create a new option for an attribute within a shop.
+    """Create a new option for an attribute within a shop.
 
     Validates that the attribute exists and belongs to the given shop.
     The body must contain value_key; attribute_id from the path will be used.
@@ -175,7 +174,7 @@ def _delete_option(
             HTTPStatus.CONFLICT,
             detail={"message": "Attribute option is in use and cannot be deleted"},
         )
-    return None
+    return
 
 
 @router.get(
@@ -217,8 +216,7 @@ def create_option_v2(
     data: AttributeOptionCreate = Body(...),
     principal: Any = Depends(auth_required_any),
 ) -> AttributeOptionSchema:
-    """
-    Create a new option for an attribute within a shop.
+    """Create a new option for an attribute within a shop.
 
     Validates that the attribute exists and belongs to the given shop.
     """

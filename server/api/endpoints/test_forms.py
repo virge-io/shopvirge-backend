@@ -6,7 +6,6 @@ from annotated_types import Ge, Le, MultipleOf, Predicate
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from pydantic_forms.core import FormPage
 from pydantic_forms.core import FormPage as PydanticFormsFormPage
 from pydantic_forms.core import post_form
 from pydantic_forms.types import JSON, State
@@ -62,7 +61,7 @@ class Person(BaseModel):
 
 
 @router.post("/")
-async def form(form_data: list[dict] = []):
+async def form(form_data: list[dict] = []):  # noqa: B006 -- FastAPI body default, part of the schema
     def form_generator(state: State):
         class TestForm(FormPage):
             model_config = ConfigDict(title="Form Title Page 1")

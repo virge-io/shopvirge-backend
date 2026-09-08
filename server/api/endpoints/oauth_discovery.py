@@ -77,7 +77,7 @@ def _fetch_hosted_ui_base() -> str:
 
     url = f"{_cognito_issuer()}/.well-known/openid-configuration"
     try:
-        with urllib.request.urlopen(url, timeout=3) as resp:
+        with urllib.request.urlopen(url, timeout=3) as resp:  # noqa: S310 -- https URL built from settings
             doc = json.loads(resp.read())
         return doc["authorization_endpoint"].rsplit("/oauth2/", 1)[0]
     except Exception:

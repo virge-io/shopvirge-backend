@@ -17,7 +17,6 @@ from ast import literal_eval
 from datetime import datetime
 from http import HTTPStatus
 from typing import List, Optional
-from uuid import UUID
 
 import boto3 as boto3
 from fastapi import HTTPException
@@ -76,7 +75,7 @@ s3_temporary = boto3.resource(
     region_name="eu-central-1",
 )
 
-sendMessageLambda = boto3.client(
+send_message_lambda = boto3.client(
     "lambda",
     aws_access_key_id=app_settings.LAMBDA_ACCESS_KEY_ID,
     aws_secret_access_key=app_settings.LAMBDA_SECRET_ACCESS_KEY,
@@ -122,9 +121,10 @@ def get_sort_from_args(args, default_sort="name", default_sort_order="ASC"):
     return sort
 
 
-def get_filter_from_args(args, default_filter={}):
+def get_filter_from_args(args, default_filter: Optional[dict] = None):
+    if default_filter is None:
+        default_filter = {}
     if args["filter"]:
-        # print(args["filter"])
         try:
             filter = literal_eval(args["filter"].replace(":true", ":True").replace(":false", ":False"))
             logger.info("Query parameters set to custom filter", filter=filter)
@@ -194,15 +194,6 @@ def _query_with_filters(
             if filter and len(filter) == 2:
                 field = filter[0]
                 value = filter[1]
-                value_as_bool = value.lower() in (
-                    "yes",
-                    "y",
-                    "ye",
-                    "true",
-                    "1",
-                    "ja",
-                    "insync",
-                )
                 if value is not None:
                     if field.endswith("_gt"):
                         query = query.filter(model.__dict__[field[:-3]] > value)
@@ -221,17 +212,18 @@ def _query_with_filters(
                         query = query.filter(cast(model.__dict__[field], String).ilike("%" + value + "%"))
 
     if sort is not None and len(sort) >= 2:
-        for sort in chunked(sort, 2):
-            if sort and len(sort) == 2:
-                if sort[1].upper() == "DESC":
-                    query = query.order_by(expression.desc(model.__dict__[sort[0]]))
+        for sort_pair in chunked(sort, 2):
+            if sort_pair and len(sort_pair) == 2:
+                if sort_pair[1].upper() == "DESC":
+                    query = query.order_by(expression.desc(model.__dict__[sort_pair[0]]))
                 else:
-                    query = query.order_by(expression.asc(model.__dict__[sort[0]]))
+                    query = query.order_by(expression.asc(model.__dict__[sort_pair[0]]))
     if range is not None and len(range) == 2:
         try:
             range_start = int(range[0])
             range_end = int(range[1])
-            assert range_start < range_end
+            if range_start >= range_end:
+                raise ValueError("range start must be lower than range end")
         except (ValueError, AssertionError):
             msg = "Invalid range parameters"
             logger.exception(msg)
@@ -279,7 +271,7 @@ def name_file(column_name, record_name, image_name=""):
 
 def sendMessageToWebSocketServer(payload):
     try:
-        sendMessageLambda.invoke(
+        send_message_lambda.invoke(
             FunctionName="sendMessage", InvocationType="RequestResponse", Payload=json.dumps(payload)
         )
         logger.info("Sending websocket message")

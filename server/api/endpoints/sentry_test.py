@@ -30,7 +30,7 @@ def trigger_error(type: str):
     elif type == "custom":
         trigger_custom_error()
     elif type == "zero":
-        1 / 0
+        1 / 0  # noqa: B018 -- deliberate ZeroDivisionError for the Sentry smoke test
     elif type == "handled":
         trigger_handled_error()
     else:

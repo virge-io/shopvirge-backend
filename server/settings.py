@@ -11,19 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import secrets
-import string
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import jinja2
 from pydantic import ValidationInfo, field_validator
-from pydantic.networks import EmailStr, PostgresDsn
+from pydantic.networks import EmailStr
 from pydantic_settings import BaseSettings
 
 
 class AppSettings(BaseSettings):
-    """
-    Deal with global app settings.
+    """Deal with global app settings.
 
     The goal is to provide some sensible default for developers here. All constants can be
     overloaded via ENV vars. The validators are used to ensure that you get readable error
@@ -108,18 +105,6 @@ class AppSettings(BaseSettings):
     GUI_URI: str = "http://localhost:3000"
     # DB (probably only postgres for now; we use UUID postgres dialect for the ID's)
     DATABASE_URI: str = "postgresql://shop:shop@localhost/shop"
-
-    # @field_validator("DATABASE_URI", mode='before')
-    # def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
-    #     if isinstance(v, str):
-    #         return v
-    #     return PostgresDsn.build(
-    #         scheme="postgresql",
-    #         user=values.get("POSTGRES_USER"),
-    #         password=values.get("POSTGRES_PASSWORD"),
-    #         host=values.get("POSTGRES_SERVER"),
-    #         path=f"/{values.get('POSTGRES_DB') or ''}",
-    #     )
 
     MAX_WORKERS: int = 5
     CACHE_HOST: str = "127.0.0.1"
