@@ -6,7 +6,7 @@ from fastapi.routing import APIRouter
 from pydantic_forms.core import list_forms
 from pydantic_forms.core.asynchronous import start_form
 
-import server.forms  # noqa -> Needed to register all forms
+import server.forms  # noqa: F401 -- side-effect import; registers all forms
 
 router = APIRouter()
 

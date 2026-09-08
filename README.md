@@ -69,14 +69,14 @@ PYTHONPATH=. pytest tests/unit_tests
 
 ## Configuring the server
 
-All configuration is done via ENV vars. 
+All configuration is done via ENV vars.
 
 ```bash
 export SESSION_SECRET="SUPER_DUPER_SECRET"
 export TESTING=False
 ```
 
-> Note: FastAPI will detect and automatically load an existing `.env` file. 
+> Note: FastAPI will detect and automatically load an existing `.env` file.
 
 ## DB Migrations
 
@@ -144,7 +144,7 @@ sam deploy --template-file out.yml \
 --capabilities CAPABILITY_IAM
 ```
 
-A more detailed explanation about the deployment on Amazon lambda can be found on: 
+A more detailed explanation about the deployment on Amazon lambda can be found on:
 [renedohmen.nl/deploy-fastapi-on-amazon-serverless](https://www.renedohmen.nl/deploy-fastapi-on-amazon-serverless/)
 
 ## Reset staging DB
@@ -163,8 +163,8 @@ Now a prepared prod dump can be imported.
 
 Deployment is still a bit rough and I set the needed ENV vars from a local script.
 
-So after a deployment check if the login works in the swagger GUI. Sometimes the ENV var get reset and you have to 
-run the `set-env.py` script for that environment. 
+So after a deployment check if the login works in the swagger GUI. Sometimes the ENV var get reset and you have to
+run the `set-env.py` script for that environment.
 
 Currently, problems happened when:
 - upgrading to a new python version via the SAM template
@@ -292,7 +292,7 @@ uvicorn server.main:app --host 127.0.0.1 --port 8080 --reload
 
 Start non hot reloading Fastapi:
 ```bash
-uvicorn server.main:app --host 127.0.0.1 --port 8080 
+uvicorn server.main:app --host 127.0.0.1 --port 8080
 ```
 
 # License and copyright info
@@ -300,9 +300,9 @@ uvicorn server.main:app --host 127.0.0.1 --port 8080
 Copyright (C) 2024 René Dohmen <acidjunk@gmail.com>
 
 Licensed under the Apache License Version 2.0. A copy of the LICENSE is included in the project.
-There is a `licenses` folder that contains more detailed copyright info about the project and it's 
-components. Some work is based on, or inspired by, other Open Source projects, like 
-[orchestrator-core](https://github.com/workfloworchestrator/orchestrator-core) and 
+There is a `licenses` folder that contains more detailed copyright info about the project and it's
+components. Some work is based on, or inspired by, other Open Source projects, like
+[orchestrator-core](https://github.com/workfloworchestrator/orchestrator-core) and
 [nwa-stdlib](https://github.com/workfloworchestrator/nwa-stdlib) on which I collaborated.
 
 

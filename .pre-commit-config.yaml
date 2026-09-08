@@ -1,6 +1,8 @@
 default_language_version:
   python: python3
-exclude: ^(migrations/versions/|docs/)
+# old-email-templates/build/ is mjml output: rewriting it here only creates churn
+# that the next mjml run undoes.
+exclude: ^(migrations/versions/|docs/|server/old-email-templates/)
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.6
