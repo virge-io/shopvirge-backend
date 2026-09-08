@@ -53,10 +53,7 @@ _DEFAULT_SCOPES = ("openid", "email", "profile")
 
 
 def _cognito_issuer() -> str:
-    return (
-        f"https://cognito-idp.{app_settings.AWS_COGNITO_REGION}.amazonaws.com/"
-        f"{app_settings.AWS_COGNITO_USERPOOL_ID}"
-    )
+    return f"https://cognito-idp.{app_settings.AWS_COGNITO_REGION}.amazonaws.com/{app_settings.AWS_COGNITO_USERPOOL_ID}"
 
 
 def _hosted_ui_base() -> str:

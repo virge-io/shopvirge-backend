@@ -48,7 +48,7 @@ app = typer.Typer()
 def main(
     dry_run: bool = typer.Option(
         True, help="Disable to actually mutate stuff in the DB, otherwise print only what will be done.", is_flag=True
-    )
+    ),
 ):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=sa_exc.SAWarning)

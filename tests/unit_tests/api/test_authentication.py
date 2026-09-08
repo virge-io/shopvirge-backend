@@ -75,6 +75,6 @@ def test_endpoint_auth(monkeypatch, fastapi_app_not_authenticated):
         if response.status_code != 401:
             not_401_responses.append(response)
 
-    assert (
-        len(not_401_responses) == 0
-    ), f"These response where not behind security: {[(i.request.method, i.url) for i in not_401_responses]}"
+    assert len(not_401_responses) == 0, (
+        f"These response where not behind security: {[(i.request.method, i.url) for i in not_401_responses]}"
+    )

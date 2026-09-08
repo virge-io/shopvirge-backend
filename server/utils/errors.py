@@ -82,7 +82,7 @@ class ApiException(Exception):
 
     def __str__(self) -> str:
         """Create custom error messages for exception."""
-        error_message = "({})\n" "Reason: {}\n".format(self.status, self.reason)
+        error_message = "({})\nReason: {}\n".format(self.status, self.reason)
         if self.headers:
             error_message += f"HTTP response headers: {self.headers}\n"
 
