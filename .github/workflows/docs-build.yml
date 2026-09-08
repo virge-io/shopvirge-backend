@@ -5,7 +5,8 @@ on:
     paths:
       - docs/**
       - mkdocs.yml
-      - requirements/docs.txt
+      - pyproject.toml
+      - uv.lock
       - .readthedocs.yaml
       - README.md
       - .github/workflows/docs-build.yml
@@ -13,26 +14,31 @@ on:
     paths:
       - docs/**
       - mkdocs.yml
-      - requirements/docs.txt
+      - pyproject.toml
+      - uv.lock
       - .readthedocs.yaml
       - README.md
       - .github/workflows/docs-build.yml
+
+env:
+  UV_LOCKED: true # Assert that uv.lock stays unchanged
 
 jobs:
   build:
     name: Build mkdocs site
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.11]
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: pip install -r requirements/docs.txt
+          version: "0.11.19"
+          python-version: "3.11"
+
+      - name: Install docs dependencies
+        run: uv sync --only-group docs
+
       - name: Build docs (strict)
-        run: mkdocs build --strict
+        run: uv run mkdocs build --strict

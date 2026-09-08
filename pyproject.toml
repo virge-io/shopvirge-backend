@@ -1,31 +1,203 @@
-[tool.isort]
-profile="black"
-line_length = 120
-skip = ["src", "venv", ".venv", ".aws-sam"]
+[project]
+name = "shopvirge-backend"
+description = "FastAPI REST API for managing ShopVirge shop pricelists, products, categories, orders and attributes."
+version = "0.4.5"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "alembic~=1.13.1",
+    "bcrypt>=4.0.0",
+    "boto3==1.36.21",
+    "colorama==0.4.6",
+    "deepdiff==5.6.0",
+    "Deprecated~=1.2.12",
+    "email-validator~=2.1.1",
+    "emails~=0.6",
+    "fastapi~=0.115.0",
+    "fastapi-cognito",
+    # >=2.14 fixes transitive $defs pruning that broke the list_* MCP tools
+    "fastmcp~=2.14.7",
+    "gunicorn~=20.0.4",
+    "html2text==2024.2.26",
+    "httpx>=0.28.1",
+    "itsdangerous",
+    "Jinja2==3.1.4",
+    "more-itertools==10.2.0",
+    "phonenumbers==8.13.45",
+    "psycopg2-binary==2.9.12",
+    "pydantic[email]>=2.11.7",
+    "pydantic-extra-types==2.9.0",
+    "pydantic-forms",
+    "pydantic-settings>=2.5.2",
+    "python-jose[cryptography]==3.2.0",
+    "python-multipart==0.0.12",
+    "python-rapidjson==1.17",
+    "pytz==2024.1",
+    "sentry-sdk~=2.28.0",
+    "SQLAlchemy==2.0.50",
+    "SQLAlchemy-Utils",
+    "stripe==10.7.0",
+    "structlog",
+    "uvicorn[standard]>=0.35",
+]
 
-[tool.black]
+[dependency-groups]
+test = [
+    "click>=8.4",
+    "httpx>=0.28.1",
+    "pytest",
+    "pytest-benchmark",
+    "pytest-cov",
+    "pytest-xdist",
+    "typer>=0.15.2",
+]
+docs = [
+    "mkdocs~=1.6",
+    "mkdocs-git-revision-date-localized-plugin~=1.2",
+    "mkdocs-include-markdown-plugin~=7.0",
+    "mkdocs-material~=9.5",
+    "pymdown-extensions~=10.9",
+]
+dev = [
+    { include-group = "test" },
+    "mypy>=1.15",
+    "pre-commit>=4.2.0",
+    "ruff>=0.15.11",
+]
+
+[tool.uv]
+# This is an application, not a distributable library: `uv sync` installs the
+# dependencies but does not build/install `server` itself. Imports resolve via
+# PYTHONPATH=. (see the commands in CLAUDE.md) and via pytest's `pythonpath`.
+package = false
+
+[tool.ruff]
+exclude = [
+    ".aws-sam",
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".venv",
+    "__pycache__",
+    "docs",
+    "migrations/versions",
+    "src",
+    "venv",
+]
 line-length = 120
-target-version = ["py311", ]
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | \.aws-sam
-    | venv
-    | src
-  )/
-)
-'''
+target-version = "py311"
+
+[tool.ruff.lint]
+ignore = [
+    "C417",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "D202",
+    "E501",
+    "N801",
+    "N802",
+    "N803",
+    "N805",
+    "N806",
+    "N815",
+    "B904",
+    "B905",
+]
+select = ["ASYNC", "B", "C", "D", "E", "F", "I", "N", "RET", "S", "T", "W"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's dependency-injection idiom is a call in a default argument.
+"server/api/**" = ["B008"]
+"server/scripts/*" = ["S101", "T201"]
+"tests/*" = ["S101", "B033", "N816", "N802", "T201"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["migrations", "server", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests/unit_tests"]
+norecursedirs = [
+    ".cache",
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "docs",
+    "migrations",
+]
+
+[tool.mypy]
+exclude = "(venv|\\.venv|migrations)"
+ignore_missing_imports = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = true
+warn_unreachable = true
+implicit_reexport = true
+strict_equality = true
+show_error_codes = true
+show_column_numbers = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "server.db.models"
+# declared_attr is an untyped decorator
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = "server.api.endpoints.*"
+# router.get()/post() are untyped decorators
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = "server.main"
+# Exception handler overrides use untyped decorators
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+# https://github.com/python/mypy/issues/11027
+ignore_errors = true
 
 [tool.coverage.run]
+branch = true
+source = ["server"]
 omit = [
     "server/main.py",
     "server/types.py",
     "server/version.py",
     "server/forms/*",
-    ]
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@overload",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]

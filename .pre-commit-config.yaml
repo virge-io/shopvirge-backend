@@ -1,0 +1,44 @@
+default_language_version:
+  python: python3
+exclude: ^(migrations/versions/|docs/)
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix, --show-fixes]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-docstring-first
+      - id: check-json
+      - id: check-yaml
+        exclude: mkdocs\.yml
+      - id: debug-statements
+      - id: detect-private-key
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-use-type-annotations
+      - id: python-check-mock-methods
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+# NOTE: orchestrator-core also runs `mypy` and `vulture` as local hooks here.
+# Neither is enabled yet for this repo:
+#   * `uv run mypy .` currently reports ~1189 errors across 110 files, so a
+#     blocking hook would stop every commit. The config lives in pyproject.toml
+#     ([tool.mypy]) and the command is documented in CLAUDE.md; enable the hook
+#     once the count is driven down.
+#   * the sbrunner `copyright-required` hook would fail on 94 of 171 Python
+#     files, which have no Apache header.

@@ -6,21 +6,23 @@ A backend for serving pricelists.
 
 ## Server
 
-This project only works with Python 3.10 and higher.
-If you want to use a virtual environment first create the environment:
+This project targets Python 3.11. Dependencies are managed with
+[uv](https://docs.astral.sh/uv/) — `pyproject.toml` declares them and `uv.lock`
+pins the exact resolved versions.
+
+Install uv once (see the [uv install docs](https://docs.astral.sh/uv/getting-started/installation/)),
+then create the environment and install everything:
 
 ```bash
-python3 -m venv .venv
-source venv/bin/activate
+uv sync --dev
 ```
 
-You can install the required libraries with pip. The following command will install all the required
-libraries for the project. Check out the different files under requirements to more specifically see
-which library is used and for what reason.
+That creates `.venv/` and installs the runtime dependencies plus the `dev` group
+(which includes `test`). For a runtime-only install use `uv sync --no-dev`; add
+`--group docs` when you also want the MkDocs toolchain.
 
-```bash
-pip install -r ./requirements/all.txt
-```
+Prefix commands with `uv run` to use that environment without activating it
+(e.g. `uv run pytest`), or `source .venv/bin/activate` as usual.
 
 A PostgreSQL user and two databases are required ('shop' is the password used by default).
 
@@ -220,25 +222,21 @@ Open each `.drawio` at <https://app.diagrams.net> → **File → Export as → S
 # Running on Windows
 
 ## Server
-To create a virtual environment:
-```bash
-python -m venv venv    
-```
+## Install dependencies
 
-To start venv (virtual environment)
-```bash
-venv\Scripts\activate  
-```
-The "venv" can change depending on your folder. **Sometimes** it can also be like:
-```bash
-.\.venv\Scripts\activate   
-```
-
-## Install Requirements
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```bash
-pip install -r requirements/all.txt
+uv sync --dev
 ```
+
+uv creates and manages `.venv\` for you. To activate it:
+
+```bash
+.venv\Scripts\activate
+```
+
+Or skip activation entirely and prefix commands with `uv run`.
 
 ## DB Setup
 

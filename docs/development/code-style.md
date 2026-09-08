@@ -1,35 +1,52 @@
+---
+title: Code Style
+description: The formatting, linting and type-checking toolchain, and how to run it locally.
+---
+
 # Code style
 
-The project uses a small, opinionated toolchain. All settings live in `pyproject.toml` and `mypy.ini`.
+The project uses a small, opinionated toolchain. All settings live in `pyproject.toml`.
 
-## Formatters
+## At a glance
 
 | Tool | Config | Purpose |
 |------|--------|---------|
-| [black](https://black.readthedocs.io/) | `pyproject.toml` `[tool.black]` | Code formatting. Line length **120**, target Python 3.11. |
-| [isort](https://pycqa.github.io/isort/) | `pyproject.toml` `[tool.isort]` | Import ordering. Profile `black`, line length **120**. |
+| [ruff](https://docs.astral.sh/ruff/) | `[tool.ruff]` | Formatting **and** linting. Line length **120**, target Python 3.11. |
+| [mypy](https://mypy.readthedocs.io/) | `[tool.mypy]` | Static type checking (strict mode). |
+| [pre-commit](https://pre-commit.com/) | `.pre-commit-config.yaml` | Runs ruff and a set of hygiene hooks on every commit. |
 
-Run them both before committing:
+ruff replaces the previous black + isort pair: `ruff format` covers what black
+did and the `I` lint rules cover what isort did, from a single config.
+
+## Formatting and linting
+
+Run both before committing:
 
 ```bash
-isort . && black .
+uv run ruff format .
+uv run ruff check --fix .
 ```
 
-CI verifies formatting without modifying files:
+CI verifies them without modifying files:
 
 ```bash
-isort -c .
-black --check .
+uv run ruff check .
+uv run ruff format --check .
 ```
 
 See `.github/workflows/run-linting-tests.yml`.
 
+Selected rule families are `ASYNC`, `B`, `C`, `D`, `E`, `F`, `I`, `N`, `RET`,
+`S`, `T` and `W`; the ignore list and per-file exemptions are in
+`[tool.ruff.lint]`. FastAPI's `Depends()`-in-a-default-argument idiom means
+`B008` is exempted for everything under `server/api/`.
+
 ## Type checking
 
-[mypy](https://mypy.readthedocs.io/) runs in strict mode (see `mypy.ini`):
+mypy runs in strict mode:
 
 ```bash
-mypy .
+uv run mypy .
 ```
 
 Key strict-mode flags enabled:
@@ -38,18 +55,44 @@ Key strict-mode flags enabled:
 - `strict_optional`, `strict_equality`
 - `warn_no_return`, `warn_unreachable`
 
-Tests have a narrower exemption (see the `[mypy-tests.unit_tests.app.api.endpoints.*]` section in `mypy.ini`) because of a known mypy interaction with pytest fixtures. Migration files are excluded too.
+Per-module relaxations (untyped decorators on SQLAlchemy `declared_attr` and on
+FastAPI route decorators) live in `[[tool.mypy.overrides]]` blocks. Tests are
+excluded via `ignore_errors` because of a
+[known mypy interaction with pytest fixtures](https://github.com/python/mypy/issues/11027),
+and migrations are excluded entirely.
+
+!!! warning "mypy is not yet a CI gate"
+
+    The existing code does not pass strict mode — `uv run mypy .` currently
+    reports roughly 1200 errors. mypy is therefore deliberately **not** wired
+    into `.pre-commit-config.yaml` or the linting workflow; it is available as a
+    local command while the count is driven down. Do not add new untyped code.
 
 ## Python target
 
-Python **3.11**. Type hints are required on function signatures. `PYTHONPATH=.` is required for all CLI invocations (pytest, alembic, uvicorn).
+Python **3.11**, declared as `requires-python` in `pyproject.toml` and pinned in
+`.python-version`. Type hints are required on function signatures.
+
+`PYTHONPATH=.` is required for CLI invocations that don't go through pytest
+(alembic, uvicorn). pytest picks the repo root up automatically via
+`[tool.pytest.ini_options] pythonpath`.
 
 ## Pre-commit
 
-`requirements/dev.txt` pulls in `pre-commit`. Install hooks once:
+`pre-commit` is in the `dev` dependency group. Install the hooks once:
 
 ```bash
-pre-commit install
+uv sync --dev
+uv run pre-commit install
 ```
 
-(If no `.pre-commit-config.yaml` is committed yet, this is a no-op — isort/black run manually.)
+The configured hooks are ruff (check + format), the standard
+`pre-commit-hooks` hygiene set (trailing whitespace, end-of-file, JSON/YAML
+validity, debug statements, private-key detection), a few `pygrep-hooks`
+Python checks, and shellcheck for the `.sh` scripts.
+
+To run them across the whole repo without committing:
+
+```bash
+uv run pre-commit run --all-files
+```

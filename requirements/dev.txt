@@ -1,7 +1,0 @@
--r test.txt
-#mypy_extensions==0.4.3
-pre-commit
-pydocstyle==3.0.0
-watchdog
-typer>=0.15.2
-click>=8.4

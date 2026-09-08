@@ -32,7 +32,7 @@ The `shop_virge_backend` is a FastAPI-based REST API designed to serve and manag
     - `mail_templates/`: Jinja2 templates for emails.
 - `migrations/`: Alembic migration scripts.
 - `tests/`: Test suite, primarily under `unit_tests/`.
-- `requirements/`: Pip requirement files (base, dev, test, docs, all).
+- `pyproject.toml` / `uv.lock`: dependency declaration and lockfile (managed with uv).
 - `bin/`: CLI tools and helper scripts.
 
 #### Core Concepts & Conventions
