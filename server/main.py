@@ -36,8 +36,6 @@ from server.exception_handlers.generic_exception_handlers import problem_detail_
 from server.mcp import mount_mcp
 from server.settings import app_settings
 
-# from server.version import GIT_COMMIT_HASH
-
 structlog.configure(
     processors=[
         structlog.processors.add_log_level,
@@ -140,4 +138,3 @@ def get_my_ip(request: Request):
 
 
 logger.info("App is running")
-# handler = Mangum(app, lifespan="off")
