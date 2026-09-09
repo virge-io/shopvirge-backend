@@ -15,7 +15,7 @@ from http import HTTPStatus
 from typing import List, Optional, Union
 from uuid import UUID
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from server.api.error_handling import raise_status
 from server.schemas.base import BoilerplateBaseModel, Money
@@ -47,7 +47,9 @@ class ProductBase(BoilerplateBaseModel):
     shop_id: UUID
     # None for products detached from a deleted category (delete_category with detach=true)
     category_id: Optional[UUID] = None
-    price: Optional[Money] = None
+    price: Optional[Money] = Field(
+        None, description="Unit price excluding VAT. Gross = price * (1 + tax_category rate)."
+    )
     recurring_price_monthly: Optional[Money] = None
     recurring_price_yearly: Optional[Money] = None
     max_one: bool
@@ -72,9 +74,29 @@ class ProductBase(BoilerplateBaseModel):
     translation: ProductTranslationBase
 
 
+class ProductTranslationCreate(ProductTranslationBase):
+    @field_validator("main_name", "main_description", "main_description_short")
+    @classmethod
+    def required_translation_fields_must_not_be_blank(cls, value: str) -> str:
+        # These columns are NOT NULL in the DB, and CRUDBase.create_by_shop_id turns "" into
+        # None before insert — reject blanks here so it's a 422, not a DB IntegrityError.
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value
+
+
 # Properties to receive via API on creation
 class ProductCreate(ProductBase):
-    pass
+    translation: ProductTranslationCreate
+
+    @field_validator("tax_category")
+    @classmethod
+    def tax_category_must_not_be_blank(cls, value: str) -> str:
+        # NOT NULL in the DB, and CRUDBase.create_by_shop_id turns "" into None before
+        # insert — reject blanks here so it's a 422, not a DB IntegrityError.
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value
 
 
 class ProductTranslationUpdate(ProductTranslationBase):

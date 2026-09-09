@@ -27,7 +27,8 @@ dependencies = [
     "more-itertools==10.2.0",
     "phonenumbers==8.13.45",
     "psycopg2-binary==2.9.12",
-    "pydantic[email]>=2.11.7",
+    # Pinned exactly: the OpenAPI snapshot depends on pydantic's JSON-schema output.
+    "pydantic[email]==2.13.5",
     "pydantic-extra-types==2.9.0",
     "pydantic-forms",
     "pydantic-settings>=2.5.2",

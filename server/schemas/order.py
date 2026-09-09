@@ -11,21 +11,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
+
+from pydantic import ConfigDict
 
 from server.schemas.base import BoilerplateBaseModel, Money
 
 
 # Made them optional for now because there are some empty order_info fields in DB
 class OrderItem(BoilerplateBaseModel):
-    description: Optional[str]
+    description: Optional[str] = None
     price: Money  # Was optional
     # kind_id: Optional[str]
     # kind_name: Optional[str]
     product_id: UUID  # Was optional
     product_name: str  # Was optional
+    # internal_product_id: Optional[str]
     quantity: int  # Was optional
+    plan: Optional[Literal["onetime", "monthly", "yearly"]] = None
+
+    # @root_validator
+    # def check_order_item_if_has_both(cls, values):
+    #     if (values.get("kind_id") is None) and (values.get("product_id") is None):
+    #         raise ValueError("Order item should have at least one kind_id or one product_id!")
+    #     if (values.get("kind_name") is None) and (values.get("product_name") is None):
+    #         raise ValueError("Order item should have at least one kind_name or one product_name!")
+    #     if bool(values.get("kind_id")) == bool(values.get("product_id")):
+    #         raise ValueError("Order item can have either kind_id or product_id but not both!")
+    #     if bool(values.get("kind_name")) == bool(values.get("product_name")):
+    #         raise ValueError("Order item can have either kind_name or product_name but not both!")
+    #     return values
 
 
 class OrderBase(BoilerplateBaseModel):
@@ -37,12 +53,44 @@ class OrderBase(BoilerplateBaseModel):
     shipping_fee_inc_btw: Optional[Money] = None
 
 
-# Properties to receive via API on creation
-class OrderCreate(OrderBase):
+class OrderItemCreate(BoilerplateBaseModel):
+    description: Optional[str] = None
+    product_id: UUID
+    product_name: str
+    quantity: int
+    plan: Literal["onetime", "monthly", "yearly"] = "onetime"
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OrderQuoteRequest(BoilerplateBaseModel):
     shop_id: UUID
-    order_info: List[OrderItem]  # OrderItem
-    completed_at: Optional[datetime] = None
+    order_info: List[OrderItemCreate]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+# Properties to receive via API on creation. Prices and totals are derived from
+# the catalogue and must not be supplied by clients.
+class OrderCreate(OrderQuoteRequest):
+    account_id: Optional[UUID] = None
     account_name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class OrderQuote(BoilerplateBaseModel):
+    order_info: List[OrderItem]
+    subtotal: Money
+    shipping_fee_inc_btw: Optional[Money] = None
+    free_shipping_applied: bool = False
+    free_shipping_threshold: Optional[Money] = None
+    total: Money
+
+
+class OrderPersisted(OrderBase):
+    shop_id: UUID
+    order_info: List[OrderItem]
+    completed_at: Optional[datetime] = None
 
 
 # Properties to receive via API after creation
@@ -57,6 +105,13 @@ class OrderCreated(OrderBase):
 class OrderUpdate(OrderBase):
     shop_id: UUID
     order_info: List[OrderItem]  # OrderItem
+
+
+class OrderStatusUpdate(BoilerplateBaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class OrderUpdated(OrderUpdate):

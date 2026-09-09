@@ -18,6 +18,11 @@ def make_product(
     tax_category="vat_standard",
     stock: int = 1,
     shippable: bool = True,
+    recurring_price_monthly=None,
+    recurring_price_yearly=None,
+    discounted_price=None,
+    discounted_from=None,
+    discounted_to=None,
 ):
     new_id = uuid4()
     product = ProductTable(
@@ -29,6 +34,11 @@ def make_product(
         stock=stock,
         tax_category=tax_category,
         shippable=shippable,
+        recurring_price_monthly=recurring_price_monthly,
+        recurring_price_yearly=recurring_price_yearly,
+        discounted_price=discounted_price,
+        discounted_from=discounted_from,
+        discounted_to=discounted_to,
     )
     db.session.add(product)
     db.session.commit()
