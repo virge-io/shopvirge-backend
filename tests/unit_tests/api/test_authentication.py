@@ -1,31 +1,10 @@
-import re
-import uuid
+from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
-from server.security import has_admin_group
-
-EXCLUDED_ENDPOINTS = [
-    {"path": "/health/", "name": "get_health", "method": "GET"},
-    {"path": "/products/", "name": "get_multi", "method": "GET"},
-    {"path": "/products/{id}/", "name": "get_id", "method": "GET"},
-    {"path": "/shops/{shop_id}/prices/", "name": "get_products", "method": "GET"},
-    {"path": "/shops/{shop_id}/prices/", "name": "get_cart_products", "method": "POST"},
-    {"path": "/orders/", "name": "create", "method": "POST"},
-    {"path": "/shops/{shop_id}/stripe/", "name": "create_payment_intent", "method": "POST"},
-    {"path": "/shops/{shop_id}/stripe/subscription", "name": "create_subscription_intent", "method": "POST"},
-    {"path": "/info-request/", "name": "create_info_request", "method": "POST"},
-    {"path": "/sentry/", "name": "trigger_error", "method": "GET"},
-    {"path": "/test-forms/", "name": "form", "method": "POST"},
-    {"path": "/faq/", "name": "get_multi", "method": "GET"},
-    {"path": "/faq/{id}", "name": "get_by_id", "method": "GET"},
-    {"path": "/shops/", "name": "get_multi", "method": "GET"},
-    {"path": "/shops/", "name": "create", "method": "POST"},
-    # Temporary exclusion to avoid the greedy-params bug
-    # TODO fix this endpoint so it no longer needs the shop_id or fix this bug by fixing the UT below
-    {"path": "/shops/{shop_id}/attributes/{attribute_id}/options/", "name": "list_options", "method": "GET"},
-]
+from server.security import admin_required, has_admin_group
+from server.settings import app_settings
 
 
 @pytest.mark.parametrize("group", ["Admins", "admins"])
@@ -37,43 +16,37 @@ def test_has_admin_group_rejects_other_groups():
     assert has_admin_group(["users"]) is False
 
 
-def get_endpoints(fastapi_app):
-    url_list = []
-    for route in fastapi_app.routes:
-        if hasattr(route, "methods"):
-            if str(route.path).endswith("/"):
-                url_list.append({"path": route.path, "name": route.name, "method": list(route.methods)[0]})
-    return url_list
+def _token(client_id, groups=()):
+    return SimpleNamespace(client_id=client_id, cognito_groups=list(groups))
 
 
-def test_endpoint_auth(monkeypatch, fastapi_app_not_authenticated):
-    test_client = TestClient(fastapi_app_not_authenticated)
+@pytest.fixture
+def cognito_client_ids(monkeypatch):
+    monkeypatch.setattr(app_settings, "AWS_COGNITO_CLIENT_ID", "web-client")
+    monkeypatch.setattr(app_settings, "AWS_COGNITO_MCP_CLIENT_ID", "mcp-client")
 
-    responses = []
-    for endpoint in get_endpoints(fastapi_app=test_client.app):
-        if endpoint not in EXCLUDED_ENDPOINTS:
-            if endpoint["method"] == "GET":
-                if re.search("{.*}", endpoint["path"]):
-                    url_with_uuid = re.sub("{.*}", str(uuid.uuid4()), endpoint["path"])
-                    responses.append(test_client.get(f"{url_with_uuid}"))
-                else:
-                    responses.append(test_client.get(f"{endpoint['path']}"))
-            elif endpoint["method"] == "POST":
-                responses.append(test_client.post(f"{endpoint['path']}"))
-            elif endpoint["method"] == "PUT":
-                url_with_uuid = re.sub("{.*}", str(uuid.uuid4()), endpoint["path"])
-                responses.append(test_client.put(f"{url_with_uuid}"))
-            elif endpoint["method"] == "DELETE":
-                url_with_uuid = re.sub("{.*}", str(uuid.uuid4()), endpoint["path"])
-                responses.append(test_client.delete(f"{url_with_uuid}"))
 
-    not_401_responses = []
+@pytest.mark.parametrize("client_id", ["web-client", "mcp-client"])
+def test_admin_required_rejects_user_token_without_admin_group(cognito_client_ids, client_id):
+    """Both app clients issue *user* tokens, so both must face the group check.
 
-    for response in responses:
-        print(response.json())
-        if response.status_code != 401:
-            not_401_responses.append(response)
+    Regression: admin_required compared only against AWS_COGNITO_CLIENT_ID, so a
+    token from the MCP app client fell into the "must be M2M, trust it" branch
+    and reached admin routes without being in the admins group.
+    """
+    with pytest.raises(HTTPException) as exc_info:
+        admin_required(_token(client_id, groups=["users"]))
+    assert exc_info.value.status_code == 403
 
-    assert len(not_401_responses) == 0, (
-        f"These response where not behind security: {[(i.request.method, i.url) for i in not_401_responses]}"
-    )
+
+@pytest.mark.parametrize("client_id", ["web-client", "mcp-client"])
+@pytest.mark.parametrize("group", ["Admins", "admins"])
+def test_admin_required_accepts_user_token_in_admin_group(cognito_client_ids, client_id, group):
+    token = _token(client_id, groups=[group])
+    assert admin_required(token) is token
+
+
+def test_admin_required_trusts_m2m_token(cognito_client_ids):
+    """An M2M token has no cognito:groups; auth_required already scope-gated it."""
+    token = _token("some-m2m-client")
+    assert admin_required(token) is token

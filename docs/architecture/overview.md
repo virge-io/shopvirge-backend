@@ -7,7 +7,7 @@ ShopVirge is a FastAPI REST API backed by PostgreSQL via SQLAlchemy 2.0, with a 
 | Layer | Location | Responsibility |
 |-------|----------|----------------|
 | **Entry point** | `server/main.py` | FastAPI app, middleware stack, lifespan hook (runs alembic on startup). |
-| **Routing** | `server/api/api.py` + `server/api/endpoints/` | Top-level router aggregation. Shop-scoped routes live in `server/api/endpoints/shop_endpoints/`. |
+| **Routing** | `server/api/api.py` + `server/api/endpoints/<domain>/` | One package per domain, composed into auth tiers in `api.py`. |
 | **CRUD** | `server/crud/` | `CRUD<Model>` classes inheriting `CRUDBase` (`server/crud/base.py`). Instances named `<model>_crud`. |
 | **Models** | `server/db/models.py` | SQLAlchemy 2.0 models suffixed `Table`, inheriting `BaseModel` from `server/db/database.py`. |
 | **Schemas** | `server/schemas/` | Pydantic 2 models for request and response validation. |
@@ -44,7 +44,7 @@ Four domain tables have companion translation tables that carry per-language nam
 
 ## External integrations
 
-- **Payments:** Stripe (`server/api/endpoints/shop_endpoints/stripe.py`).
+- **Payments:** Stripe (`server/api/endpoints/checkout/stripe.py`).
 - **Auth:** AWS Cognito (`fastapi-cognito`) — see [Authentication](../api/authentication.md).
 - **Error tracking:** Sentry (`SentryAsgiMiddleware` in `server/main.py`).
 - **Email:** SMTP, configured via `SMTP_*` env vars; templates under `server/mail_templates/`.
@@ -56,6 +56,6 @@ Four domain tables have companion translation tables that carry per-language nam
 - `server/api/api.py` — every router the API exposes.
 - `server/db/database.py` — session management (`WrappedSession`, `@transactional`).
 - `server/crud/base.py` — common CRUD pattern used throughout.
-- `server/api/endpoints/shop_endpoints/orders.py` + `server/api/endpoints/shop_endpoints/stripe.py` — checkout persistence and Stripe orchestration; see [Checkout flow](checkout.md).
+- `server/api/endpoints/orders/` + `server/api/endpoints/checkout/stripe.py` — checkout persistence and Stripe orchestration; see [Checkout flow](checkout.md).
 
 See [Request flow](request-flow.md) for a sequence diagram of a typical request.

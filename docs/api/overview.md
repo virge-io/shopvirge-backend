@@ -28,7 +28,7 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
 
 === "System"
 
-    - `health` — `server/api/endpoints/health.py`
+    - `health` — `server/api/endpoints/system/health.py`
     - `sentry_test` — probe Sentry integration
     - `forms` / `test_forms` — `pydantic-forms` support; see [Forms](forms.md)
 
@@ -37,7 +37,7 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
     - `images`, `licenses`, `downloads` — asset endpoints
     - `faq`, `early_access`, `info_request` — marketing/content, including the public info-request form endpoint
     - `shops` — shop CRUD (not nested under another shop)
-    - `admin_accounts` — superuser cross-shop view of accounts and Stripe linkage (`server/api/endpoints/admin_accounts.py`); see [Admin accounts](admin-accounts.md)
+    - `admin_accounts` — superuser cross-shop view of accounts and Stripe linkage (`server/api/endpoints/accounts/admin.py`); see [Admin accounts](admin-accounts.md)
 
 === "Shop-scoped"
 

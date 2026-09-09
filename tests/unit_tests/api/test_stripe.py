@@ -1,7 +1,7 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
-from server.api.endpoints.shop_endpoints import stripe as stripe_endpoint
+from server.api.endpoints.checkout import stripe as stripe_endpoint
 from server.db import db
 from server.db.models import OrderTable
 from server.services import stripe_client
