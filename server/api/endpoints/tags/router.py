@@ -1,9 +1,14 @@
-"""Routers exposed by the ``tags`` package, composed from its modules.
+"""Routers exposed by the ``tags`` package.
 
-Handlers live in the resource modules next to this file; api.py mounts these
-routers into the auth tiers with their prefixes and tags.
+Paths here are relative to the ``/shops/{shop_id}`` tier prefix in api.py.
 """
 
-from server.api.endpoints.tags.tags import router
+from fastapi import APIRouter
+
+from server.api.endpoints.tags import tags
+
+# shop_any tier
+router = APIRouter()
+router.include_router(tags.router, prefix="/tags", tags=["shops", "products"])
 
 __all__ = ["router"]

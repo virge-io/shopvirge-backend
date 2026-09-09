@@ -1,13 +1,23 @@
 """Routers exposed by the ``products`` package, composed from its modules.
 
-Handlers live in the resource modules next to this file; api.py mounts these
-routers into the auth tiers with their prefixes and tags.
+Paths here are relative to the ``/shops/{shop_id}`` tier prefix in api.py.
 """
 
-from server.api.endpoints.products.attribute_values import router as attribute_values_router
-from server.api.endpoints.products.prices import router as prices_router
-from server.api.endpoints.products.product_tags import router as product_tags_router
-from server.api.endpoints.products.products import router
-from server.api.endpoints.products.public import router as public_router
+from fastapi import APIRouter
 
-__all__ = ["attribute_values_router", "prices_router", "product_tags_router", "public_router", "router"]
+from server.api.endpoints.products import attribute_values, prices, product_tags, products, public
+
+# shop_any tier: API key or Cognito
+router = APIRouter()
+router.include_router(products.router, prefix="/products", tags=["shops", "products"])
+router.include_router(product_tags.router, prefix="/products-to-tags", tags=["shops", "products"])
+router.include_router(
+    attribute_values.router, prefix="/product-attribute-values", tags=["shops", "products", "attributes"]
+)
+
+# shop_public tier: storefront reads
+public_router = APIRouter()
+public_router.include_router(public.router, prefix="/products", tags=["shops", "products"])
+public_router.include_router(prices.router, prefix="/prices", tags=["shops"])
+
+__all__ = ["public_router", "router"]

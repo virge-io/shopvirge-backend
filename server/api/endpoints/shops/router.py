@@ -1,19 +1,27 @@
 """Routers exposed by the ``shops`` package, composed from its modules.
 
-Handlers live in the resource modules next to this file; api.py mounts these
-routers into the auth tiers with their prefixes and tags.
+``shop_router`` (``PUT/DELETE /shops/{shop_id}``) and ``legacy_id_router`` (the
+routes still spelling the shop id ``{id}``) cannot sit under the prefixed shop
+tier — their own path *is* the shop segment — so api.py includes them with
+their guard spelled out until the path-param rename re-homes them.
 """
 
 from fastapi import APIRouter
 
-from server.api.endpoints.shops.allowed_ips import router as _allowed_ips_router
-from server.api.endpoints.shops.collection import router as collection_router
-from server.api.endpoints.shops.config import router as _config_router
-from server.api.endpoints.shops.public import router as public_router
-from server.api.endpoints.shops.shop import router as shop_router
+from server.api.endpoints.shops import allowed_ips, collection, config, public, shop
 
+# authenticated tier
+router = APIRouter()
+router.include_router(collection.router, prefix="/shops", tags=["shops"])
+
+# public tier
+public_router = APIRouter()
+public_router.include_router(public.router, prefix="/shops", tags=["shops"])
+
+# included directly by api.py, see module docstring
+shop_router = shop.router
 legacy_id_router = APIRouter()
-legacy_id_router.include_router(_config_router)
-legacy_id_router.include_router(_allowed_ips_router)
+legacy_id_router.include_router(config.router)
+legacy_id_router.include_router(allowed_ips.router)
 
-__all__ = ["collection_router", "legacy_id_router", "public_router", "shop_router"]
+__all__ = ["legacy_id_router", "public_router", "router", "shop_router"]

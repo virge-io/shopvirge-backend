@@ -1,23 +1,28 @@
-"""Routers exposed by the ``content`` package, composed from its modules.
+"""Routers exposed by the ``content`` package, composed from its modules."""
 
-Handlers live in the resource modules next to this file; api.py mounts these
-routers into the auth tiers with their prefixes and tags.
-"""
+from fastapi import APIRouter
 
-from server.api.endpoints.content.downloads import router as downloads_router
-from server.api.endpoints.content.early_access import router as early_access_router
-from server.api.endpoints.content.faq import router as faq_router
-from server.api.endpoints.content.faq_public import router as faq_public_router
-from server.api.endpoints.content.info_request import router as info_request_router
-from server.api.endpoints.content.licenses import router as licenses_router
-from server.api.endpoints.content.licenses_public import router as licenses_public_router
+from server.api.endpoints.content import (
+    downloads,
+    early_access,
+    faq,
+    faq_public,
+    info_request,
+    licenses,
+    licenses_public,
+)
 
-__all__ = [
-    "downloads_router",
-    "early_access_router",
-    "faq_public_router",
-    "faq_router",
-    "info_request_router",
-    "licenses_public_router",
-    "licenses_router",
-]
+# authenticated tier
+router = APIRouter()
+router.include_router(early_access.router, prefix="/early-access", tags=["early-access"])
+router.include_router(faq.router, prefix="/faq", tags=["faq"])
+router.include_router(licenses.router, prefix="/licenses", tags=["licenses"])
+
+# public tier
+public_router = APIRouter()
+public_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
+public_router.include_router(info_request.router, prefix="/info-request", tags=["info-request"])
+public_router.include_router(faq_public.router, prefix="/faq", tags=["faq"])
+public_router.include_router(licenses_public.router, prefix="/licenses", tags=["licenses"])
+
+__all__ = ["public_router", "router"]
