@@ -1,18 +1,16 @@
 from http import HTTPStatus
-from typing import List
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter
-from fastapi.param_functions import Body, Depends
-from starlette.responses import Response
+from fastapi.param_functions import Body
 
-from server.api.deps import PageParams, page_params_for
+from server.api.deps import page_params_for
 from server.api.error_handling import raise_status
-from server.api.route_helpers import get_or_404, list_page
+from server.api.route_helpers import get_or_404
 from server.crud.crud_faq import faq_crud
 from server.db.models import FaqTable
-from server.schemas.faq import FaqCreate, FaqCreated, FaqSchema, FaqUpdate, FaqUpdated
+from server.schemas.faq import FaqCreate, FaqCreated, FaqUpdate, FaqUpdated
 
 logger = structlog.get_logger(__name__)
 
@@ -22,33 +20,12 @@ logger = structlog.get_logger(__name__)
 #   public_router   reads — the FAQ is public content     none
 #   router          writes                                auth_required
 router = APIRouter()
-public_router = APIRouter()
 
 faq_page_params = page_params_for(faq_crud)
 
 
 def _faq_or_404(faq_id: UUID, detail: str | None = None) -> FaqTable:
     return get_or_404(faq_crud.get(faq_id), detail or f"FAQ with id {faq_id} not found")
-
-
-@public_router.get(
-    "/",
-    response_model=List[FaqSchema],
-    summary="List FAQ entries",
-    description="Returns all FAQ question/answer entries. Supports pagination, filtering, and sorting.",
-)
-def get_multi(response: Response, page: PageParams = Depends(faq_page_params)) -> List[FaqTable]:
-    return list_page(faq_crud, page, response)
-
-
-@public_router.get(
-    "/{id}",
-    response_model=FaqSchema,
-    summary="Get FAQ entry",
-    description="Retrieve a single FAQ entry by its UUID.",
-)
-def get_by_id(id: UUID) -> FaqTable:
-    return _faq_or_404(id)
 
 
 @router.post(

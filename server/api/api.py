@@ -70,6 +70,7 @@ authenticated.include_router(shops.collection_router, prefix="/shops", tags=["sh
 authenticated.include_router(orders.management_router, prefix="/orders", tags=["orders"])
 authenticated.include_router(content.early_access_router, prefix="/early-access", tags=["early-access"])
 authenticated.include_router(content.faq_router, prefix="/faq", tags=["faq"])
+authenticated.include_router(content.licenses_router, prefix="/licenses", tags=["licenses"])
 
 # --- admin: Cognito token in the admins group -------------------------------
 admin.include_router(accounts.admin_router, prefix="/admin/accounts", tags=["admin", "accounts"])
@@ -110,8 +111,7 @@ shop_any.include_router(
 public.include_router(system.oauth_discovery_router, tags=["oauth"])
 public.include_router(system.health_router, prefix="/health", tags=["system"])
 public.include_router(images.public_router, prefix="/images", tags=["images"])
-# licenses guards its write routes per route; it moves to `authenticated` once split.
-public.include_router(content.licenses_router, prefix="/licenses", tags=["licenses"])
+public.include_router(content.licenses_public_router, prefix="/licenses", tags=["licenses"])
 public.include_router(content.downloads_router, prefix="/downloads", tags=["downloads"])
 public.include_router(shops.public_router, prefix="/shops", tags=["shops"])
 public.include_router(products.prices_router, prefix="/shops/{shop_id}/prices", tags=["shops"])

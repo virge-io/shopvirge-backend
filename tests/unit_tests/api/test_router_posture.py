@@ -54,6 +54,12 @@ PROTECTED = [
     ("POST", "/faq/"),
     ("PUT", f"/faq/{ID}"),
     ("DELETE", f"/faq/{ID}"),
+    # licenses
+    ("GET", "/licenses/"),
+    ("GET", f"/licenses/{ID}"),
+    ("POST", "/licenses/"),
+    ("PUT", f"/licenses/{ID}"),
+    ("DELETE", f"/licenses/{ID}"),
 ]
 
 PUBLIC = [
@@ -72,6 +78,8 @@ PUBLIC = [
     # faq: public content
     ("GET", "/faq/"),
     ("GET", f"/faq/{ID}"),
+    # licenses: looked up by the improviser app without a session
+    ("GET", f"/licenses/improviser/{ID}"),  # improviser_user is a UUID column
 ]
 
 

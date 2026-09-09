@@ -10,7 +10,6 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.crud_license import license_crud
 from server.schemas.license import LicenseCreate, LicenseSchema, LicenseUpdate
-from server.security import auth_required
 
 router = APIRouter()
 
@@ -24,7 +23,6 @@ router = APIRouter()
 def get_multi(
     response: Response,
     common: dict = Depends(common_parameters),
-    _: object = Depends(auth_required),
 ) -> List[LicenseSchema]:
     licenses, header_range = license_crud.get_multi(
         skip=common["skip"], limit=common["limit"], filter_parameters=common["filter"], sort_parameters=common["sort"]
@@ -39,24 +37,10 @@ def get_multi(
     summary="Get license",
     description="Retrieve a single license by its UUID. Requires superuser privileges.",
 )
-def get_by_id(id: UUID, _: object = Depends(auth_required)) -> LicenseSchema:
+def get_by_id(id: UUID) -> LicenseSchema:
     license = license_crud.get(id)
     if not license:
         raise_status(HTTPStatus.NOT_FOUND, f"License with id {id} not found")
-    return license
-
-
-@router.get(
-    "/improviser/{improviser_user_id}",
-    response_model=LicenseSchema,
-    summary="Get license by improviser user ID",
-    description="Retrieve the license associated with an external improviser user ID.",
-)
-def get_by_improviser_user_id(improviser_user_id: str) -> LicenseSchema:
-    license = license_crud.get_by_improviser_user_id(improviser_user_id=improviser_user_id)
-
-    if not license:
-        raise_status(HTTPStatus.NOT_FOUND, "License not found")
     return license
 
 
@@ -67,7 +51,7 @@ def get_by_improviser_user_id(improviser_user_id: str) -> LicenseSchema:
     summary="Create license",
     description="Create a new license. Recurring licenses must not have an `end_date`. Requires superuser privileges.",
 )
-def create(data: LicenseCreate, _: object = Depends(auth_required)) -> None:
+def create(data: LicenseCreate) -> None:
     if data.is_recurring and data.end_date is not None:
         raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, "Recurring licenses cannot have an end_date")
 
@@ -81,7 +65,7 @@ def create(data: LicenseCreate, _: object = Depends(auth_required)) -> None:
     summary="Update license",
     description="Update an existing license. Recurring licenses may not be given an `end_date`. Requires superuser privileges.",
 )
-def edit(id: UUID, data: LicenseUpdate, _: object = Depends(auth_required)) -> Any:
+def edit(id: UUID, data: LicenseUpdate) -> Any:
     license = license_crud.get(id)
     if not license:
         raise_status(HTTPStatus.NOT_FOUND, f"License with id {id} not found")
@@ -97,5 +81,5 @@ def edit(id: UUID, data: LicenseUpdate, _: object = Depends(auth_required)) -> A
     summary="Delete license",
     description="Permanently remove a license. Requires superuser privileges.",
 )
-def delete(id: UUID, _: object = Depends(auth_required)) -> None:
+def delete(id: UUID) -> None:
     return license_crud.delete(id=id)
