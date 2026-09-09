@@ -104,7 +104,6 @@ def is_of_type(t: Any, test_type: Any) -> bool:
     >>> is_of_type(int, str)
     False
     """
-
     if (
         hasattr(t, "__origin__")
         and hasattr(test_type, "__origin__")
@@ -162,8 +161,7 @@ def is_list_type(t: Any, test_type: Optional[type] = None) -> bool:
         elif issubclass(t.__origin__, list):
             if test_type and t.__args__:
                 return is_of_type(t.__args__[0], test_type)
-            else:
-                return True
+            return True
 
     return False
 
@@ -196,6 +194,5 @@ def is_optional_type(t: Any, test_type: Optional[type] = None) -> bool:
 
                 if test_type:
                     return is_of_type(arg, test_type)
-                else:
-                    return True
+                return True
     return False

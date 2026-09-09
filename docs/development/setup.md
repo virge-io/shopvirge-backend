@@ -15,18 +15,21 @@ See the [Quickstart](../quickstart.md) for the canonical setup instructions (sou
 
 ## Prerequisites
 
-- Python **3.11** (the project's declared target; `README.md` still mentions 3.10+, but CI and tooling target 3.11).
+- Python **3.11** (declared as `requires-python` in `pyproject.toml` and pinned in `.python-version`).
+- [uv](https://docs.astral.sh/uv/) for dependency management. uv will download the right Python for you if it isn't installed.
 - PostgreSQL running locally with a `shop` superuser and two databases: `shop` (main) and `shop-test` (for the test suite).
 
 ## Virtual environment
 
 ```bash
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements/all.txt   # everything including docs and test tooling
+uv sync --dev            # runtime + dev/test tooling, into .venv/
+uv sync --all-groups     # the above plus the docs toolchain
 ```
 
-If you only need the API running (no docs, no tests), `requirements/base.txt` is enough.
+If you only need the API running (no docs, no tests), `uv sync --no-dev` is enough.
+
+Every command below can be run either inside the venv (`source .venv/bin/activate`)
+or prefixed with `uv run`.
 
 ## Environment variables
 
@@ -68,8 +71,8 @@ Visit:
 ## Docs preview
 
 ```bash
-pip install -r requirements/docs.txt
-mkdocs serve
+uv sync --group docs
+uv run mkdocs serve
 ```
 
 Then open <http://127.0.0.1:8000>.
@@ -78,4 +81,5 @@ Then open <http://127.0.0.1:8000>.
 
 - **`psycopg` / database connection errors on startup:** verify that both `shop` and `shop-test` exist and that `DATABASE_URI` points at the main `shop` database.
 - **401s from protected routes in local dev:** the server is up, but Cognito-related env vars are still placeholders. See the Cognito block above.
-- **`mkdocs serve` fails because plugins are missing:** install the docs-only dependencies with `pip install -r requirements/docs.txt` or the full toolchain with `pip install -r requirements/all.txt`.
+- **`mkdocs serve` fails because plugins are missing:** install the docs-only dependencies with `uv sync --group docs` or the full toolchain with `uv sync --all-groups`.
+- **CI fails with "the lockfile is not up-to-date":** you changed `pyproject.toml` without re-resolving. Run `uv lock` and commit `uv.lock`.

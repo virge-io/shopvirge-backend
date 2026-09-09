@@ -47,7 +47,7 @@ def test_products_create(shop, category, test_client):
     assert HTTPStatus.CREATED == response.status_code, f"No 201 status code: full response {response.json()}"
     product = ProductTable.query.filter_by(id=response.json()["id"]).first()
     assert product.translation.main_name == "Create Product Test"
-    assert product.translation.alt1_name == None
+    assert product.translation.alt1_name is None
 
 
 def test_products_update(shop_with_config, product, category, test_client):
@@ -77,7 +77,7 @@ def test_products_update(shop_with_config, product, category, test_client):
     assert response.status_code == 201
     product = ProductTable.query.filter_by(id=product).first()
     assert product.translation.main_name == "Update Product Test"
-    assert product.translation.alt1_name == None
+    assert product.translation.alt1_name is None
 
 
 def test_products_partial_update(shop_with_config, product, test_client):

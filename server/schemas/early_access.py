@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
@@ -24,8 +23,3 @@ class EarlyAccessInDBBase(EarlyAccessBase):
 
     class Config:
         from_attributes = True
-
-
-# Additional properties to return via API
-# class EarlyAccess(EarlyAccessInDBBase):
-#     created_at = datetime

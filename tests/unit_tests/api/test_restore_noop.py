@@ -1,5 +1,6 @@
 """A restore whose snapshot matches the current state must not record a new
-revision — it returns a warning instead, so the history doesn't fill up with no-ops."""
+revision — it returns a warning instead, so the history doesn't fill up with no-ops.
+"""
 
 from uuid import UUID
 

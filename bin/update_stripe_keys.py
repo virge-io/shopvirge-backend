@@ -23,7 +23,7 @@ def update_stripe_keys():
         print("Error: STRIPE_TEST_PUBLIC_KEY or STRIPE_TEST_SECRET_KEY not found in environment.")
         sys.exit(1)
 
-    print(f"Updating all shops with test Stripe keys...")
+    print("Updating all shops with test Stripe keys...")
 
     with db.database_scope():
         with transactional(db, logger):

@@ -13,7 +13,7 @@ logger = structlog.get_logger(__name__)
 
 
 def get_accounts_with_missing_details():
-    return db.session.query(Account).filter(Account.details == None)
+    return db.session.query(Account).filter(Account.details.is_(None))
 
 
 def get_orders_for_accounts(accounts: list[Account]):
@@ -48,7 +48,7 @@ app = typer.Typer()
 def main(
     dry_run: bool = typer.Option(
         True, help="Disable to actually mutate stuff in the DB, otherwise print only what will be done.", is_flag=True
-    )
+    ),
 ):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=sa_exc.SAWarning)

@@ -1,9 +1,7 @@
 """Tests for product revision snapshots and restores."""
 
 from http import HTTPStatus
-from uuid import UUID, uuid4
-
-import pytest
+from uuid import UUID
 
 from server.db import db
 from server.db.models import (
@@ -18,8 +16,6 @@ from server.db.models import (
 )
 from server.utils.json import json_dumps
 from tests.unit_tests.factories.attribute import make_attribute, make_option
-from tests.unit_tests.factories.categories import make_category
-from tests.unit_tests.factories.product import make_product
 from tests.unit_tests.factories.tag import make_tag
 
 

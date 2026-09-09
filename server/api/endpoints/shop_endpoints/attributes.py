@@ -17,7 +17,6 @@ from server.crud.crud_attribute import attribute_crud
 from server.db import db
 from server.db.models import ApiKeyTable, AttributeOptionTable
 from server.schemas.attribute import (
-    AttributeBase,
     AttributeCreate,
     AttributeSchema,
     AttributeTranslationBase,
@@ -169,8 +168,7 @@ def get_by_name(name: str, shop_id: UUID) -> AttributeSchema:
 def create(
     shop_id: UUID, request: Request, data: AttributeCreate = Body(...), principal: Any = Depends(auth_required_any)
 ) -> AttributeSchema:
-    """
-    Create a new attribute for the given shop.
+    """Create a new attribute for the given shop.
 
     This will also create the translation row and currently only requires main_name in translation.
     """

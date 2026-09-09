@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.get("/")
 def get_multi(response: Response, common: dict = Depends(common_parameters)):
-    """List all product product images"""
+    """List all product product images."""
     products, header_range = product_crud.get_multi(
         skip=common["skip"],
         limit=common["limit"],
@@ -48,7 +48,7 @@ def put(*, id: UUID, item_in: ProductUpdate):
     product_update = False
     image_cols = ["image_1", "image_2", "image_3", "image_4", "image_5", "image_6"]
     for image_col in image_cols:
-        if data.get(image_col) and type(data[image_col]) == dict:
+        if data.get(image_col) and isinstance(data[image_col], dict):
             name = name_file(image_col, item.name, getattr(item, image_col))
             upload_file(data[image_col]["src"], name) if item.name != "Test Product" else None
             product_update = True
@@ -81,11 +81,9 @@ def delete_image(*, id: UUID, col: ProductImageDelete):
     item_in = ProductUpdate(**item.__dict__.copy())
 
     setattr(item_in, col.image, None)
-    setattr(item_in, "modified_at", datetime.utcnow())
+    item_in.modified_at = datetime.utcnow()
 
-    item = product_crud.update(
+    return product_crud.update(
         db_obj=item,
         obj_in=item_in,
     )
-
-    return item

@@ -53,10 +53,7 @@ _DEFAULT_SCOPES = ("openid", "email", "profile")
 
 
 def _cognito_issuer() -> str:
-    return (
-        f"https://cognito-idp.{app_settings.AWS_COGNITO_REGION}.amazonaws.com/"
-        f"{app_settings.AWS_COGNITO_USERPOOL_ID}"
-    )
+    return f"https://cognito-idp.{app_settings.AWS_COGNITO_REGION}.amazonaws.com/{app_settings.AWS_COGNITO_USERPOOL_ID}"
 
 
 def _hosted_ui_base() -> str:
@@ -80,7 +77,7 @@ def _fetch_hosted_ui_base() -> str:
 
     url = f"{_cognito_issuer()}/.well-known/openid-configuration"
     try:
-        with urllib.request.urlopen(url, timeout=3) as resp:
+        with urllib.request.urlopen(url, timeout=3) as resp:  # noqa: S310 -- https URL built from settings
             doc = json.loads(resp.read())
         return doc["authorization_endpoint"].rsplit("/oauth2/", 1)[0]
     except Exception:

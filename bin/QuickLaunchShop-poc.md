@@ -51,4 +51,3 @@ alias lepoc="~/Projects/.Launch/launch-shop-poc-stack.sh -e -ou -fl"
 ```
 ## Req
 tmux, node, npm/yarn
-

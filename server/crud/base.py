@@ -10,7 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar
 from uuid import UUID
 
 import structlog
@@ -22,17 +22,23 @@ from sqlalchemy.sql import expression
 
 from server.api.models import transform_json
 from server.db import db
+from server.db import models as db_models
 from server.db.database import BaseModel
 
-# Below translation model imports are necessary for the create_by_shop_id, update, and delete_by_shop_id functions
-from server.db.models import (
-    AttributeTranslationTable,
-    CategoryTranslationTable,
-    ProductTranslationTable,
-    TagTranslationTable,
-)
-
 logger = structlog.getLogger()
+
+
+def _translation_model(name: str) -> Optional[Type[Any]]:
+    """Resolve the ``<name>TranslationTable`` class on ``server.db.models``.
+
+    This lookup used to go through this module's ``globals()``, which silently
+    made four otherwise-unused imports load-bearing — removing one of them left
+    ``translation_model`` as ``None`` and raised ``TypeError`` at call time
+    rather than at import time. Resolving against the models module keeps the
+    mapping dynamic without that hidden coupling.
+    """
+    return getattr(db_models, f"{name}TranslationTable", None)
+
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -45,8 +51,7 @@ class NotFound(Exception):
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
-        """
-        CRUD object with default methods to Create, Read, Update, Delete (CRUD).
+        """CRUD object with default methods to Create, Read, Update, Delete (CRUD).
 
         **Parameters**
         * `model`: A SQLAlchemy model class
@@ -149,10 +154,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             # Limit is not 0: use limit
             response_range = "{}s {}-{}/{}".format(self.model.__name__.lower(), skip, skip + limit, count)
             return query.offset(skip).limit(limit).all(), response_range
-        else:
-            # Limit is 0: unlimited
-            response_range = "{}s {}/{}".format(self.model.__name__.lower(), skip, count)
-            return query.offset(skip).all(), response_range
+        # Limit is 0: unlimited
+        response_range = "{}s {}/{}".format(self.model.__name__.lower(), skip, count)
+        return query.offset(skip).all(), response_range
 
     def get_multi_by_shop_id(
         self,
@@ -178,11 +182,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def create(self, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = transform_json(obj_in.model_dump())
         # Todo: remove translate from base? We should handle this in a more generic way, for now a UGLY hack:
-        translation_data = None
-        try:
-            translation_data = obj_in_data.pop("translation")
-        except:
-            pass
+        translation_data = obj_in_data.pop("translation", None)
 
         db_obj = self.model(**obj_in_data)
         db.session.add(db_obj)
@@ -191,7 +191,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         if translation_data:
             translation_name = db_obj.__class__.__name__.split("Table")[0]
-            translation_model = globals().get(translation_name + "TranslationTable", None)
+            translation_model = _translation_model(translation_name)
             translation_data[translation_name.lower() + "_id"] = db_obj.id
             translation = translation_model(**translation_data)
             db.session.add(translation)
@@ -206,11 +206,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def create_by_shop_id(self, *, shop_id: any, obj_in: CreateSchemaType, commit: bool = True) -> ModelType:
         obj_in_data = transform_json(obj_in.model_dump())
         # Todo: remove translate from base? We should handle this in a more generic way, for now a UGLY hack:
-        translation_data = None
-        try:
-            translation_data = obj_in_data.pop("translation")
-        except:
-            pass
+        translation_data = obj_in_data.pop("translation", None)
 
         try:
             db_obj = self.model(**{**obj_in_data, "shop_id": shop_id, **self._extra_create_fields()})
@@ -222,7 +218,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                     if translation_data[field] == "":
                         translation_data[field] = None
                 translation_name = db_obj.__class__.__name__.split("Table")[0]
-                translation_model = globals().get(translation_name + "TranslationTable", None)
+                translation_model = _translation_model(translation_name)
                 translation_data[translation_name.lower() + "_id"] = db_obj.id
                 translation = translation_model(**translation_data)
                 db.session.add(translation)
@@ -242,16 +238,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj_data = jsonable_encoder(db_obj)
         update_data = obj_in.model_dump(exclude_unset=True)
 
-        # # Handle int based foreign key types:
-        # for k, v in update_data.items():
-        #     if isinstance(v, int):
-        #         update_data[k] = v
-
         # Update translations. An explicit `"translation": null` means "no
         # translation change" (still popped so it doesn't hit the DB record loop).
         if "translation" in update_data and (translation_data := update_data.pop("translation")) is not None:
             translation_name = db_obj.__class__.__name__.split("Table")[0]
-            translation_model = globals().get(translation_name + "TranslationTable", None)
+            translation_model = _translation_model(translation_name)
             translation = (
                 db.session.query(translation_model).filter_by(**{translation_name.lower() + "_id": db_obj.id}).first()
             )
@@ -282,7 +273,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             raise NotFound
         db.session.delete(obj)
         db.session.commit()
-        return None
+        return
 
     def delete_by_shop_id(self, *, shop_id: UUID, id: UUID, commit: bool = True, include_deleted: bool = False) -> None:
         query = db.session.query(self.model).filter(self.model.shop_id == shop_id, self.model.id == id)
@@ -294,7 +285,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         if obj.translation:
             translation_name = obj.__class__.__name__.split("Table")[0]
-            translation_model = globals().get(translation_name + "TranslationTable", None)
+            translation_model = _translation_model(translation_name)
             if translation_model:
                 translation_obj = (
                     db.session.query(translation_model).filter(translation_model.id == obj.translation.id).first()
@@ -306,4 +297,4 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.session.delete(obj)
         if commit:
             db.session.commit()
-        return None
+        return

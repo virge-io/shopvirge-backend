@@ -10,8 +10,7 @@ router = APIRouter()
 
 @router.get("/{file_name}")
 def get_signed_download_link(file_name: str):
-    download_link = create_download_url(file_name, 7200)
-    return download_link
+    return create_download_url(file_name, 7200)
 
 
 @router.post("/send")

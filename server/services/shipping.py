@@ -119,7 +119,6 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
     rate_subtotals = build_rate_subtotals(order_info, shop)
     cart_total_inc = quantize_money(sum(rate_subtotals.values(), Decimal("0")))
 
-    free_shipping_applied = False
     if free_above_enabled and free_above_amount > 0 and cart_total_inc >= free_above_amount:
         return ShippingCalculation(
             enabled=True,

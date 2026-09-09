@@ -2,7 +2,7 @@
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.." || exit
 
-export PYTHONPATH=$PWD
+export PYTHONPATH="$PWD"
 APP=server.main:app
 HOST=0.0.0.0
 if [ "$HTTP_PORT" ]; then
@@ -11,4 +11,4 @@ else
     PORT=8081
 fi
 PYTHONPATH=. alembic upgrade heads
-gunicorn -w 5 -k uvicorn.workers.UvicornWorker --capture-output --access-logfile '-' --error-logfile '-' --bind $HOST:$PORT $APP --timeout 600 "$@"
+gunicorn -w 5 -k uvicorn.workers.UvicornWorker --capture-output --access-logfile '-' --error-logfile '-' --bind "$HOST:$PORT" "$APP" --timeout 600 "$@"

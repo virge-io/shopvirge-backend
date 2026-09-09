@@ -47,7 +47,8 @@ def _fingerprint(plaintext: str) -> str:
 def _generate_plaintext() -> Tuple[str, str]:
     """Return ``(plaintext, prefix)``. Prefix is the leading ``PREFIX_LEN`` chars
     of the random body — stored alongside so users can identify a key in
-    listings without exposing the full secret."""
+    listings without exposing the full secret.
+    """
     body = secrets.token_urlsafe(32)
     prefix = body[:PREFIX_LEN]
     plaintext = f"{KEY_PLAINTEXT_PREFIX}_{prefix}_{body[PREFIX_LEN:]}"

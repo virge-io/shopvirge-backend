@@ -1,8 +1,7 @@
 from http import HTTPStatus
-from uuid import uuid4
 
 from server.db import db
-from server.db.models import AttributeOptionTable, AttributeTable
+from server.db.models import AttributeTable
 
 
 def test_get_attributes_with_options(test_client, shop_with_products_and_attributes):

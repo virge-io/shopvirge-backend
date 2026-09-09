@@ -329,7 +329,7 @@ def restore_category_revision_endpoint(
     force: bool = Query(
         False,
         description=(
-            "Recreate the category from the snapshot even if it was permanently purged " "(user credentials required)."
+            "Recreate the category from the snapshot even if it was permanently purged (user credentials required)."
         ),
     ),
     principal: Any = Depends(auth_required_any),
@@ -435,7 +435,7 @@ def restore_attribute_revision_endpoint(
     force: bool = Query(
         False,
         description=(
-            "Recreate the attribute from the snapshot even if it was permanently purged " "(user credentials required)."
+            "Recreate the attribute from the snapshot even if it was permanently purged (user credentials required)."
         ),
     ),
     principal: Any = Depends(auth_required_any),

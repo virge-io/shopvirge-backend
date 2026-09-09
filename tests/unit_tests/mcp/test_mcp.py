@@ -107,9 +107,9 @@ def _agent_tagged_routes(app: FastAPI) -> dict[str, str]:
 def test_all_expected_routes_carry_agent_tag(fastapi_app: FastAPI) -> None:
     """Every expected MCP tool name has a route tagged ``AgentTag.EXPOSED``."""
     found = _agent_tagged_routes(fastapi_app)
-    assert (
-        set(found) == EXPECTED_TOOL_NAMES
-    ), f"missing: {EXPECTED_TOOL_NAMES - set(found)}, extra: {set(found) - EXPECTED_TOOL_NAMES}"
+    assert set(found) == EXPECTED_TOOL_NAMES, (
+        f"missing: {EXPECTED_TOOL_NAMES - set(found)}, extra: {set(found) - EXPECTED_TOOL_NAMES}"
+    )
 
 
 def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
@@ -131,9 +131,9 @@ def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
 
     tools = asyncio.run(mcp.get_tools())
     tool_names = set(tools.keys())
-    assert (
-        tool_names == EXPECTED_TOOL_NAMES
-    ), f"missing: {EXPECTED_TOOL_NAMES - tool_names}, extra: {tool_names - EXPECTED_TOOL_NAMES}"
+    assert tool_names == EXPECTED_TOOL_NAMES, (
+        f"missing: {EXPECTED_TOOL_NAMES - tool_names}, extra: {tool_names - EXPECTED_TOOL_NAMES}"
+    )
 
 
 def test_update_product_tool_has_no_required_body_fields(fastapi_app: FastAPI) -> None:

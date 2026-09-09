@@ -157,10 +157,10 @@ def delete(
             tag_crud.delete_by_shop_id(shop_id=shop_id, id=tag_id, include_deleted=True)
         except Exception as e:
             raise HTTPException(HTTPStatus.BAD_REQUEST, detail=f"{e.__cause__}")
-        return None
+        return
 
     created_by, source = actor(principal, request)
     record_tag_revision(tag, action="delete", created_by=created_by, source=source)
     tag.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
-    return None
+    return

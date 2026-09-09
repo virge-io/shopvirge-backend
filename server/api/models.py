@@ -82,9 +82,8 @@ def delete(cls: Type, primary_key: UUID) -> None:
     row_count = cls.query.filter(cls.__dict__[pk] == primary_key).delete()
     db.session.commit()
     if row_count > 0:
-        return None
-    else:
-        raise_status(HTTPStatus.NOT_FOUND)
+        return
+    raise_status(HTTPStatus.NOT_FOUND)
 
 
 deserialization_mapping = {
@@ -116,7 +115,7 @@ def parse_date_fields(json_dict: Dict) -> None:
                 json_dict[date_field] = datetime.fromtimestamp(val / 1e3)
             if isinstance(val, str):
                 timestamp = isoparse(val)
-                assert timestamp.tzinfo is not None, "All timestamps should contain timezone information."
+                assert timestamp.tzinfo is not None, "All timestamps should contain timezone information."  # noqa: S101
                 json_dict[date_field] = timestamp
         rel: Dict
         for rel in flatten(list(filter(lambda i: isinstance(i, list), json_dict.values()))):

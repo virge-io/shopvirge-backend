@@ -1,4 +1,4 @@
-"""Guard against silent OpenAPI schema drift.
+r"""Guard against silent OpenAPI schema drift.
 
 The committed snapshot in ``tests/unit_tests/openapi_snapshot.json`` must
 exactly match the current OpenAPI spec (schema **and** version). Any change
@@ -34,8 +34,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAIN_PY = REPO_ROOT / "server" / "main.py"
@@ -122,7 +120,6 @@ def _diff_summary(current: dict, snapshot: dict) -> str:
     return "; ".join(bits)
 
 
-@pytest.mark.xfail(reason="snapshots not working")
 def test_openapi_snapshot_in_sync():
     """Snapshot must match the current OpenAPI spec exactly (schema + version)."""
     current_version = _app_version_from_main()
@@ -154,7 +151,8 @@ def test_openapi_version_bumped_when_schema_changes():
 
     With the strict snapshot check above this is largely belt-and-braces, but it
     keeps the version-bump intent visible in the test file and gives a focused
-    error message for the most common failure mode."""
+    error message for the most common failure mode.
+    """
     current_version = _app_version_from_main()
     current = _current_openapi(current_version)
     snapshot = json.loads(SNAPSHOT_PATH.read_text())

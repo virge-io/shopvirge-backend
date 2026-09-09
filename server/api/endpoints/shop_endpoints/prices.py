@@ -1,27 +1,20 @@
 import json
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from server.crud.crud_product import product_crud
 from server.crud.crud_shop import shop_crud
-from server.db import ProductTable, db
+from server.db import ProductTable
 from server.db.models import (
-    AttributeOptionTable,
-    AttributeTable,
-    AttributeTranslationTable,
     CategoryTable,
     CategoryTranslationTable,
-    ProductAttributeValueTable,
     ProductTranslationTable,
 )
 from server.schemas.base import Money
-from server.schemas.product_attribute import ProductAttributeItem
 
 router = APIRouter()
 

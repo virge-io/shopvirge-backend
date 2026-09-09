@@ -68,8 +68,7 @@ def create(data: FaqCreate = Body(...), current_user: CustomCognitoToken = Depen
             detail="A FAQ entry with this question already exists.",
         )
 
-    faq = faq_crud.create(obj_in=data)
-    return faq
+    return faq_crud.create(obj_in=data)
 
 
 @router.put(
@@ -97,14 +96,12 @@ def update(
 
     faq = faq_crud.update(db_obj=faq, obj_in=item_in)
 
-    updated_faq = FaqUpdated(
+    return FaqUpdated(
         id=faq.id,
         question=faq.question,
         answer=faq.answer,
         category=faq.category,
     )
-
-    return updated_faq
 
 
 @router.delete(

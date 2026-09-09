@@ -51,18 +51,25 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
 
 ## FastAPI app metadata
 
-From `server/main.py` (version `0.2.6` at time of writing):
+From `server/main.py`:
 
 - `title`: **ShopVirge API**
 - `description`: **Backend for ShopVirge Shops.**
+- `version`: the `APP_VERSION` constant in `server/main.py`.
 
-The version is source-controlled in `server/version.py`.
+`APP_VERSION` must be bumped whenever the API surface changes, and the OpenAPI
+snapshot regenerated with `uv run python bin/regenerate_openapi_snapshot.py` —
+the drift guard in `tests/unit_tests/test_openapi_version.py` fails otherwise.
+(`server/version.py` is unrelated: it exposes a git commit hash and is not the
+API version.)
 
 ## Error handling
 
 Custom exception handlers are registered in `server/main.py` for:
 
-- `FormException` — raised by the pydantic-forms machinery.
-- `ProblemDetailException` — RFC 7807 style structured errors.
+- `FormException` — raised by the pydantic-forms machinery; handled by
+  `pydantic_forms.exception_handlers.fastapi.form_error_handler`.
+- `ProblemDetailException` — RFC 7807 style structured errors; handled by
+  `server/exception_handlers/generic_exception_handlers.py`.
 
 Uncaught exceptions are captured by `SentryAsgiMiddleware` and forwarded to Sentry (when `SENTRY_DSN` is configured).

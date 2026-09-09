@@ -1,8 +1,7 @@
 import json
 from datetime import datetime, timezone
 from http import HTTPStatus
-from textwrap import dedent
-from typing import Any, List, Literal, Optional
+from typing import Any, List, Literal
 from uuid import UUID
 
 import structlog
@@ -11,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
-from server.api import deps
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud import crud_shop
@@ -22,7 +20,6 @@ from server.schemas.product import (
     AttributeFilters,
     ProductCreate,
     ProductOrder,
-    ProductSchema,
     ProductUpdate,
     ProductWithAttributes,
     ProductWithDefaultPrice,
@@ -211,7 +208,7 @@ def get_multi_with_attributes(
         else:
             end = start - 1
         response.headers["Content-Range"] = f"{kind} {start}-{end}/{total_part}"
-    except Exception:
+    except Exception:  # noqa: S110 -- best-effort header; on failure leave it as-is
         # If parsing fails, leave header as-is
         pass
 

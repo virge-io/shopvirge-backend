@@ -11,13 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from http import HTTPStatus
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from server.api.error_handling import ProblemDetailException
-from server.utils.errors import show_ex
 
 PROBLEM_DETAIL_FIELDS = ("title", "type")
 
@@ -34,5 +32,4 @@ async def problem_detail_handler(request: Request, exc: ProblemDetailException) 
 
     if headers:
         return JSONResponse(body, status_code=exc.status_code, headers=headers)
-    else:
-        return JSONResponse(body, status_code=exc.status_code)
+    return JSONResponse(body, status_code=exc.status_code)

@@ -15,7 +15,7 @@ import string
 import sys
 import traceback
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, cast
+from typing import Dict, Optional, Tuple, cast
 
 import structlog
 
@@ -25,19 +25,17 @@ logger = structlog.get_logger(__name__)
 
 
 def format_ex(ex, stacklimit=None):
-    """
-    Format an exception with a pseudo-random key and the shown exception.
+    """Format an exception with a pseudo-random key and the shown exception.
 
     Returns a tuple of the exception string and key.
     """
-    key = "".join(random.choices(string.ascii_letters + string.digits, k=6))
+    key = "".join(random.choices(string.ascii_letters + string.digits, k=6))  # noqa: S311 -- display key, not a secret
     s = show_ex(ex, stacklimit)
     return key, "[{}] {}".format(key, s)
 
 
 def show_ex(ex, stacklimit=None):
-    """
-    Show an exception, including its class name, message and (limited) stacktrace.
+    """Show an exception, including its class name, message and (limited) stacktrace.
 
     >>> try:
     ...     raise Exception("Something went wrong")
@@ -82,7 +80,7 @@ class ApiException(Exception):
 
     def __str__(self) -> str:
         """Create custom error messages for exception."""
-        error_message = "({})\n" "Reason: {}\n".format(self.status, self.reason)
+        error_message = "({})\nReason: {}\n".format(self.status, self.reason)
         if self.headers:
             error_message += f"HTTP response headers: {self.headers}\n"
 
@@ -131,7 +129,7 @@ def error_state_to_dict(err: ErrorState) -> ErrorDict:
             "validation_errors": err.errors,  # type: ignore
             "status_code": HTTPStatus.BAD_REQUEST,
         }
-    elif isinstance(err, FormNotCompleteError):
+    if isinstance(err, FormNotCompleteError):
         return {
             "class": type(err).__name__,
             "error": str(err),
@@ -139,7 +137,7 @@ def error_state_to_dict(err: ErrorState) -> ErrorDict:
             "form": err.form,
             "status_code": HTTPStatus.NOT_EXTENDED,
         }
-    elif isinstance(err, Exception):
+    if isinstance(err, Exception):
         if is_api_exception(err):
             err = cast(ApiException, err)
             return {
@@ -155,16 +153,15 @@ def error_state_to_dict(err: ErrorState) -> ErrorDict:
             "error": str(err),
             "traceback": show_ex(err),
         }
-    elif isinstance(err, tuple):
+    if isinstance(err, tuple):
         cast(Tuple, err)
         error, status_code = err
         return {"error": str(error), "status_code": int(status_code)}
-    elif isinstance(err, str):
+    if isinstance(err, str):
         return {"error": err}
-    elif isinstance(err, dict) and "error" in err:  # type: ignore
+    if isinstance(err, dict) and "error" in err:  # type: ignore
         return err
-    else:
-        raise TypeError("ErrorState  should be a tuple, exception or string")
+    raise TypeError("ErrorState  should be a tuple, exception or string")
 
 
 def post_mortem(debugger: str, error: ErrorState) -> ErrorState:
@@ -177,7 +174,7 @@ def post_mortem(debugger: str, error: ErrorState) -> ErrorState:
                 return error
             web_pdb.post_mortem(error.__traceback__)
         elif debugger == "print":
-            print(error, file=sys.stderr)  # noqa: T001
+            print(error, file=sys.stderr)  # noqa: T201
         elif debugger == "reraise":
             # This exception will normally be suppressed by threadpoolexecutor.
             # When env var TESTING is set the exception will be raised when .result() is called on the future

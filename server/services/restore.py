@@ -149,7 +149,8 @@ _NOOP_WARNING = "Restore was a no-op: the revision matches the current state; no
 def _is_noop(before: Optional[dict], entity: Any, snapshot_fn: Callable[[Any], dict], report: RestoreReport) -> bool:
     """True when the restore changed nothing: nothing was resurrected or recreated and
     the entity's snapshot is identical to the pre-restore one. Callers then skip
-    recording a restore revision so the history doesn't fill up with no-ops."""
+    recording a restore revision so the history doesn't fill up with no-ops.
+    """
     if before is None or report.resurrected or report.warnings:
         return False
     db.session.flush()
@@ -413,7 +414,8 @@ def restore_product_from_trash(
     source: str = "rest",
 ) -> RestoreReport:
     """Undelete a trashed product. The row still holds all its data (tags/attribute
-    values were never removed), so this only clears ``deleted_at``."""
+    values were never removed), so this only clears ``deleted_at``.
+    """
     report = RestoreReport(restored=False, entity_type=ENTITY_PRODUCT, entity_id=product_id)
 
     product = (
@@ -706,7 +708,8 @@ def restore_attribute_from_trash(
 ) -> RestoreReport:
     """Undelete a trashed attribute. Its options and product values were never
     removed, so this only clears ``deleted_at``. Options that were trashed
-    individually stay in the trash (restore a revision to bring those back)."""
+    individually stay in the trash (restore a revision to bring those back).
+    """
     report = RestoreReport(restored=False, entity_type=ENTITY_ATTRIBUTE, entity_id=attribute_id)
 
     attribute = (
@@ -831,7 +834,8 @@ def restore_category_from_trash(
     source: str = "rest",
 ) -> RestoreReport:
     """Undelete a trashed category, optionally with the batch of products that was
-    trashed together with it (category delete with ``force=true``)."""
+    trashed together with it (category delete with ``force=true``).
+    """
     report = RestoreReport(restored=False, entity_type=ENTITY_CATEGORY, entity_id=category_id)
 
     category = (

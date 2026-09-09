@@ -26,13 +26,12 @@ class CRUDAttribute(CRUDBase[AttributeTable, AttributeCreate, AttributeUpdate]):
         )
 
     def delete_deep_by_shop_id(self, *, shop_id: UUID, id: UUID) -> None:
-        """
-        Delete an attribute and all dependent records for a shop.
+        """Delete an attribute and all dependent records for a shop.
         Removes in safe order to satisfy FK constraints:
         1) ProductAttributeValue rows referencing the attribute
         2) AttributeOption rows for the attribute
         3) AttributeTranslation row for the attribute
-        4) The Attribute itself
+        4) The Attribute itself.
         """
         return  # disabled for now, just be sure
         # Fetch attribute first to validate shop ownership
@@ -66,8 +65,7 @@ class CRUDAttribute(CRUDBase[AttributeTable, AttributeCreate, AttributeUpdate]):
             raise
 
     def delete_by_shop_id(self, *, shop_id: UUID, id: UUID, commit: bool = True, include_deleted: bool = False) -> None:
-        """
-        Delete an attribute for a shop.
+        """Delete an attribute for a shop.
         Does NOT delete related records automatically (no deep delete here anymore).
         Deletion will fail at DB level if relationships (PAVs) are still active (FK constraint).
         """

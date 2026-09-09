@@ -23,19 +23,19 @@ Three workflows run on push and PR:
 
 | Workflow | File | What it checks |
 |----------|------|----------------|
-| Unit tests | `.github/workflows/run-unit-tests.yml` | `pytest --cov-branch --cov=server tests/unit_tests` against a Postgres service container. |
-| Linting | `.github/workflows/run-linting-tests.yml` | `isort -c . && black --check .` |
+| Unit tests | `.github/workflows/run-unit-tests.yml` | `uv run pytest --cov-branch --cov=server tests/unit_tests` against a Postgres service container. |
+| Linting | `.github/workflows/run-linting-tests.yml` | `ruff check .` and `ruff format --check .` |
 | Docs build | `.github/workflows/docs-build.yml` | `mkdocs build --strict` — fails on broken links or config errors. |
 
-The docs workflow only triggers on changes under `docs/`, `mkdocs.yml`, `requirements/docs.txt`, `.readthedocs.yaml`, `README.md`, or the workflow file itself — non-docs PRs don't pay the install cost.
+The docs workflow only triggers on changes under `docs/`, `mkdocs.yml`, `pyproject.toml`, `uv.lock`, `.readthedocs.yaml`, `README.md`, or the workflow file itself — non-docs PRs don't pay the install cost.
 
 ## Editing the docs
 
 1. Preview locally:
 
     ```bash
-    pip install -r requirements/docs.txt
-    mkdocs serve
+    uv sync --group docs
+    uv run mkdocs serve
     ```
 
     Open <http://127.0.0.1:8000>.

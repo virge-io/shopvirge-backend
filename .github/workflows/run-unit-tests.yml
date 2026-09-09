@@ -1,21 +1,22 @@
 name: Unit tests
 on: push
 
+env:
+  UV_LOCKED: true # Assert that uv.lock stays unchanged
+
 jobs:
-  container_job:
+  unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ 3.11 ]
-    container: python:3.11-slim
     services:
       postgres:
         image: postgres:12.7-alpine
-        # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: shop
           POSTGRES_USER: shop
+          POSTGRES_DB: shop-test
+        ports:
+          - 5432:5432
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -23,27 +24,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.19"
+          python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          apt update
-          apt install curl -y
-          pip install -r requirements/test.txt
-#          python -m pip install --upgrade pip
-#          pip install flit
-#          flit install --deps develop --symlink
-#          echo "GIT_COMMIT_HASH=\"test\"" > orchestrator/version.py
+        run: uv sync --dev
+
       - name: Run Unit tests
-        run: PYTHONPATH=. DATABASE_URI=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DB pytest --cov-branch --cov=server tests/unit_tests
+        run: uv run pytest --cov-branch --cov=server tests/unit_tests
         env:
-          POSTGRES_DB: shop-test
-          POSTGRES_USER: shop
-          POSTGRES_PASSWORD: shop
-          POSTGRES_HOST: postgres
-#      - name: "Upload coverage to Codecov"
-#        uses: codecov/codecov-action@v1
-#        with:
-#          fail_ci_if_error: true
+          DATABASE_URI: postgresql://shop:shop@localhost/shop-test

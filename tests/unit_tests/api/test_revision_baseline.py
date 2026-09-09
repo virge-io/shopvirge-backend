@@ -7,7 +7,7 @@ as a ``baseline`` revision, making that first edit undoable.
 """
 
 from server.db import db
-from server.db.models import ProductTable, RevisionTable
+from server.db.models import RevisionTable
 from server.utils.json import json_dumps
 from tests.unit_tests.api.test_product_revisions import product_body, product_category_id, revision_rows
 from tests.unit_tests.factories.categories import make_category

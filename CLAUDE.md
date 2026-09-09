@@ -8,40 +8,58 @@ ShopVirge Backend — a FastAPI REST API for managing shop pricelists, products,
 
 ## Commands
 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/); `pyproject.toml`
+declares them and `uv.lock` pins the resolution. There is no `requirements/`
+directory any more.
+
 ```bash
+# Install the environment (.venv/) — runtime + dev/test tooling
+uv sync --dev
+
+# Add/remove a dependency (updates pyproject.toml AND uv.lock — commit both)
+uv add <package>
+uv remove <package>
+
+# Re-resolve after hand-editing pyproject.toml
+uv lock
+
 # Run dev server (hot reload, port 8080)
-PYTHONPATH=. uvicorn server.main:app --reload --port 8080
+PYTHONPATH=. uv run uvicorn server.main:app --reload --port 8080
 
 # Run all tests
-PYTHONPATH=. pytest tests/unit_tests
+uv run pytest tests/unit_tests
 
 # Run single test file
-PYTHONPATH=. pytest tests/unit_tests/api/test_products.py
+uv run pytest tests/unit_tests/api/test_products.py
 
 # Run single test function
-PYTHONPATH=. pytest tests/unit_tests/api/test_products.py::test_function_name
+uv run pytest tests/unit_tests/api/test_products.py::test_function_name
 
 # Tests with coverage
-PYTHONPATH=. pytest --cov-branch --cov=server tests/unit_tests
+uv run pytest --cov-branch --cov=server tests/unit_tests
 
-# Format code
-isort . && black .
+# Format + lint (CI runs the --check/no-fix variants)
+uv run ruff format . && uv run ruff check --fix .
+uv run ruff format --check . && uv run ruff check .
 
-# Check formatting (CI runs these)
-isort -c . && black --check .
+# Type checking — NOT a CI gate yet (~1200 pre-existing errors)
+uv run mypy .
 
-# Type checking
-mypy .
+# Install the pre-commit hooks once
+uv run pre-commit install
 
 # Apply migrations
-PYTHONPATH=. alembic upgrade heads
+PYTHONPATH=. uv run alembic upgrade heads
 
 # Create schema migration
-PYTHONPATH=. alembic revision --autogenerate -m "Description" --head=schema@head --version-path=migrations/versions/schema
+PYTHONPATH=. uv run alembic revision --autogenerate -m "Description" --head=schema@head --version-path=migrations/versions/schema
 
 # Create data migration
-PYTHONPATH=. alembic revision --message "Description"
+PYTHONPATH=. uv run alembic revision --message "Description"
 ```
+
+`pytest` resolves the repo root via `[tool.pytest.ini_options] pythonpath` in
+`pyproject.toml`, so it does not need `PYTHONPATH=.`; alembic and uvicorn still do.
 
 ## Architecture
 
@@ -63,9 +81,9 @@ PYTHONPATH=. alembic revision --message "Description"
 
 ## Code Style
 
-- **Formatter:** black (line length 120), **imports:** isort (profile="black", line length 120)
+- **Formatter + linter:** ruff (line length 120, target py311). It replaced black + isort; all config is in `pyproject.toml` under `[tool.ruff]`.
 - Python 3.11, type hints required on function signatures
-- `PYTHONPATH=.` required for all CLI commands
+- `PYTHONPATH=.` required for alembic and uvicorn invocations
 
 ## Documentation / Read the Docs
 
@@ -120,9 +138,10 @@ Any route not tagged `AgentTag.EXPOSED` is excluded from MCP by default.
 
 When adding or removing MCP-exposed routes, also:
 - Bump `APP_VERSION` in `server/main.py`.
-- Regenerate `tests/unit_tests/openapi_snapshot.json` (the drift guard test will fail otherwise):
+- Regenerate `tests/unit_tests/openapi_snapshot.json` (the drift guard test in
+  `tests/unit_tests/test_openapi_version.py` will fail otherwise):
   ```bash
-  PYTHONPATH=. pytest tests/unit_tests/test_openapi_snapshot.py --snapshot-update
+  uv run python bin/regenerate_openapi_snapshot.py
   ```
 - Update `EXPECTED_TOOL_NAMES` in `tests/unit_tests/mcp/test_mcp.py`.
 

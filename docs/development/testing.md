@@ -6,19 +6,22 @@ Tests live under `tests/unit_tests/` and run against a real PostgreSQL database 
 
 ```bash
 # All unit tests
-PYTHONPATH=. pytest tests/unit_tests
+uv run pytest tests/unit_tests
 
 # Single file
-PYTHONPATH=. pytest tests/unit_tests/api/test_products.py
+uv run pytest tests/unit_tests/api/test_products.py
 
 # Single function
-PYTHONPATH=. pytest tests/unit_tests/api/test_products.py::test_function_name
+uv run pytest tests/unit_tests/api/test_products.py::test_function_name
 
 # With branch coverage
-PYTHONPATH=. pytest --cov-branch --cov=server tests/unit_tests
+uv run pytest --cov-branch --cov=server tests/unit_tests
 ```
 
-`PYTHONPATH=.` is required so `server` imports resolve without installing the project.
+`server` imports resolve because `[tool.pytest.ini_options] pythonpath = ["."]` in
+`pyproject.toml` puts the repo root on `sys.path` — pytest no longer needs a
+`PYTHONPATH=.` prefix. (alembic and uvicorn still do.) Drop the `uv run` prefix if
+you have already activated `.venv`.
 
 ## Test database
 
@@ -53,18 +56,16 @@ tests/unit_tests/
 
 ## CI
 
-Tests run on every push via `.github/workflows/run-unit-tests.yml` in a `python:3.11-slim` container with a `postgres:12.7-alpine` service container. Environment is injected via job env:
+Tests run on every push via `.github/workflows/run-unit-tests.yml` on
+`ubuntu-latest`, with a `postgres:12.7-alpine` service container whose port is
+mapped to the host. The environment is installed with
+[`astral-sh/setup-uv`](https://github.com/astral-sh/setup-uv) and `uv sync --dev`;
+`UV_LOCKED: true` makes the job fail if `uv.lock` is out of date with
+`pyproject.toml`, so remember to commit the lockfile alongside a dependency change.
 
-```yaml
-POSTGRES_DB: shop-test
-POSTGRES_USER: shop
-POSTGRES_PASSWORD: shop
-POSTGRES_HOST: postgres
-```
-
-The CI command is equivalent to:
+The CI command is:
 
 ```bash
-PYTHONPATH=. DATABASE_URI=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DB \
-  pytest --cov-branch --cov=server tests/unit_tests
+DATABASE_URI=postgresql://shop:shop@localhost/shop-test \
+  uv run pytest --cov-branch --cov=server tests/unit_tests
 ```

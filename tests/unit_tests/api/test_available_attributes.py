@@ -79,7 +79,7 @@ def test_available_attributes_excludes_products_without_price(test_client, shop_
     ids = shop_with_category_attributes
 
     # Set prod3 (the only product with size L and color BLUE) to have no price
-    prod3 = db.session.query(ProductTable).filter(ProductTable.category_id == ids["cat1_id"]).all()
+    _prod3 = db.session.query(ProductTable).filter(ProductTable.category_id == ids["cat1_id"]).all()
     # prod3 is the one with size L — find it via attribute values
     from server.db.models import ProductAttributeValueTable
 

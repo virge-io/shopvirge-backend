@@ -144,3 +144,5 @@ dmypy.json
 pricelist_prod.psql
 config.env
 shop.psql
+# ruff
+.ruff_cache/

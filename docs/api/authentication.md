@@ -10,15 +10,16 @@ Authentication lives in `server/security.py` and is built on [AWS Cognito](https
 ## Summary
 
 - `auth_required` is the main dependency for Cognito-backed API access.
-- Two token shapes are accepted: user tokens and M2M client-credentials tokens.
+- Three credential shapes are accepted: user tokens, M2M client-credentials tokens, and per-shop API keys.
+- **Both** the web app client and the MCP app client issue *user* tokens. Only a token from neither is treated as M2M.
 - Authentication and shop authorization are separate checks.
 
 ## Token model
 
 Three credential shapes are accepted:
 
-1. **User tokens** — standard Cognito-issued ID/access tokens for interactive users. Validated against the configured Cognito user pool and resolved to a `client_id` / subject.
-2. **M2M (machine-to-machine) tokens** — Cognito client-credentials tokens. Must carry the `/api` scope. Used by server-to-server integrations.
+1. **User tokens** — standard Cognito-issued ID/access tokens for interactive users. Validated against the configured Cognito user pool and resolved to a `client_id` / subject. A token counts as a user token when its `client_id` is in `user_client_ids()` — that is, either `AWS_COGNITO_CLIENT_ID` (the web app client) or `AWS_COGNITO_MCP_CLIENT_ID` (the MCP app client). User tokens are not scope-gated; they carry `cognito:groups`.
+2. **M2M (machine-to-machine) tokens** — Cognito client-credentials tokens, i.e. anything whose `client_id` is *not* a user client id. Must carry the `/api` scope. Used by server-to-server integrations.
 3. **API keys** — per-shop bearer tokens issued from `/shops/{shop_id}/api-keys/`. Accepted **only** on routes that opt in (currently the MCP-exposed CRUD surface for products / categories / tags / attributes). See the [MCP server](mcp.md) page for issuance and usage.
 
 The `CustomCognitoToken` model wraps the jose-decoded JWT and exposes the subject, scopes, and groups in a uniform shape.
@@ -33,7 +34,7 @@ All auth settings come from environment variables loaded by `server/settings.py`
 | `AWS_COGNITO_REGION` | AWS region of the user pool. |
 | `AWS_COGNITO_CLIENT_ID` | Expected `aud` for user tokens. |
 | `AWS_COGNITO_M2M_CLIENT_ID` | Expected `client_id` for M2M tokens. |
-| `AWS_COGNITO_MCP_CLIENT_ID` | Expected `client_id` for MCP server tokens (accepted alongside M2M tokens when `MCP_ENABLED` is true). |
+| `AWS_COGNITO_MCP_CLIENT_ID` | `client_id` of the MCP app client. `auth_required` treats tokens from it as **user** tokens, not M2M. |
 | `MCP_ENABLED` | Default `false`. Mount the [MCP server](mcp.md) at `/mcp`. |
 
 Cognito itself — user pool, app clients, domain, groups — is managed outside this repo.
