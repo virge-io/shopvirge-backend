@@ -45,21 +45,4 @@ The files under `server/api/endpoints/shop_endpoints/`:
 
 ## Public sub-routers
 
-Some resources split their routes across two routers by auth posture, mounted
-alongside each other in `server/api/api.py`:
-
-- `router` carries `dependencies=[Depends(auth_required)]` (or
-  `auth_required_any`) at **router level**, so a route added to it cannot ship
-  unauthenticated by omission.
-- `public_router` carries no auth dependency, so a storefront can render a
-  catalogue without a session.
-
-This applies to `shop_endpoints/products.py`, `shop_endpoints/categories.py`
-and — as of the router split — `endpoints/shops.py`, whose public reads are
-`GET /shops/{id}`, `/shops/config/{id}`, `/shops/cache-status/{id}`,
-`/shops/last-completed-order/{id}` and `/shops/last-pending-order/{id}`.
-Storefronts poll those for cache invalidation before anyone signs in.
-
-Prefer this split over repeating a guard on each route.
-`tests/unit_tests/api/test_shops_router_posture.py` pins each `/shops` route to
-its posture.
+Some resources expose a dedicated public router for unauthenticated reads (products, categories), so a storefront can render a catalogue without a session. These are mounted alongside the primary router in `server/api/api.py`.
