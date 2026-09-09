@@ -84,7 +84,8 @@ api_router.include_router(
 )
 
 # SHOP specific endpoints
-api_router.include_router(shops.router, prefix="/shops", tags=["shops"])
+api_router.include_router(shops.router, prefix="/shops", tags=["shops"], dependencies=[Depends(auth_required)])
+api_router.include_router(shops.public_router, prefix="/shops", tags=["shops"])
 api_router.include_router(
     shops.shop_router,
     prefix="/shops",
@@ -101,6 +102,19 @@ api_router.include_router(
 api_router.include_router(prices.router, prefix="/shops/{shop_id}/prices", tags=["shops"])
 api_router.include_router(
     orders.router,
+    prefix="/orders",
+    tags=["orders"],
+    dependencies=[Depends(auth_required)],
+)
+api_router.include_router(
+    orders.shop_router,
+    prefix="/orders",
+    tags=["orders"],
+    # shop_id is in each route's own path here, not in the prefix.
+    dependencies=[Depends(auth_required_any_for_shop)],
+)
+api_router.include_router(
+    orders.public_router,
     prefix="/orders",
     tags=["orders"],
 )
@@ -223,7 +237,8 @@ api_router.include_router(
     tags=["test-forms"],
 )
 
-api_router.include_router(faq.router, prefix="/faq", tags=["faq"])
+api_router.include_router(faq.router, prefix="/faq", tags=["faq"], dependencies=[Depends(auth_required)])
+api_router.include_router(faq.public_router, prefix="/faq", tags=["faq"])
 
 if mail_settings.MAIL_TEST_ENDPOINT_ENABLED:
     api_router.include_router(mail_test.router, prefix="/mail-test", tags=["mail-test"])

@@ -6284,7 +6284,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.5.1"
+    "version": "0.5.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6836,12 +6836,12 @@
             }
           },
           {
-            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `answer`, `category`, `created_at`, `id`, `modified_at`, `question`.",
             "in": "query",
             "name": "filter",
             "required": false,
             "schema": {
-              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `answer`, `category`, `created_at`, `id`, `modified_at`, `question`.",
               "items": {
                 "type": "string"
               },
@@ -6850,12 +6850,12 @@
             }
           },
           {
-            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `answer`, `category`, `created_at`, `id`, `modified_at`, `question`.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `answer`, `category`, `created_at`, `id`, `modified_at`, `question`.",
               "items": {
                 "type": "string"
               },
@@ -7713,12 +7713,12 @@
             }
           },
           {
-            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
             "in": "query",
             "name": "filter",
             "required": false,
             "schema": {
-              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
               "items": {
                 "type": "string"
               },
@@ -7727,12 +7727,12 @@
             }
           },
           {
-            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
               "items": {
                 "type": "string"
               },
@@ -7901,12 +7901,12 @@
             }
           },
           {
-            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
             "in": "query",
             "name": "filter",
             "required": false,
             "schema": {
-              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
               "items": {
                 "type": "string"
               },
@@ -7915,12 +7915,12 @@
             }
           },
           {
-            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
               "items": {
                 "type": "string"
               },
@@ -8015,12 +8015,12 @@
             }
           },
           {
-            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
             "in": "query",
             "name": "filter",
             "required": false,
             "schema": {
-              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
               "items": {
                 "type": "string"
               },
@@ -8029,12 +8029,12 @@
             }
           },
           {
-            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `account_id`, `completed_at`, `created_at`, `customer_order_id`, `id`, `notes`, `order_info`, `shipping_fee_inc_btw`, `shop_id`, `status`, `total`.",
               "items": {
                 "type": "string"
               },
@@ -8440,12 +8440,12 @@
             }
           },
           {
-            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+            "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `allowed_ips`, `config`, `config_version`, `created_at`, `description`, `discord_webhook`, `external_url`, `id`, `internal_url`, `modified_at`, `name`, `shop_type`, `stripe_public_key`, `stripe_secret_key`, `vat_lower_1`, `vat_lower_2`, `vat_lower_3`, `vat_special`, `vat_standard`, `vat_zero`.",
             "in": "query",
             "name": "filter",
             "required": false,
             "schema": {
-              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns.",
+              "description": "This filter can accept search query's like `key:value` and will split on the `:`. If it detects more than one `:`, or does not find a `:` it will search for the string in all columns. Valid keys for this resource: `allowed_ips`, `config`, `config_version`, `created_at`, `description`, `discord_webhook`, `external_url`, `id`, `internal_url`, `modified_at`, `name`, `shop_type`, `stripe_public_key`, `stripe_secret_key`, `vat_lower_1`, `vat_lower_2`, `vat_lower_3`, `vat_special`, `vat_standard`, `vat_zero`.",
               "items": {
                 "type": "string"
               },
@@ -8454,12 +8454,12 @@
             }
           },
           {
-            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+            "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `allowed_ips`, `config`, `config_version`, `created_at`, `description`, `discord_webhook`, `external_url`, `id`, `internal_url`, `modified_at`, `name`, `shop_type`, `stripe_public_key`, `stripe_secret_key`, `vat_lower_1`, `vat_lower_2`, `vat_lower_3`, `vat_special`, `vat_standard`, `vat_zero`.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column.",
+              "description": "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. If it does not find a `:` it will sort ascending on that column. Valid columns: `allowed_ips`, `config`, `config_version`, `created_at`, `description`, `discord_webhook`, `external_url`, `id`, `internal_url`, `modified_at`, `name`, `shop_type`, `stripe_public_key`, `stripe_secret_key`, `vat_lower_1`, `vat_lower_2`, `vat_lower_3`, `vat_special`, `vat_standard`, `vat_zero`.",
               "items": {
                 "type": "string"
               },

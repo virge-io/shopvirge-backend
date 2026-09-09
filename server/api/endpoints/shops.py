@@ -1,3 +1,4 @@
+from datetime import datetime
 from http import HTTPStatus
 from typing import List
 from uuid import UUID
@@ -5,15 +6,16 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, HTTPException
 from fastapi.param_functions import Body, Depends
+from sqlalchemy import func
 from starlette.responses import Response
 
 from server.agent_tags import AgentTag
-from server.api.deps import common_parameters
+from server.api.deps import PageParams, page_params_for
 from server.api.error_handling import raise_status
-from server.api.helpers import load
+from server.api.route_helpers import get_or_404, list_page
 from server.crud.crud_shop import shop_crud
 from server.db import db
-from server.db.models import ShopTable
+from server.db.models import ProductTable, ProductTranslationTable, ShopTable
 from server.schemas.shop import (
     MyShopsResponse,
     ShopCacheStatus,
@@ -29,22 +31,53 @@ from server.schemas.shop import (
 )
 from server.security import CustomCognitoToken, auth_required, has_admin_group
 
-# Three routers, split by auth posture so the per-shop guard can be applied at
-# the mount in ``server/api/api.py`` rather than route by route:
+# Four routers, one auth posture each. The guard is declared where the router is
+# mounted in ``server/api/api.py`` — never per route — so a route added here
+# cannot ship unguarded by omission:
 #
-#   router            collection ops (no shop in the path) + public storefront reads
-#   shop_router       per-shop operations, path param ``{shop_id}``
-#   legacy_id_router  per-shop operations whose path param is spelled ``{id}``
+#   router            collection ops (no shop in the path)        auth_required
+#   public_router     storefront reads, polled before sign-in     none
+#   shop_router       per-shop ops, path param ``{shop_id}``      shop_access_required
+#   legacy_id_router  per-shop ops, path param ``{id}``           shop_access_required_by_id
 #
-# The last one exists only because those paths predate the ``{shop_id}`` convention.
-# Renaming the param would change the generated client symbol and argument key
-# (FastAPI derives operation_id from the path template), so it needs a coordinated
-# change with shop-editor. Splitting routers, by contrast, leaves operation_id and
-# the URLs untouched — see shop_access_required_by_id in server/security.py.
+# legacy_id_router exists only because those paths predate the ``{shop_id}``
+# convention. FastAPI derives operation_id from the path template, so renaming
+# the param changes the generated client symbol and argument key; that needs a
+# coordinated shop-editor change. Splitting routers leaves the spec untouched.
 router = APIRouter()
+public_router = APIRouter()
 shop_router = APIRouter()
 legacy_id_router = APIRouter()
 logger = structlog.get_logger(__name__)
+
+shop_page_params = page_params_for(shop_crud)
+
+
+def _shop_or_404(shop_id: UUID) -> ShopTable:
+    return get_or_404(shop_crud.get(shop_id), f"Shop with id {shop_id} not found")
+
+
+def _set_allowed_ips(shop: ShopTable, allowed_ips: List[str]) -> List[str]:
+    """Persist a new order-submission allow-list; every other shop field is carried over unchanged."""
+    shop_crud.update(
+        db_obj=shop,
+        obj_in=ShopUpdate(
+            name=shop.name,
+            description=shop.description,
+            modified_at=datetime.utcnow(),
+            allowed_ips=allowed_ips,
+            vat_standard=shop.vat_standard,
+            vat_lower_1=shop.vat_lower_1,
+            vat_lower_2=shop.vat_lower_2,
+            vat_lower_3=shop.vat_lower_3,
+            vat_special=shop.vat_special,
+            vat_zero=shop.vat_zero,
+        ),
+    )
+    return allowed_ips
+
+
+# --- router: collection operations -------------------------------------------
 
 
 @router.get(
@@ -53,19 +86,8 @@ logger = structlog.get_logger(__name__)
     summary="List shops",
     description="Returns all shops on the platform. Supports pagination, filtering, and sorting via common query parameters.",
 )
-def get_multi(
-    response: Response,
-    common: dict = Depends(common_parameters),
-    current_user: CustomCognitoToken = Depends(auth_required),
-) -> List[ShopSchema]:
-    shops, header_range = shop_crud.get_multi(
-        skip=common["skip"],
-        limit=common["limit"],
-        filter_parameters=common["filter"],
-        sort_parameters=common["sort"],
-    )
-    response.headers["Content-Range"] = header_range
-    return shops
+def get_multi(response: Response, page: PageParams = Depends(shop_page_params)) -> List[ShopTable]:
+    return list_page(shop_crud, page, response)
 
 
 @router.get(
@@ -103,58 +125,65 @@ def get_my_shops(
     summary="Create shop",
     description="Create a new shop on the platform. Returns the created shop record.",
 )
-def create(data: ShopCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> ShopSchema:
+def create(data: ShopCreate = Body(...)) -> ShopTable:
     logger.info("Saving shop", data=data)
     return shop_crud.create(obj_in=data)
 
 
-@router.get(
+# --- public_router: storefront reads ----------------------------------------
+
+
+@public_router.get(
     "/cache-status/{id}",
     response_model=ShopCacheStatus,
     summary="Get shop cache status",
     description="Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
 )
-def get_cache_status(id: UUID) -> ShopCacheStatus:
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-    return shop
+def get_cache_status(id: UUID) -> ShopTable:
+    return _shop_or_404(id)
 
 
-@router.get(
+@public_router.get(
     "/last-completed-order/{id}",
     response_model=ShopLastCompletedOrder,
     summary="Get timestamp of last completed order",
     description="Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
 )
-def get_last_completed_order(id: UUID) -> ShopLastCompletedOrder:
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-    return shop
+def get_last_completed_order(id: UUID) -> ShopTable:
+    return _shop_or_404(id)
 
 
-@router.get(
+@public_router.get(
     "/last-pending-order/{id}",
     response_model=ShopLastPendingOrder,
     summary="Get timestamp of last pending order",
     description="Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
 )
-def get_last_pending_order(id: UUID) -> ShopLastPendingOrder:
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-    return shop
+def get_last_pending_order(id: UUID) -> ShopTable:
+    return _shop_or_404(id)
 
 
-@router.get(
+@public_router.get(
     "/{id}",
     response_model=ShopWithPrices,
     summary="Get shop",
     description="Retrieve a shop by its UUID, including all associated price records.",
 )
-def get_by_id(id: UUID):
-    return load(ShopTable, id)
+def get_by_id(id: UUID) -> ShopTable:
+    return _shop_or_404(id)
+
+
+@public_router.get(
+    "/config/{id}",
+    response_model=ShopConfig,
+    summary="Get shop configuration",
+    description="Retrieve the shop's full configuration object, including feature toggles (e.g. stock tracking, checkout behaviour) and payment settings.",
+)
+def get_config(id: UUID) -> ShopTable:
+    return _shop_or_404(id)
+
+
+# --- shop_router: per-shop operations, ``{shop_id}`` -------------------------
 
 
 @shop_router.put(
@@ -164,16 +193,10 @@ def get_by_id(id: UUID):
     summary="Update shop",
     description="Update shop details such as name, description, and VAT rates.",
 )
-def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
-    shop = shop_crud.get(id=shop_id)
+def update(*, shop_id: UUID, item_in: ShopUpdate) -> ShopTable:
+    shop = _shop_or_404(shop_id)
     logger.info("Updating shop", data=shop)
-    if not shop:
-        raise HTTPException(status_code=404, detail="Shop not found")
-
-    return shop_crud.update(
-        db_obj=shop,
-        obj_in=item_in,
-    )
+    return shop_crud.update(db_obj=shop, obj_in=item_in)
 
 
 @shop_router.delete(
@@ -183,24 +206,11 @@ def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: CustomCognitoTok
     summary="Delete shop",
     description="Permanently remove a shop from the platform.",
 )
-def delete(shop_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
-    return shop_crud.delete(id=shop_id)
+def delete(shop_id: UUID) -> None:
+    shop_crud.delete(id=shop_id)
 
 
-@router.get(
-    "/config/{id}",
-    response_model=ShopConfig,
-    summary="Get shop configuration",
-    description="Retrieve the shop's full configuration object, including feature toggles (e.g. stock tracking, checkout behaviour) and payment settings.",
-)
-def get_config(
-    id: UUID,
-) -> ShopConfig:
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-
-    return shop
+# --- legacy_id_router: per-shop operations, ``{id}`` -------------------------
 
 
 @legacy_id_router.put(
@@ -210,21 +220,11 @@ def get_config(
     summary="Update shop configuration",
     description="Update the shop's configuration. Partial updates are supported — only provided fields are changed.",
 )
-def update_config(
-    id: UUID,
-    item_in: ShopConfigUpdate,
-    current_user: CustomCognitoToken = Depends(auth_required),
-) -> ShopConfig:
-    shop = shop_crud.get(id=id)
+def update_config(id: UUID, item_in: ShopConfigUpdate) -> ShopTable:
+    shop = _shop_or_404(id)
     logger.info("Updating shop", data=shop)
-    if not shop:
-        raise HTTPException(status_code=404, detail="Shop not found")
 
     if item_in.config.toggles.force_unique_product_names:
-        from sqlalchemy import func
-
-        from server.db.models import ProductTable, ProductTranslationTable
-
         duplicate = (
             db.session.query(ProductTranslationTable.main_name)
             .join(ProductTable, ProductTranslationTable.product_id == ProductTable.id)
@@ -239,10 +239,7 @@ def update_config(
                 detail=f"Cannot enable force_unique_product_names: duplicate product name '{duplicate[0]}' exists in this shop.",
             )
 
-    return shop_crud.update(
-        db_obj=shop,
-        obj_in=item_in,
-    )
+    return shop_crud.update(db_obj=shop, obj_in=item_in)
 
 
 @legacy_id_router.get(
@@ -251,17 +248,8 @@ def update_config(
     summary="List allowed IPs",
     description="Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
 )
-def get_allowed_ips(
-    id: UUID,
-    current_user: CustomCognitoToken = Depends(auth_required),
-) -> List[str]:
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-
-    if shop.allowed_ips:
-        return shop.allowed_ips
-    return []
+def get_allowed_ips(id: UUID) -> List[str]:
+    return list(_shop_or_404(id).allowed_ips or [])
 
 
 @legacy_id_router.post(
@@ -270,33 +258,13 @@ def get_allowed_ips(
     summary="Add allowed IP",
     description="Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
 )
-def add_new_ip(id: UUID, new_ip: ShopIp, current_user: CustomCognitoToken = Depends(auth_required)):
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-
-    updated_shop = ShopUpdate(
-        name=shop.name,
-        description=shop.description,
-        allowed_ips=shop.allowed_ips,
-        vat_standard=shop.vat_standard,
-        vat_lower_1=shop.vat_lower_1,
-        vat_lower_2=shop.vat_lower_2,
-        vat_lower_3=shop.vat_lower_3,
-        vat_special=shop.vat_special,
-        vat_zero=shop.vat_zero,
-    )
-
-    if shop.allowed_ips and new_ip.ip not in shop.allowed_ips:
-        updated_shop.allowed_ips.append(new_ip.ip)
-    elif shop.allowed_ips and new_ip.ip in shop.allowed_ips:
+def add_new_ip(id: UUID, new_ip: ShopIp) -> List[str]:
+    shop = _shop_or_404(id)
+    allowed_ips = list(shop.allowed_ips or [])
+    if new_ip.ip in allowed_ips:
         raise_status(HTTPStatus.BAD_REQUEST, f"IP {new_ip.ip} already exists")
-    else:
-        updated_shop.allowed_ips = [new_ip.ip]
-
-    shop_crud.update(db_obj=shop, obj_in=updated_shop)
-
-    return updated_shop.allowed_ips
+    allowed_ips.append(new_ip.ip)
+    return _set_allowed_ips(shop, allowed_ips)
 
 
 @legacy_id_router.post(
@@ -305,28 +273,10 @@ def add_new_ip(id: UUID, new_ip: ShopIp, current_user: CustomCognitoToken = Depe
     summary="Remove allowed IP",
     description="Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
 )
-def remove_ip(id: UUID, old_ip: ShopIp, current_user: CustomCognitoToken = Depends(auth_required)):
-    shop = shop_crud.get(id)
-    if not shop:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {id} not found")
-
-    updated_shop = ShopUpdate(
-        name=shop.name,
-        description=shop.description,
-        allowed_ips=shop.allowed_ips,
-        vat_standard=shop.vat_standard,
-        vat_lower_1=shop.vat_lower_1,
-        vat_lower_2=shop.vat_lower_2,
-        vat_lower_3=shop.vat_lower_3,
-        vat_special=shop.vat_special,
-        vat_zero=shop.vat_zero,
-    )
-
-    if shop.allowed_ips and old_ip.ip in shop.allowed_ips:
-        updated_shop.allowed_ips.remove(old_ip.ip)
-    else:
+def remove_ip(id: UUID, old_ip: ShopIp) -> List[str]:
+    shop = _shop_or_404(id)
+    allowed_ips = list(shop.allowed_ips or [])
+    if old_ip.ip not in allowed_ips:
         raise_status(HTTPStatus.BAD_REQUEST, f"IP {old_ip.ip} not on list")
-
-    shop_crud.update(db_obj=shop, obj_in=updated_shop)
-
-    return updated_shop.allowed_ips
+    allowed_ips.remove(old_ip.ip)
+    return _set_allowed_ips(shop, allowed_ips)

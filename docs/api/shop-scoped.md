@@ -43,6 +43,37 @@ The files under `server/api/endpoints/shop_endpoints/`:
 | `info_request.py` | Incoming info requests. The file also exposes the public `POST /info-request/form` endpoint, which uses `pydantic-forms`; see [Forms](forms.md). |
 | `shipping.py` | Shipping cost calculation. |
 
-## Public sub-routers
+## Routers by auth posture
 
-Some resources expose a dedicated public router for unauthenticated reads (products, categories), so a storefront can render a catalogue without a session. These are mounted alongside the primary router in `server/api/api.py`.
+Routers are split by auth posture, and the guard is declared where the router
+is mounted in `server/api/api.py` — never repeated per route — so a route added
+to a guarded router cannot ship unauthenticated by omission:
+
+- `endpoints/shops.py`: `router` (`auth_required`), `public_router` (none),
+  `shop_router` (`shop_access_required`), `legacy_id_router`
+  (`shop_access_required_by_id`, for the routes that still spell the shop id `{id}`).
+- `shop_endpoints/orders.py`: `router` (`auth_required`), `shop_router`
+  (`auth_required_any_for_shop` — `shop_id` is in the route path, not the prefix),
+  `public_router` (the checkout / POS flow: create, read, status patch, stock check).
+- `endpoints/faq.py`: `router` (`auth_required`), `public_router` (reads).
+- `shop_endpoints/products.py` and `categories.py`: `router` + `public_router`,
+  so a storefront can render a catalogue without a session.
+
+A handler takes the principal as a parameter only when its body reads it
+(`get_my_shops`, and the routes that record who made a revision).
+`tests/unit_tests/api/test_router_posture.py` pins every route on the split
+routers to its posture; extend it when you split another file.
+
+## Route helpers
+
+`server/api/route_helpers.py` replaces the plumbing that used to be copied into
+every handler:
+
+- `get_or_404(crud.get(id), "… not found")` — narrows the `Optional` and raises
+  a problem-detail 404. One idiom instead of the two (`raise_status` vs
+  `HTTPException`) that produced differently shaped 404 bodies.
+- `list_page(crud, page, response, shop_id=…, query=…)` — the filter / sort /
+  paginate call plus the `Content-Range` header.
+- `page_params_for(crud)` in `server/api/deps.py` — builds the `skip` / `limit` /
+  `filter` / `sort` dependency for one resource, so the OpenAPI description of
+  `filter` lists that model's real columns instead of a generic sentence.

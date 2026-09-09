@@ -1,52 +1,54 @@
 from http import HTTPStatus
-from typing import Any, List
+from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
-from server.api.deps import common_parameters
+from server.api.deps import PageParams, page_params_for
+from server.api.error_handling import raise_status
+from server.api.route_helpers import get_or_404, list_page
 from server.crud.crud_faq import faq_crud
+from server.db.models import FaqTable
 from server.schemas.faq import FaqCreate, FaqCreated, FaqSchema, FaqUpdate, FaqUpdated
-from server.security import CustomCognitoToken, auth_required
 
 logger = structlog.get_logger(__name__)
+
+# Two routers, one auth posture each; the guard is declared at the mount in
+# ``server/api/api.py``:
+#
+#   public_router   reads — the FAQ is public content     none
+#   router          writes                                auth_required
 router = APIRouter()
+public_router = APIRouter()
+
+faq_page_params = page_params_for(faq_crud)
 
 
-@router.get(
+def _faq_or_404(faq_id: UUID, detail: str | None = None) -> FaqTable:
+    return get_or_404(faq_crud.get(faq_id), detail or f"FAQ with id {faq_id} not found")
+
+
+@public_router.get(
     "/",
     response_model=List[FaqSchema],
     summary="List FAQ entries",
     description="Returns all FAQ question/answer entries. Supports pagination, filtering, and sorting.",
 )
-def get_multi(
-    response: Response,
-    common: dict = Depends(common_parameters),
-) -> List[FaqSchema]:
-    faqs, header_range = faq_crud.get_multi(
-        skip=common["skip"],
-        limit=common["limit"],
-        filter_parameters=common["filter"],
-        sort_parameters=common["sort"],
-    )
-    response.headers["Content-Range"] = header_range
-    return faqs
+def get_multi(response: Response, page: PageParams = Depends(faq_page_params)) -> List[FaqTable]:
+    return list_page(faq_crud, page, response)
 
 
-@router.get(
+@public_router.get(
     "/{id}",
     response_model=FaqSchema,
     summary="Get FAQ entry",
     description="Retrieve a single FAQ entry by its UUID.",
 )
-def get_by_id(id: UUID) -> FaqSchema:
-    faq = faq_crud.get(id)
-    if not faq:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"FAQ with id {id} not found")
-    return faq
+def get_by_id(id: UUID) -> FaqTable:
+    return _faq_or_404(id)
 
 
 @router.post(
@@ -56,17 +58,12 @@ def get_by_id(id: UUID) -> FaqSchema:
     summary="Create FAQ entry",
     description="Add a new FAQ question and answer. Requires authentication. Returns 409 if a FAQ with the same question already exists.",
 )
-def create(data: FaqCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> Any:
-
+def create(data: FaqCreate = Body(...)) -> FaqTable:
     logger.info("Creating FAQ entry", data=data)
 
-    existing_faq = faq_crud.get_by_question(question=data.question)
-    if existing_faq:
+    if faq_crud.get_by_question(question=data.question):
         logger.error("FAQ question already exists", question=data.question)
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail="A FAQ entry with this question already exists.",
-        )
+        raise_status(HTTPStatus.CONFLICT, "A FAQ entry with this question already exists.")
 
     return faq_crud.create(obj_in=data)
 
@@ -78,21 +75,11 @@ def create(data: FaqCreate = Body(...), current_user: CustomCognitoToken = Depen
     summary="Update FAQ entry",
     description="Update an existing FAQ entry's question, answer, or category. Returns 409 if another entry already uses the same question.",
 )
-def update(
-    *, faq_id: UUID, item_in: FaqUpdate, current_user: CustomCognitoToken = Depends(auth_required)
-) -> FaqUpdated:
+def update(*, faq_id: UUID, item_in: FaqUpdate) -> FaqUpdated:
+    faq = _faq_or_404(faq_id, "FAQ entry not found")
 
-    faq = faq_crud.get(faq_id)
-    if not faq:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="FAQ entry not found")
-
-    duplicate = faq_crud.get_duplicate_question(question=item_in.question, faq_id=faq_id)
-
-    if duplicate:
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail="Another FAQ entry with the same question already exists.",
-        )
+    if faq_crud.get_duplicate_question(question=item_in.question, faq_id=faq_id):
+        raise_status(HTTPStatus.CONFLICT, "Another FAQ entry with the same question already exists.")
 
     faq = faq_crud.update(db_obj=faq, obj_in=item_in)
 
@@ -111,5 +98,5 @@ def update(
     summary="Delete FAQ entry",
     description="Remove a FAQ entry. Requires authentication.",
 )
-def delete(faq_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
-    return faq_crud.delete(id=faq_id)
+def delete(faq_id: UUID) -> None:
+    faq_crud.delete(id=faq_id)
