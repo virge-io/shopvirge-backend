@@ -19,7 +19,6 @@ sites, in two different exception styles) and paginate-then-set-``Content-Range`
 
 from http import HTTPStatus
 from typing import Any, List, Optional, TypeVar
-from uuid import UUID
 
 from starlette.responses import Response
 
@@ -48,30 +47,19 @@ def list_page(
     page: PageParams,
     response: Response,
     *,
-    shop_id: Optional[UUID] = None,
     query: Any = None,
 ) -> List[ModelT]:
     """Run a filtered, sorted, paginated list and set ``Content-Range`` on ``response``.
 
-    ``shop_id`` scopes the list to one shop; ``query`` supplies a pre-built base
-    query for routes that join or filter beyond what the CRUD does on its own.
+    ``query`` supplies a pre-built base query for routes that filter beyond what
+    the CRUD does on its own.
     """
-    if shop_id is not None:
-        items, content_range = crud.get_multi_by_shop_id(
-            shop_id=shop_id,
-            skip=page.skip,
-            limit=page.limit,
-            filter_parameters=page.filter,
-            sort_parameters=page.sort,
-            query_parameter=query,
-        )
-    else:
-        items, content_range = crud.get_multi(
-            skip=page.skip,
-            limit=page.limit,
-            filter_parameters=page.filter,
-            sort_parameters=page.sort,
-            query_parameter=query,
-        )
+    items, content_range = crud.get_multi(
+        skip=page.skip,
+        limit=page.limit,
+        filter_parameters=page.filter,
+        sort_parameters=page.sort,
+        query_parameter=query,
+    )
     response.headers["Content-Range"] = content_range
     return items
