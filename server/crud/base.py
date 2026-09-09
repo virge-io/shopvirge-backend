@@ -14,6 +14,7 @@ from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union
 from uuid import UUID
 
 import structlog
+from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from more_itertools import one
 from sqlalchemy import String, cast, or_
@@ -120,10 +121,28 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                             query = query.filter(
                                 cast(trans_model.__dict__[field_name], String).ilike("%" + val_str + "%")
                             )
+                        else:
+                            logger.warning(
+                                f"Translation filter field not found: key={key}, field_name={field_name}, trans_model={trans_model.__name__}, model={self.model}"
+                            )
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Filter field '{key}' not found on translation model '{trans_model.__name__}'",
+                            )
+                    else:
+                        logger.warning(f"Model has no translation relationship: key={key}, model={self.model}")
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Model '{self.model.__name__}' has no translation relationship for filter '{key}'",
+                        )
                 elif key in sa_inspect(self.model).columns.keys():
                     query = query.filter(cast(self.model.__dict__[key], String).ilike("%" + val_str + "%"))
                 else:
-                    logger.info(f"Key not found: key={key}, model={self.model}")
+                    logger.warning(f"Key not found: key={key}, model={self.model}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Filter field '{key}' not found on model '{self.model.__name__}'",
+                    )
 
         if sort_parameters and len(sort_parameters):
             for sort_parameter in sort_parameters:
@@ -135,12 +154,20 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                         else:
                             query = query.order_by(expression.asc(self.model.__dict__[sort_col]))
                     else:
-                        logger.debug(f"Sort col does not exist sort_col={sort_col}")
+                        logger.warning(f"Sort column not found: sort_col={sort_col}, model={self.model}")
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Sort field '{sort_col}' not found on model '{self.model.__name__}'",
+                        )
                 except ValueError:
                     if sort_parameter in sa_inspect(self.model).columns.keys():
                         query = query.order_by(expression.asc(self.model.__dict__[sort_parameter]))
                     else:
-                        logger.debug(f"Sort param does not exist sort_parameter={sort_parameter}")
+                        logger.warning(f"Sort parameter not found: sort_parameter={sort_parameter}, model={self.model}")
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Sort field '{sort_parameter}' not found on model '{self.model.__name__}'",
+                        )
 
         # Generate Content Range Header Values
         count = query.count()

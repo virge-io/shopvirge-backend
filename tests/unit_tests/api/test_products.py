@@ -418,3 +418,38 @@ def test_products_get_multi_sentence_filter(shop_with_products, test_client):
     assert response.status_code == 200
     products = response.json()
     assert len(products) > 0
+
+
+def test_products_get_multi_invalid_filter_raises_400(shop_with_products, test_client):
+    response = test_client.get(f"/shops/{shop_with_products}/products/?filter=non_existent_column:value")
+    assert response.status_code == 400
+    assert "Filter field 'non_existent_column' not found" in response.json()["detail"]
+
+
+def test_products_get_multi_invalid_sort_desc_raises_400(shop_with_products, test_client):
+    response = test_client.get(f"/shops/{shop_with_products}/products/?sort=non_existent_column:DESC")
+    assert response.status_code == 400
+    assert "Sort field 'non_existent_column' not found" in response.json()["detail"]
+
+
+def test_products_get_multi_invalid_sort_asc_raises_400(shop_with_products, test_client):
+    response = test_client.get(f"/shops/{shop_with_products}/products/?sort=non_existent_column:ASC")
+    assert response.status_code == 400
+    assert "Sort field 'non_existent_column' not found" in response.json()["detail"]
+
+
+def test_products_get_multi_invalid_sort_single_value_raises_400(shop_with_products, test_client):
+    response = test_client.get(f"/shops/{shop_with_products}/products/?sort=non_existent_column")
+    assert response.status_code == 400
+    assert "Sort field 'non_existent_column' not found" in response.json()["detail"]
+
+
+def test_products_get_multi_valid_sort_regression(shop_with_products, test_client):
+    response_desc = test_client.get(f"/shops/{shop_with_products}/products/?sort=created_at:DESC")
+    assert response_desc.status_code == 200
+
+    response_asc = test_client.get(f"/shops/{shop_with_products}/products/?sort=created_at:ASC")
+    assert response_asc.status_code == 200
+
+    response_single = test_client.get(f"/shops/{shop_with_products}/products/?sort=created_at")
+    assert response_single.status_code == 200
