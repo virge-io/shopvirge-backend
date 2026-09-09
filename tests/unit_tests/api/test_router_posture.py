@@ -23,9 +23,11 @@ between them.
 ``/`` and skips several of these, so none of them had coverage before.
 """
 
+import re
 import uuid
 
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 SHOP_ID = str(uuid.uuid4())
@@ -83,3 +85,24 @@ def test_protected_routes_require_a_token(fastapi_app_not_authenticated, method,
 def test_public_routes_stay_reachable_without_a_token(fastapi_app_not_authenticated, method, path):
     response = TestClient(fastapi_app_not_authenticated).request(method, path)
     assert response.status_code != 401, f"{method} {path} responded 401 but is meant to be public"
+
+
+def test_no_route_is_shadowed_by_an_earlier_one(fastapi_app_not_authenticated):
+    """FastAPI matches routes in registration order, so a parameterised route
+    registered before a more specific one swallows it (``GET /shops/{id}`` before
+    ``GET /shops/my-shops`` would turn my-shops into a 422). api.py registers the
+    auth tiers in a deliberate order; this pins that no route is unreachable.
+    """
+    routes = [r for r in fastapi_app_not_authenticated.routes if isinstance(r, APIRoute)]
+    sample = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    shadowed = []
+    for index, route in enumerate(routes):
+        concrete = re.sub(r"\{[^}]+\}", sample, route.path)
+        for earlier in routes[:index]:
+            if (
+                earlier.methods & route.methods
+                and earlier.path != route.path
+                and re.fullmatch(earlier.path_regex.pattern, concrete)
+            ):
+                shadowed.append(f"{sorted(route.methods)[0]} {route.path} is shadowed by {earlier.path}")
+    assert not shadowed, "\n".join(shadowed)

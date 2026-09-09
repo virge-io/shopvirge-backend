@@ -1,21 +1,18 @@
 from datetime import datetime
 from decimal import Decimal
 from http import HTTPStatus
-from operator import or_
-from typing import Iterable, List
+from typing import List
 from uuid import UUID
 
 import stripe
 import structlog
 from fastapi import APIRouter, Request
-from fastapi.param_functions import Body, Depends
-from starlette.responses import Response
+from fastapi.param_functions import Body
 
-from server.agent_tags import AgentTag
-from server.api.deps import PageParams, page_params_for
+from server.api.endpoints.orders.common import attach_names, mark_completed, order_updated
 from server.api.error_handling import raise_status
 from server.api.helpers import invalidateCompletedOrdersCache, invalidatePendingOrdersCache
-from server.api.route_helpers import get_or_404, list_page
+from server.api.route_helpers import get_or_404
 from server.api.utils import is_ip_allowed, validate_uuid4
 from server.crud.crud_account import account_crud
 from server.crud.crud_order import order_crud
@@ -26,7 +23,7 @@ from server.mail import send_order_confirmation_emails
 from server.schemas import ProductUpdate
 from server.schemas.account import AccountCreate
 from server.schemas.base import quantize_money
-from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdate, OrderUpdated
+from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdated
 from server.services import stripe_client
 from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
@@ -35,153 +32,10 @@ from server.utils.discord.discord import post_discord_order_complete
 
 logger = structlog.get_logger(__name__)
 
-# Three routers, one auth posture each. The guard is declared where the router is
-# mounted in ``server/api/api.py``, never per route:
-#
-#   router          management: list all / full update / delete        auth_required
-#   shop_router     per-shop order lists (MCP-exposed), ``{shop_id}``  auth_required_any_for_shop
-#   public_router   checkout + POS flow: create, read, status patch,   none
-#                   status check, stock check
-#
-# Orders are mounted at ``/orders`` rather than ``/shops/{shop_id}/orders``;
-# ``auth_required_any_for_shop`` reads ``shop_id`` from the route path instead.
 router = APIRouter()
-shop_router = APIRouter()
-public_router = APIRouter()
-
-order_page_params = page_params_for(order_crud)
-
-
-def _attach_names(orders: Iterable[OrderTable]) -> None:
-    """Populate ``account_name``/``shop_name``, which OrderSchema serialises but OrderTable doesn't store."""
-    for order in orders:
-        if order.account_id:
-            order.account_name = order.account.name
-        if order.shop_id:
-            order.shop_name = order.shop.name
-
-
-def _mark_completed(order: OrderTable) -> None:
-    order.completed_at = datetime.now()
-
-
-def _order_updated(order: OrderTable) -> OrderUpdated:
-    return OrderUpdated(
-        account_id=order.account_id,
-        notes=order.notes,
-        total=order.total,
-        customer_order_id=order.customer_order_id,
-        status=order.status,
-        shop_id=order.shop_id,
-        order_info=order.order_info,
-        id=order.id,
-    )
-
-
-# --- router: management ------------------------------------------------------
 
 
 @router.get(
-    "/",
-    response_model=List[OrderSchema],
-    summary="List all orders",
-    description="Returns all orders across all shops. Requires authentication. Supports pagination, filtering (e.g. `status:pending`), and sorting.",
-)
-def get_multi(response: Response, page: PageParams = Depends(order_page_params)) -> List[OrderTable]:
-    orders = list_page(order_crud, page, response)
-    _attach_names(orders)
-    return orders
-
-
-@router.put(
-    "/{order_id}",
-    response_model=OrderUpdated,
-    status_code=HTTPStatus.CREATED,
-    summary="Full order update",
-    description="Fully replace an order's fields. Requires authentication. Also sets `completed_at` when transitioning to `complete` or `cancelled`.",
-)
-def update(*, order_id: UUID, item_in: OrderUpdate) -> OrderUpdated:
-    order = get_or_404(order_crud.get(order_id), "Order not found")
-
-    if item_in.status and (item_in.status == "complete" or item_in.status == "cancelled") and not order.completed_at:
-        _mark_completed(order)
-
-    order = order_crud.update(db_obj=order, obj_in=item_in)
-    return _order_updated(order)
-
-
-@router.delete(
-    "/{order_id}",
-    response_model=None,
-    status_code=HTTPStatus.NO_CONTENT,
-    summary="Delete order",
-    description="Permanently remove an order record. Requires authentication.",
-)
-def delete(order_id: UUID) -> None:
-    order_crud.delete(id=order_id)
-
-
-# --- shop_router: per-shop lists ---------------------------------------------
-
-
-@shop_router.get(
-    "/shop/{shop_id}/pending",
-    response_model=List[OrderSchema],
-    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
-    operation_id="list_pending_orders",
-    summary="List pending orders for a shop",
-    description=(
-        "Read-only. Returns the shop's orders with status `pending` - orders awaiting fulfilment. "
-        "Scoped to the shop in the path; you cannot read other shops' orders. Results include "
-        "customer names and totals, so treat them as personal data. Supports pagination (`skip`/`limit`), "
-        "filtering and sorting via the common query parameters. `filter` matches order fields only "
-        "(status, dates, totals, etc.) and does NOT match customer name or email - to find a customer's "
-        "orders, list the shop's orders and match on `account_name` client-side."
-    ),
-)
-def show_all_pending_orders_per_shop(
-    shop_id: UUID,
-    response: Response,
-    page: PageParams = Depends(order_page_params),
-) -> List[OrderTable]:
-    query = OrderTable.query.filter(OrderTable.shop_id == shop_id).filter(OrderTable.status == "pending")
-    orders = list_page(order_crud, page, response, query=query)
-    _attach_names(orders)
-    return orders
-
-
-@shop_router.get(
-    "/shop/{shop_id}/complete",
-    response_model=List[OrderSchema],
-    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
-    operation_id="list_complete_orders",
-    summary="List completed orders for a shop",
-    description=(
-        "Read-only. Returns the shop's orders with status `complete` or `cancelled` - the order history, "
-        "useful for reporting. Scoped to the shop in the path; you cannot read other shops' orders. "
-        "Results include customer names and totals, so treat them as personal data. Supports pagination "
-        "(`skip`/`limit`), filtering and sorting via the common query parameters. `filter` matches order "
-        "fields only (status, dates, totals, etc.) and does NOT match customer name or email - to find a "
-        "customer's orders, list the shop's orders and match on `account_name` client-side."
-    ),
-)
-def show_all_complete_orders_per_shop(
-    shop_id: UUID,
-    response: Response,
-    page: PageParams = Depends(order_page_params),
-) -> List[OrderTable]:
-    query = OrderTable.query.filter(OrderTable.shop_id == shop_id).filter(
-        or_(OrderTable.status == "complete", OrderTable.status == "cancelled")
-    )
-    orders = list_page(order_crud, page, response, query=query)
-    _attach_names(orders)
-    return orders
-
-
-# --- public_router: checkout + POS flow --------------------------------------
-
-
-@public_router.get(
     "/{id}",
     response_model=OrderSchema,
     summary="Get order",
@@ -189,11 +43,11 @@ def show_all_complete_orders_per_shop(
 )
 def get_by_id(id: UUID) -> OrderTable:
     order = get_or_404(order_crud.get(id), f"Order with id {id} not found")
-    _attach_names([order])
+    attach_names([order])
     return order
 
 
-@public_router.get(
+@router.get(
     "/check/{ids}",
     response_model=List[OrderCreated],
     summary="Check order statuses",
@@ -233,7 +87,7 @@ def check(ids: str) -> List[OrderCreated]:
     return items_with_schema
 
 
-@public_router.post(
+@router.post(
     "/",
     response_model=OrderCreated,
     status_code=HTTPStatus.CREATED,
@@ -339,8 +193,7 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     return created_order
 
 
-# TODO mention discord in documentation?
-@public_router.patch(
+@router.patch(
     "/{order_id}",
     response_model=OrderUpdated,
     status_code=HTTPStatus.CREATED,
@@ -357,7 +210,7 @@ def patch(*, order_id: UUID, item_in: OrderBase) -> OrderUpdated:
     # Early exit if status of request is the same as in db, as or right now there is you cant cancel or complete an order again
     if item_in.status and order.status == item_in.status:
         logger.info(f"Order status is already set to {item_in.status}")
-        return _order_updated(order)
+        return order_updated(order)
 
     shop_id = order.shop_id
     shop = get_or_404(shop_crud.get(shop_id), f"Shop with ID {shop_id} not found")
@@ -368,10 +221,10 @@ def patch(*, order_id: UUID, item_in: OrderBase) -> OrderUpdated:
         and (item_in.status == "complete" or item_in.status == "cancelled")
         and not order.completed_at
     ):
-        _mark_completed(order)
+        mark_completed(order)
 
     order = order_crud.update(db_obj=order, obj_in=item_in)
-    updated_order = _order_updated(order)
+    updated_order = order_updated(order)
 
     # The following is fixed by the early exit from before `order.status == item_in.status`:
     # `item_in.status == "complete"` is not enough because it doesn't account for the order's current status, this means that the stock gets updated even though the order might not have been changed
@@ -416,7 +269,7 @@ def patch(*, order_id: UUID, item_in: OrderBase) -> OrderUpdated:
     return updated_order
 
 
-@public_router.get(
+@router.get(
     "/stock/{order_id}",
     response_model=bool,
     summary="Check order stock availability",
