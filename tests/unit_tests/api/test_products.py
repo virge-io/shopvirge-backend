@@ -401,6 +401,15 @@ def test_product_duplicate_sku_same_shop_rejected(shop, category, test_client):
     assert response.status_code == HTTPStatus.CONFLICT
 
 
+def test_product_create_rejects_blank_required_translation_field(shop, category, test_client):
+    body = _product_body(shop, category)
+    body["translation"]["main_name"] = ""
+    response = test_client.post(f"/shops/{shop}/products/", content=json_dumps(body))
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    errors = response.json()["detail"]
+    assert any(err["loc"] == ["body", "translation", "main_name"] for err in errors)
+
+
 def test_product_duplicate_sku_different_shop_allowed(shop, category, test_client):
     from tests.unit_tests.factories.categories import make_category
     from tests.unit_tests.factories.shop import make_shop

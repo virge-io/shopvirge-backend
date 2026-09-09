@@ -10,16 +10,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from uuid import UUID
 
+from sqlalchemy import func
+
+from server.api.models import transform_json
 from server.crud.base import CRUDBase
-from server.db.models import OrderTable
-from server.schemas.order import OrderCreate, OrderUpdate
+from server.db import db
+from server.db.models import OrderTable, ShopTable
+from server.schemas.order import OrderPersisted, OrderUpdate
 
 
-class CRUDOrder(CRUDBase[OrderTable, OrderCreate, OrderUpdate]):
-    def get_newest_order_id(self, *, shop_id: UUID) -> int:
-        return OrderTable.query.filter_by(shop_id=str(shop_id)).count() + 1
+class CRUDOrder(CRUDBase[OrderTable, OrderPersisted, OrderUpdate]):
+    def create_with_next_customer_order_id(self, *, obj_in: OrderPersisted) -> OrderTable:
+        # Lock the parent shop row so concurrent order creation for one shop
+        # serializes until this order and its sequential customer ID are committed.
+        db.session.query(ShopTable).filter(ShopTable.id == obj_in.shop_id).with_for_update().one()
+        latest_id = (
+            db.session.query(func.max(OrderTable.customer_order_id))
+            .filter(OrderTable.shop_id == obj_in.shop_id)
+            .scalar()
+        )
+        order_data = transform_json(obj_in.model_dump())
+        order_data["customer_order_id"] = (latest_id or 0) + 1
+
+        order = OrderTable(**order_data)
+        db.session.add(order)
+        db.session.commit()
+        db.session.refresh(order)
+        return order
 
     def get_all_orders_filtered_by(self, **kwargs):
         return OrderTable.query.filter_by(**kwargs).all()

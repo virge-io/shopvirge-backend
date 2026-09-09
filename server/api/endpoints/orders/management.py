@@ -12,7 +12,11 @@ from server.api.endpoints.orders.common import attach_names, mark_completed, ord
 from server.api.route_helpers import get_or_404, list_page
 from server.crud.crud_order import order_crud
 from server.db.models import OrderTable
-from server.schemas.order import OrderSchema, OrderUpdate, OrderUpdated
+from server.schemas.order import (
+    OrderSchema,
+    OrderStatusUpdate,
+    OrderUpdated,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -35,10 +39,10 @@ def get_multi(response: Response, page: PageParams = Depends(order_page_params))
     "/{order_id}",
     response_model=OrderUpdated,
     status_code=HTTPStatus.CREATED,
-    summary="Full order update",
-    description="Fully replace an order's fields. Requires authentication. Also sets `completed_at` when transitioning to `complete` or `cancelled`.",
+    summary="Update order status",
+    description="Update an order's status or notes. Prices, line items, and totals are immutable after creation.",
 )
-def update(*, order_id: UUID, item_in: OrderUpdate) -> OrderUpdated:
+def update(*, order_id: UUID, item_in: OrderStatusUpdate) -> OrderUpdated:
     order = get_or_404(order_crud.get(order_id), "Order not found")
 
     if item_in.status and (item_in.status == "complete" or item_in.status == "cancelled") and not order.completed_at:

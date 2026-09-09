@@ -13,7 +13,9 @@ from server.api.endpoints.orders.common import attach_names, order_page_params
 from server.api.route_helpers import list_page
 from server.crud.crud_order import order_crud
 from server.db.models import OrderTable
-from server.schemas.order import OrderSchema
+from server.schemas.order import (
+    OrderSchema,
+)
 
 logger = structlog.get_logger(__name__)
 

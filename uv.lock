@@ -2562,7 +2562,7 @@ requires-dist = [
     { name = "more-itertools", specifier = "==10.2.0" },
     { name = "phonenumbers", specifier = "==8.13.45" },
     { name = "psycopg2-binary", specifier = "==2.9.12" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.11.7" },
+    { name = "pydantic", extras = ["email"], specifier = "==2.13.5" },
     { name = "pydantic-extra-types", specifier = "==2.9.0" },
     { name = "pydantic-forms" },
     { name = "pydantic-settings", specifier = ">=2.5.2" },

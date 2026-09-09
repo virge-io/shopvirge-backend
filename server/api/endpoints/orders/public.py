@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from http import HTTPStatus
 from typing import List
 from uuid import UUID
@@ -9,7 +8,7 @@ import structlog
 from fastapi import APIRouter, Request
 from fastapi.param_functions import Body
 
-from server.api.endpoints.orders.common import attach_names, mark_completed, order_updated
+from server.api.endpoints.orders.common import attach_names, mark_completed, order_updated, quote_order
 from server.api.error_handling import raise_status
 from server.api.helpers import invalidateCompletedOrdersCache, invalidatePendingOrdersCache
 from server.api.route_helpers import get_or_404
@@ -22,10 +21,17 @@ from server.db.models import Account, OrderTable
 from server.mail import send_order_confirmation_emails
 from server.schemas import ProductUpdate
 from server.schemas.account import AccountCreate
-from server.schemas.base import quantize_money
-from server.schemas.order import OrderBase, OrderCreate, OrderCreated, OrderSchema, OrderUpdated
+from server.schemas.order import (
+    OrderCreate,
+    OrderCreated,
+    OrderPersisted,
+    OrderQuote,
+    OrderQuoteRequest,
+    OrderSchema,
+    OrderStatusUpdate,
+    OrderUpdated,
+)
 from server.services import stripe_client
-from server.services.shipping import compute_shipping_for_cart
 from server.services.stripe_client import StripeNotConfigured
 from server.settings import mail_settings
 from server.utils.discord.discord import post_discord_order_complete
@@ -53,7 +59,9 @@ def get_by_id(id: UUID) -> OrderTable:
     summary="Check order statuses",
     description="Retrieve the status and totals of up to 10 orders by passing a comma-separated list of UUIDs. All orders must belong to the same shop. Used by the checkout confirmation page.",
 )
-def check(ids: str) -> List[OrderCreated]:
+def check(
+    ids: str,
+) -> List[OrderCreated]:
     id_list = ids.split(",")
 
     # Validate input
@@ -64,14 +72,19 @@ def check(ids: str) -> List[OrderCreated]:
     if len(id_list) > 10:
         raise_status(HTTPStatus.BAD_REQUEST, "Max 10 orders")
 
-    items = [item for item in (order_crud.get(id) for id in id_list) if item]
-
+    # Build response
+    items = []
     items_with_schema = []
+    for id in id_list:
+        item = order_crud.get(id)
+        if item:
+            items.append(item)
+
     for item in items:
         if item.shop_id != items[0].shop_id:
             raise_status(HTTPStatus.BAD_REQUEST, "All ID's should belong to one shop")
-        items_with_schema.append(
-            OrderCreated(
+        else:
+            checked_order = OrderCreated(
                 account_id=item.account_id,
                 total=item.total,
                 notes=item.notes,
@@ -82,9 +95,20 @@ def check(ids: str) -> List[OrderCreated]:
                 completed_at=item.completed_at,
                 account_name=item.account.name,
             )
-        )
+            items_with_schema.append(checked_order)
 
     return items_with_schema
+
+
+@router.post(
+    "/quote",
+    response_model=OrderQuote,
+    summary="Quote an order",
+    description="Calculate gross line prices, shipping, and total from product IDs, quantities, and plans.",
+)
+def quote(data: OrderQuoteRequest = Body(...)) -> OrderQuote:
+    shop = get_or_404(shop_crud.get(data.shop_id), f"Shop with id {data.shop_id} not found")
+    return quote_order(shop, data, validate_stock=True)
 
 
 @router.post(
@@ -94,6 +118,7 @@ def check(ids: str) -> List[OrderCreated]:
     summary="Create order",
     description=(
         "Submit a new customer order. The caller's IP is validated against the shop's allowlist. "
+        "Unit prices, shipping, and totals are derived server-side from the product catalogue. "
         "If stock tracking is enabled the product availability is verified before the order is created. "
         "A Stripe customer is auto-created for new account names when the shop has Stripe configured."
     ),
@@ -101,8 +126,6 @@ def check(ids: str) -> List[OrderCreated]:
 def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     logger.info("Saving order", data=data)
 
-    if data.customer_order_id:
-        del data.customer_order_id
     shop_id = data.shop_id
     shop = get_or_404(shop_crud.get(shop_id), f"Shop with id {shop_id} not found")
 
@@ -132,45 +155,39 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
                 )
 
             account_data = AccountCreate(shop_id=data.shop_id, name=data.account_name, details=details)
-            created_account = account_crud.create(obj_in=account_data)
-            data.account_id = created_account.id
+            account = account_crud.create(obj_in=account_data)
+            data.account_id = account.id
             del data.account_name
 
     if not is_ip_allowed(request, shop) and str(data.account_id) != "0999fbcd-a72b-4cc2-abbe-41ccd466cdaf":
         # allow test table to bypass IP check if any
         raise_status(HTTPStatus.BAD_REQUEST, "NOT_ON_SHOP_WIFI")
 
-    # Availability check
-    if shop.config["toggles"]["enable_stock_on_products"]:
-        for order_product in data.order_info:
-            product = get_or_404(
-                product_crud.get_id_by_shop_id(shop_id, order_product.product_id),
-                f"Product '{order_product.product_name}' not found",
-            )
-            if product.stock < order_product.quantity:
-                raise_status(HTTPStatus.BAD_REQUEST, f"Not enough stock for product '{order_product.product_name}'")
+    order_quote = quote_order(shop, data, validate_stock=True)
 
-    data.customer_order_id = order_crud.get_newest_order_id(shop_id=shop_id)
-
-    if data.status in ["complete", "cancelled"] and not data.completed_at:
-        data.completed_at = datetime.now()
-
-    if data.status not in ["pending", "complete", "cancelled"]:
-        data.status = "pending"
-
+    status = "pending"
+    completed_at = None
     if str(data.account_id) == "0999fbcd-a72b-4cc2-abbe-41ccd466cdaf":
         # Test table -> flag it complete
-        data.status = "complete"
-        data.completed_at = datetime.now()
+        status = "complete"
+        completed_at = datetime.now()
 
     # Compute shipping fee from shop config and recompute the persisted total
-    # server-side so it can't be manipulated by the client.
-    shipping_calc = compute_shipping_for_cart(data.order_info, shop)
-    data.shipping_fee_inc_btw = shipping_calc.fee_inc_btw if shipping_calc is not None else None
-    items_total = sum((item.price * item.quantity for item in data.order_info), Decimal("0"))
-    data.total = quantize_money(items_total + (data.shipping_fee_inc_btw or Decimal("0")))
-
-    order = order_crud.create(obj_in=data)
+    # server-side from the authoritative line prices so it can't be manipulated
+    # by the client.
+    order = order_crud.create_with_next_customer_order_id(
+        obj_in=OrderPersisted(
+            account_id=data.account_id,
+            total=order_quote.total,
+            notes=data.notes,
+            customer_order_id=None,
+            status=status,
+            shipping_fee_inc_btw=order_quote.shipping_fee_inc_btw,
+            shop_id=shop_id,
+            order_info=order_quote.order_info,
+            completed_at=completed_at,
+        )
+    )
 
     created_order = OrderCreated(
         account_id=order.account_id,
@@ -204,7 +221,11 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         "notification, and an order confirmation email. Idempotent: setting the same status twice is a no-op."
     ),
 )
-def patch(*, order_id: UUID, item_in: OrderBase) -> OrderUpdated:
+def patch(
+    *,
+    order_id: UUID,
+    item_in: OrderStatusUpdate,
+) -> OrderUpdated:
     order = get_or_404(order_crud.get(order_id), "Order not found")
 
     # Early exit if status of request is the same as in db, as or right now there is you cant cancel or complete an order again
@@ -215,15 +236,14 @@ def patch(*, order_id: UUID, item_in: OrderBase) -> OrderUpdated:
     shop_id = order.shop_id
     shop = get_or_404(shop_crud.get(shop_id), f"Shop with ID {shop_id} not found")
 
-    if (
-        "complete" not in order.status
-        and item_in.status
-        and (item_in.status == "complete" or item_in.status == "cancelled")
-        and not order.completed_at
-    ):
+    if item_in.status in {"complete", "cancelled"} and not order.completed_at:
         mark_completed(order)
 
-    order = order_crud.update(db_obj=order, obj_in=item_in)
+    order = order_crud.update(
+        db_obj=order,
+        obj_in=item_in,
+    )
+
     updated_order = order_updated(order)
 
     # The following is fixed by the early exit from before `order.status == item_in.status`:

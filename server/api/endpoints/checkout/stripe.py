@@ -1,12 +1,15 @@
 from http import HTTPStatus
+from typing import Any
 from uuid import UUID
 
 import stripe
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
+from server.api.error_handling import raise_status
 from server.crud.crud_shop import shop_crud
-from server.db.models import Account
+from server.db.models import Account, OrderTable
+from server.schemas.base import quantize_money
 from server.services import stripe_client
 
 router = APIRouter()
@@ -18,21 +21,18 @@ def get_stripe_customer(account_id: UUID, shop_id: UUID):
     return stripe_client.get_customer_id(account)
 
 
-def get_stripe_prices(product_ids: list[UUID], yearly: bool):
-    lookup_keys = []
-    for id in product_ids:
-        if yearly:
-            lookup_keys.append(f"yearly-{id}")
-        else:
-            lookup_keys.append(f"monthly-{id}")
+def get_stripe_prices(order_info: list[dict[str, Any]], yearly: bool) -> list[dict[str, Any]]:
+    lookup_keys = [f"{'yearly' if yearly else 'monthly'}-{item['product_id']}" for item in order_info]
 
     prices = stripe.Price.list(lookup_keys=lookup_keys)
-
-    items = []
-    for price in prices.data:
-        items.append({"price": price.id})
-
-    return items
+    prices_by_lookup_key = {price.lookup_key: price.id for price in prices.data}
+    return [
+        {
+            "price": prices_by_lookup_key[f"{'yearly' if yearly else 'monthly'}-{item['product_id']}"],
+            "quantity": item["quantity"],
+        }
+        for item in order_info
+    ]
 
 
 @router.post(
@@ -41,26 +41,35 @@ def get_stripe_prices(product_ids: list[UUID], yearly: bool):
     summary="Create payment intent",
     description=(
         "Create a Stripe PaymentIntent for a one-time purchase. "
-        "Uses the shop's own `stripe_secret_key`. The `price` is in euro cents. "
+        "Uses the shop's own `stripe_secret_key` and the total saved on the order. "
         "Returns a `clientSecret` to complete the payment on the frontend."
     ),
 )
-def create_payment_intent(shop_id: UUID, price: int, account_id: UUID):
+def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
+    order = OrderTable.query.filter(OrderTable.id == order_id, OrderTable.shop_id == shop_id).first()
+    if not order:
+        raise_status(HTTPStatus.NOT_FOUND, f"Order with id {order_id} not found")
+    if order.total is None or order.total <= 0:
+        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, f"Order with id {order_id} has no payable total")
+    if any(item.get("plan") not in {None, "onetime"} for item in order.order_info):
+        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, "Recurring orders must create a subscription")
+
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
-        customer_id = get_stripe_customer(account_id, shop_id)
+        customer_id = get_stripe_customer(order.account_id, shop_id)
 
         intent = stripe.PaymentIntent.create(
-            amount=price,
+            amount=int(quantize_money(order.total) * 100),
             currency="eur",
             payment_method_types=["card", "ideal"],
             setup_future_usage="off_session",
             customer=customer_id,
         )
-        return {"clientSecret": intent["client_secret"]}
-    except Exception as e:
-        return e
+        return {"clientSecret": str(intent["client_secret"])}
+    except Exception as exc:
+        logger.exception("Failed to create payment intent", order_id=str(order_id))
+        raise HTTPException(HTTPStatus.BAD_GATEWAY, "Unable to create payment intent") from exc
 
 
 @router.post(
@@ -68,17 +77,27 @@ def create_payment_intent(shop_id: UUID, price: int, account_id: UUID):
     status_code=HTTPStatus.CREATED,
     summary="Create subscription",
     description=(
-        "Create a Stripe Subscription for one or more products. Price lookup keys are resolved as "
+        "Create a Stripe Subscription using products and plan stored on an order. Price lookup keys are resolved as "
         "`monthly-<product_id>` or `yearly-<product_id>`. "
         "Returns `clientSecret` and `subscriptionId` to confirm payment on the frontend."
     ),
 )
-def create_subscription_intent(shop_id: UUID, product_ids: list[UUID], account_id: UUID, yearly: bool = False):
+def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
+    order = OrderTable.query.filter(OrderTable.id == order_id, OrderTable.shop_id == shop_id).first()
+    if not order:
+        raise_status(HTTPStatus.NOT_FOUND, f"Order with id {order_id} not found")
+
+    plans = {item.get("plan") for item in order.order_info}
+    if len(plans) == 1 and plans <= {"monthly", "yearly"}:
+        yearly = plans == {"yearly"}
+    else:
+        raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, "Subscriptions require one recurring plan for every order line")
+
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
-        customer_id = get_stripe_customer(account_id, shop_id)
-        prices = get_stripe_prices(product_ids, yearly)
+        customer_id = get_stripe_customer(order.account_id, shop_id)
+        prices = get_stripe_prices(order.order_info, yearly)
 
         subscription = stripe.Subscription.create(
             items=prices,
@@ -91,11 +110,12 @@ def create_subscription_intent(shop_id: UUID, product_ids: list[UUID], account_i
             expand=["latest_invoice.payment_intent"],
         )
         return {
-            "clientSecret": subscription.latest_invoice.payment_intent.client_secret,
-            "subscriptionId": subscription.id,
+            "clientSecret": str(subscription.latest_invoice.payment_intent.client_secret),
+            "subscriptionId": str(subscription.id),
         }
-    except Exception as e:
-        return e
+    except Exception as exc:
+        logger.exception("Failed to create subscription", order_id=str(order_id))
+        raise HTTPException(HTTPStatus.BAD_GATEWAY, "Unable to create subscription") from exc
 
 
 @router.delete(
