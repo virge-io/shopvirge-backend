@@ -64,7 +64,6 @@ def mint(
 )
 def list_keys(
     shop_id: UUID,
-    _: CustomCognitoToken = Depends(auth_required),
 ) -> List[ApiKeyRead]:
     rows = api_key_crud.list_by_shop(shop_id)
     return [ApiKeyRead.model_validate(r) for r in rows]
@@ -78,7 +77,6 @@ def list_keys(
 def revoke(
     shop_id: UUID,
     key_id: UUID,
-    _: CustomCognitoToken = Depends(auth_required),
 ) -> None:
     row = api_key_crud.revoke(shop_id=shop_id, key_id=key_id)
     if row is None:

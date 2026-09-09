@@ -14,7 +14,7 @@
 
 Mounted at ``/admin/accounts``. All handlers require membership of the
 Cognito ``Admins`` group (M2M tokens are trusted) via
-``Depends(admin_required)``. The shop-scoped ``/shops/{shop_id}/accounts``
+the ``admin`` tier in ``server/api/api.py`` (``admin_required``). The shop-scoped ``/shops/{shop_id}/accounts``
 routes remain the standard read/write path for end-user shops; this
 router exists so an admin can:
 
@@ -47,7 +47,6 @@ from server.schemas.admin_account import (
     SyncStripeResponse,
     build_admin_account,
 )
-from server.security import admin_required
 from server.services import stripe_client
 from server.services.stripe_client import StripeCustomerMissing, StripeNotConfigured
 
@@ -90,7 +89,6 @@ def list_accounts(
         description="If true, only accounts without a stripe_customer_id; if false, only those with one.",
     ),
     common: dict = Depends(common_parameters),
-    _: object = Depends(admin_required),
 ) -> List[AdminAccountSchema]:
     query = db.session.query(Account).options(joinedload(Account.shop))
 
@@ -133,7 +131,6 @@ def list_accounts(
 )
 def get_account(
     id: UUID,
-    _: object = Depends(admin_required),
 ) -> AdminAccountSchema:
     account = _load_account_or_404(id)
     return build_admin_account(account)
@@ -152,7 +149,6 @@ def get_account(
 )
 def get_stripe_customer(
     id: UUID,
-    _: object = Depends(admin_required),
 ) -> dict:
     """Read-through: fetch the Stripe customer for this account.
 
@@ -196,7 +192,6 @@ def get_stripe_customer(
 )
 def sync_stripe(
     id: UUID,
-    _: object = Depends(admin_required),
 ) -> SyncStripeResponse:
     """Pull the Stripe customer snapshot and persist it on the account.
 
@@ -253,7 +248,6 @@ def sync_stripe(
 def link_stripe(
     id: UUID,
     body: LinkStripeBody = Body(...),
-    _: object = Depends(admin_required),
 ) -> AdminAccountSchema:
     """Manually associate a Stripe customer id with an account.
 
