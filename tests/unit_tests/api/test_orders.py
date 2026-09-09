@@ -12,7 +12,7 @@ from tests.unit_tests.factories.shop import make_shop_with_shipping
 
 
 def test_orders_get_multi(shop, pending_order, test_client):
-    response = test_client.get(f"/orders/")
+    response = test_client.get("/orders/")
     assert response.status_code == 200
     orders = response.json()
     assert 1 == len(orders)
@@ -117,13 +117,12 @@ def shop_shipping_free_above():
 
 
 def _order_body(shop_id, items):
-    body = {
+    return {
         "shop_id": str(shop_id),
         "order_info": items,
         "account_name": f"buyer-{shop_id}@example.com",
         "notes": "test",
     }
-    return body
 
 
 def test_create_order_no_shipping(shop_no_shipping_with_products, test_client):

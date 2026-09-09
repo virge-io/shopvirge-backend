@@ -31,7 +31,7 @@ def post_discord_order_complete(content: str, botname: str, webhook: str, order:
         "username": botname,
         "embeds": [
             {
-                "title": f"New Order! See at https://editor.shopvirge.com/orders",
+                "title": "New Order! See at https://editor.shopvirge.com/orders",
                 "description": f"**Customer Email:** {email}\n **Order Number:** {order.customer_order_id}\n **Total:** {order.total}",
             }
         ],

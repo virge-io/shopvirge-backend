@@ -6,7 +6,6 @@ import structlog
 from fastapi import APIRouter, HTTPException
 from fastapi.param_functions import Body
 from pydantic import ConfigDict, EmailStr
-from pydantic_forms.core import FormPage
 from pydantic_forms.core import FormPage as PydanticFormsFormPage
 from pydantic_forms.core import post_form
 from pydantic_forms.types import JSON, State
@@ -36,7 +35,7 @@ class SubmitFormPage(FormPage):
 
 
 @router.post("/form")
-async def form(shop_id: UUID, product_id: UUID, form_data: list[dict] = []):
+async def form(shop_id: UUID, product_id: UUID, form_data: list[dict] = []):  # noqa: B006 -- FastAPI body default, part of the schema
     def form_generator(state: State):
         class EmailForm(FormPage):
             model_config = ConfigDict(title="Form Title Page 1")
@@ -51,7 +50,6 @@ async def form(shop_id: UUID, product_id: UUID, form_data: list[dict] = []):
     create_info_request(InfoRequestCreate(email=form_data[0]["email"], product_id=product_id, shop_id=shop_id))
 
 
-# @router.post("/", response_model=None, status_code=HTTPStatus.CREATED)
 def create_info_request(data: InfoRequestCreate = Body(...)) -> Any:
     try:
         logger.info("Saving early access", data=data)

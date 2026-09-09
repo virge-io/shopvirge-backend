@@ -6,7 +6,6 @@ import typer
 from sqlalchemy import exc as sa_exc
 
 from server.db import db, init_database, transactional
-from server.db.models import OrderTable as Order
 from server.db.models import ShopTable
 from server.schemas.shop import ConfigurationV1
 from server.settings import app_settings
@@ -17,7 +16,7 @@ logger = structlog.get_logger(__name__)
 def get_new_config(config: dict) -> ConfigurationV1 | None:
     try:
         return ConfigurationV1(**config)
-    except:
+    except Exception:
         return None
 
 
@@ -50,7 +49,7 @@ app = typer.Typer()
 def main(
     dry_run: bool = typer.Option(
         True, help="Disable to actually mutate stuff in the DB, otherwise print only what will be done."
-    )
+    ),
 ):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=sa_exc.SAWarning)

@@ -1,4 +1,4 @@
-"""Guard against silent OpenAPI schema drift.
+r"""Guard against silent OpenAPI schema drift.
 
 The committed snapshot in ``tests/unit_tests/openapi_snapshot.json`` must
 exactly match the current OpenAPI spec (schema **and** version). Any change
@@ -151,7 +151,8 @@ def test_openapi_version_bumped_when_schema_changes():
 
     With the strict snapshot check above this is largely belt-and-braces, but it
     keeps the version-bump intent visible in the test file and gives a focused
-    error message for the most common failure mode."""
+    error message for the most common failure mode.
+    """
     current_version = _app_version_from_main()
     current = _current_openapi(current_version)
     snapshot = json.loads(SNAPSHOT_PATH.read_text())

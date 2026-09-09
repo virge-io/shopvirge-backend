@@ -1,12 +1,10 @@
 from uuid import UUID
 
 import boto3
-import requests
 import structlog
 from botocore.exceptions import ClientError
 from fastapi import APIRouter
 
-from server.api.helpers import create_presigned_url
 from server.settings import app_settings
 
 logger = structlog.get_logger(__name__)
@@ -15,7 +13,7 @@ router = APIRouter()
 
 
 def create_presigned_post_url(shop_id: UUID, object_name, fields=None, conditions=None, expiration=1800):
-    """Generate a presigned URL S3 POST request to upload a file
+    """Generate a presigned URL S3 POST request to upload a file.
 
     :param object_name: string
     :param fields: Dictionary of prefilled form fields
@@ -60,5 +58,4 @@ def create_presigned_post_url(shop_id: UUID, object_name, fields=None, condition
 @router.get("/signed-url/{image_name}")
 def get_signed_upload_url(shop_id: UUID, image_name: str):
     # use image_name with "shop_id" prefix to get a signed upload URL
-    image_url = create_presigned_post_url(shop_id, image_name)
-    return image_url
+    return create_presigned_post_url(shop_id, image_name)

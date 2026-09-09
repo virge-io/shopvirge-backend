@@ -3,12 +3,14 @@ runtime: python311
 build:
   commands:
     build:
-      - pip3 install -r requirements/base.txt
+      - pip3 install uv==0.11.19
+      - uv sync --locked --no-dev
 run:
   runtime-version: 3.11
   pre-run:
-    - pip3 install -r requirements/base.txt
-  command: python3 -m uvicorn server.main:app --port 8000 --host 0.0.0.0
+    - pip3 install uv==0.11.19
+    - uv sync --locked --no-dev
+  command: .venv/bin/python -m uvicorn server.main:app --port 8000 --host 0.0.0.0
   network:
     port: 8000
   env:

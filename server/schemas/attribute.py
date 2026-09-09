@@ -15,7 +15,6 @@ from uuid import UUID
 
 from server.schemas.attribute_option import AttributeOptionSchema
 from server.schemas.base import BoilerplateBaseModel
-from server.schemas.product import ProductBase
 
 
 class AttributeTranslationBase(BoilerplateBaseModel):

@@ -47,7 +47,6 @@ from server.db.database import (
     DBSessionMiddleware,
     SearchQuery,
 )
-from server.db.models import ProductTable
 from server.exception_handlers.generic_exception_handlers import problem_detail_handler
 from server.security import CustomCognitoToken, auth_required, auth_required_any
 from server.settings import app_settings

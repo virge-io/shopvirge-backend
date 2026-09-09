@@ -1,4 +1,3 @@
-import json
 from uuid import uuid4
 
 import structlog
@@ -12,8 +11,6 @@ from server.schemas.shop import (
     ConfigurationLanguages,
     ConfigurationShipping,
     ConfigurationV1,
-    ShopConfig,
-    ShopConfigUpdate,
     Toggles,
 )
 

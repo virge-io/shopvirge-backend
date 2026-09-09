@@ -9,8 +9,7 @@ router = APIRouter()
 
 @router.get("/signed-url/{image_name}")
 def get_signed_url(image_name: str):
-    image_url = create_presigned_url(image_name)
-    return image_url
+    return create_presigned_url(image_name)
 
 
 @router.post("/move")

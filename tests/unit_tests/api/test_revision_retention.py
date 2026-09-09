@@ -1,7 +1,5 @@
 """Tests for revision retention pruning and its configuration."""
 
-from server.db import db
-from server.db.models import RevisionTable
 from server.settings import app_settings
 from server.utils.json import json_dumps
 from tests.unit_tests.api.test_product_revisions import product_body, product_category_id, revision_rows

@@ -10,16 +10,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Generator, List, Optional
-from uuid import UUID
+from typing import Any, Generator, Optional
 
 import structlog
-from pydantic import conlist, validator
-from pydantic.class_validators import root_validator
+from pydantic import validator
 from pydantic.v1.validators import str_validator
 from pydantic_forms.core import DisplayOnlyFieldType, FormPage, register_form
-from pydantic_forms.types import FormGenerator, State, SummaryData
-from pydantic_forms.validators import Choice, LongText, MigrationSummary
+from pydantic_forms.types import FormGenerator, State
 
 from server.db.models import CategoryTable, ProductTable, TagTable
 
@@ -45,7 +42,7 @@ class Hidden(DisplayOnlyFieldType):
 def validate_product_name(product_name: str, values: State) -> str:
     """Check if product already exists."""
     products = ProductTable.query.all()
-    product_items = [item.name.lower() for item in products]
+    product_items = [item.translation.main_name.lower() for item in products if item.translation]
     if product_name.lower() in product_items:
         raise ValueError("Dit product bestaat al.")
     return product_name
@@ -53,8 +50,8 @@ def validate_product_name(product_name: str, values: State) -> str:
 
 def validate_category_name(category_name: str, values: State) -> str:
     """Check if category already exists."""
-    categories = Category.query.filter(Category.shop_id == values["shop_id"]).all()
-    category_items = [item.name.lower() for item in categories]
+    categories = CategoryTable.query.filter(CategoryTable.shop_id == values["shop_id"]).all()
+    category_items = [item.translation.main_name.lower() for item in categories if item.translation]
     if category_name.lower() in category_items:
         raise ValueError("Deze categorie bestaat al.")
     return category_name
@@ -62,8 +59,8 @@ def validate_category_name(category_name: str, values: State) -> str:
 
 def validate_tag_name(tag_name: str, values: State) -> str:
     """Check if tag already exists."""
-    tags = Tag.query.all()
-    tag_items = [item.name.lower() for item in tags]
+    tags = TagTable.query.all()
+    tag_items = [item.name.lower() for item in tags if item.name]
     if tag_name.lower() in tag_items:
         raise ValueError("Deze tag bestaat al.")
     return tag_name

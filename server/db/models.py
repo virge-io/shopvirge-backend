@@ -12,7 +12,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -24,7 +23,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     Integer,
     Numeric,
@@ -41,7 +39,6 @@ from sqlalchemy.orm import backref, relationship, with_loader_criteria
 from sqlalchemy_utils import UUIDType
 
 from server.db.database import BaseModel, Database, WrappedSession
-from server.schemas.shop import ShopType
 from server.settings import app_settings
 
 logger = structlog.get_logger(__name__)

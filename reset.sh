@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "Dropping"
 dropdb shop
 echo "Creating"

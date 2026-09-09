@@ -31,6 +31,7 @@ ENV_FILE="${ENV_FILE:-$HOME/Projects/.Launch/.env}"
 if [[ -f "$ENV_FILE" ]]; then
     echo "Loading config from $ENV_FILE"
     set -o allexport
+    # shellcheck source=/dev/null
     source "$ENV_FILE"
     set +o allexport
 fi

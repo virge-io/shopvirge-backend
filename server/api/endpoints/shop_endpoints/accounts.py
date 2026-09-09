@@ -53,8 +53,7 @@ def get_by_id(id: UUID) -> AccountSchema:
 )
 def create(data: AccountCreate = Body(...)) -> None:
     logger.info("Saving account", data=data)
-    account = account_crud.create(obj_in=data)
-    return account
+    return account_crud.create(obj_in=data)
 
 
 @router.put(
@@ -70,11 +69,10 @@ def update(*, account_id: UUID, item_in: AccountUpdate) -> Any:
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    account = account_crud.update(
+    return account_crud.update(
         db_obj=account,
         obj_in=item_in,
     )
-    return account
 
 
 @router.delete(

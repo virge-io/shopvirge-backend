@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from uuid import UUID
 
 from sqlalchemy import func
 
@@ -19,7 +18,6 @@ from server.crud.base import CRUDBase
 from server.db import db
 from server.db.models import OrderTable, ShopTable
 from server.schemas.order import OrderPersisted, OrderUpdate
-from server.utils.json import json_dumps
 
 
 class CRUDOrder(CRUDBase[OrderTable, OrderPersisted, OrderUpdate]):
@@ -42,12 +40,10 @@ class CRUDOrder(CRUDBase[OrderTable, OrderPersisted, OrderUpdate]):
         return order
 
     def get_all_orders_filtered_by(self, **kwargs):
-        order = OrderTable.query.filter_by(**kwargs).all()
-        return order
+        return OrderTable.query.filter_by(**kwargs).all()
 
     def get_first_order_filtered_by(self, **kwargs):
-        order = OrderTable.query.filter_by(**kwargs).first()
-        return order
+        return OrderTable.query.filter_by(**kwargs).first()
 
 
 order_crud = CRUDOrder(OrderTable)

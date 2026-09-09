@@ -153,14 +153,13 @@ def from_serializable(dct: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(v, str) and len(v) == ISO_FORMAT_STR_LEN and v[10] == "T":
             with suppress(ValueError, TypeError):
                 timestamp = datetime.fromisoformat(v)
-                assert timestamp.tzinfo is not None, "All timestamps should contain timezone information."
+                assert timestamp.tzinfo is not None, "All timestamps should contain timezone information."  # noqa: S101
                 dct[k] = timestamp
     return dct
 
 
 def non_none_dict(dikt: List[Tuple[str, Any]]) -> Dict[Any, Any]:
-    """
-    Return no `None` values in a Dict.
+    """Return no `None` values in a Dict.
 
     This function may be used in the `asdict()` method as dictionary factory.
 

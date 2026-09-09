@@ -10,13 +10,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List, Optional, Union
+from typing import Union
 from uuid import UUID
 
 import structlog
-from fastapi import HTTPException, Request
-
-from server.db.models import ShopTable
+from fastapi import Request
 
 logger = structlog.get_logger(__name__)
 
@@ -30,8 +28,7 @@ def convert_price_string_to_float(price: str) -> Union[float, None]:
 
 
 def validate_uuid4(uuid_string):
-    """
-    Validate that a UUID string is in
+    """Validate that a UUID string is in
     fact a valid uuid4.
     Happily, the uuid module does the actual
     checking for us.
@@ -39,7 +36,6 @@ def validate_uuid4(uuid_string):
     to the UUID() call, otherwise any 32-character
     hex string is considered valid.
     """
-
     try:
         val = UUID(uuid_string, version=4)
     except ValueError:

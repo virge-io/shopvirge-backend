@@ -1,6 +1,5 @@
 from http import HTTPStatus
 from typing import Any
-from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException
@@ -24,8 +23,7 @@ router = APIRouter()
 def create(data: EarlyAccessCreate = Body(...), current_user: CustomCognitoToken = Depends(auth_required)) -> Any:
     try:
         logger.info("Saving early access", data=data)
-        early_access = early_access_crud.create(obj_in=data)
-        return early_access
+        return early_access_crud.create(obj_in=data)
 
     except ValidationError as ve:
         # Log the validation error

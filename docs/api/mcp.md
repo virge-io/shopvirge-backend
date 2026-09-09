@@ -249,8 +249,16 @@ To rotate the client, run the same `create-user-pool-client` command again with 
 2. On the route decorator, add:
    - `tags=[AgentTag.EXPOSED]` (add `AgentTag.LARGE` too for list endpoints).
    - `operation_id="<short_snake_case>"`. **This becomes the MCP tool name** — treat it like a public API contract.
-3. Switch the router-level dependency to `Depends(auth_required_any)` if you want API-key clients to reach it. (Cognito-only endpoints stay on `auth_required`.)
-4. Bump `APP_VERSION` in `server/main.py` and regenerate `tests/unit_tests/openapi_snapshot.json` (see the OpenAPI drift guard).
+3. Give the route `Depends(auth_required_any)` if you want API-key clients to reach it. (Cognito-only endpoints stay on `auth_required`.)
+4. Bump `APP_VERSION` in `server/main.py`, then regenerate the OpenAPI snapshot:
+
+    ```bash
+    uv run python bin/regenerate_openapi_snapshot.py
+    ```
+
+    The drift guard (`tests/unit_tests/test_openapi_version.py`) fails until the
+    snapshot and `APP_VERSION` agree. The script reuses that test's own helpers,
+    so a regenerated snapshot is guaranteed to satisfy it.
 5. Update `EXPECTED_TOOL_NAMES` in `tests/unit_tests/mcp/test_mcp.py`.
 
 The docstring on the handler becomes the tool description — write it for an LLM, not a developer. State the *intent*, list *required* parameters, and call out side effects.

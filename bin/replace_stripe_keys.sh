@@ -2,7 +2,9 @@
 
 # Load .env file if it exists
 if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    # Word splitting is the point here: each KEY=VALUE becomes a separate argument.
+    # shellcheck disable=SC2046
+    export $(grep -v '^#' .env | xargs)
 fi
 
 # Check if required environment variables are set

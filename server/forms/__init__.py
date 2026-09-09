@@ -12,4 +12,4 @@
 # limitations under the License.
 
 # Ensure the forms are registered
-import server.forms.new_product_form
+import server.forms.new_product_form  # noqa: F401

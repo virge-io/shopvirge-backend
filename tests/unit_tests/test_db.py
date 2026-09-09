@@ -1,4 +1,3 @@
-from datetime import datetime
 from unittest import mock
 
 import pytest
@@ -39,7 +38,7 @@ def test_transactional():
     )
 
     logger.reset_mock()
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017 -- transactional() re-raises the body's error verbatim
         with transactional(db, logger):
             insert_p_error({})
 

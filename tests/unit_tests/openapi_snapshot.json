@@ -6303,7 +6303,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.5.0"
+    "version": "0.5.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -11339,7 +11339,7 @@
     },
     "/shops/{shop_id}/categories-images/": {
       "get": {
-        "description": "List all product category images",
+        "description": "List all product category images.",
         "operationId": "get_multi_shops__shop_id__categories_images__get",
         "parameters": [
           {
