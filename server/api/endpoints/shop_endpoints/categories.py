@@ -160,7 +160,12 @@ def create(
     tags=[AgentTag.EXPOSED],
     operation_id="update_category",
     summary="Update category",
-    description="Update an existing category's details and translations.",
+    description=(
+        "Partially update a category. Send ONLY the fields you want to change; omitted fields are left "
+        "untouched. Names and descriptions live in the nested `translation` object and can also be sent "
+        "partially. `main_image`, `alt1_image` and `alt2_image` are S3 object filenames managed by the "
+        "image-upload flow - do not set them unless explicitly given a filename."
+    ),
 )
 def update(
     *,

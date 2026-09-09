@@ -274,6 +274,66 @@ def test_client(fastapi_app):
     return TestClient(fastapi_app)
 
 
+def _cognito_token(groups: list) -> CustomCognitoToken:
+    """A user (not M2M) Cognito token carrying ``groups``."""
+    return CustomCognitoToken(
+        client_id=app_settings.AWS_COGNITO_CLIENT_ID,
+        sub="5678",
+        token_use="access",
+        scope="openid profile email",
+        auth_time=1727169594,
+        iss="https://cognito-idp.eu-central-1.amazonaws.com/secret",
+        exp=9727169594,
+        iat=9727169594,
+        jti="jti",
+        username="5678",
+        **{"cognito:groups": groups},
+    )
+
+
+@pytest.fixture()
+def as_cognito_user(fastapi_app):
+    """Factory: swap the stub Cognito principal for one with specific groups.
+
+    The default stub is in the ``admins`` group, which passes every shop check.
+    Use this to test a plain tenant user — ``as_cognito_user([str(shop_id)])`` —
+    or someone with no shop at all.
+    """
+    saved = {dep: fastapi_app.dependency_overrides.get(dep) for dep in (auth_required, auth_required_any)}
+    try:
+
+        def _apply(groups: list) -> TestClient:
+            for dep in saved:
+                fastapi_app.dependency_overrides[dep] = lambda: _cognito_token(groups)
+            return TestClient(fastapi_app)
+
+        yield _apply
+    finally:
+        for dep, original in saved.items():
+            if original is None:
+                fastapi_app.dependency_overrides.pop(dep, None)
+            else:
+                fastapi_app.dependency_overrides[dep] = original
+
+
+@pytest.fixture
+def real_auth_client(fastapi_app):
+    """A TestClient whose ``auth_required_any`` override is removed so the real
+    dual-auth dep runs (validates X-API-Key / Bearer headers against the DB).
+
+    Other overrides — including the ``auth_required`` Cognito stub used by the
+    api-key management endpoints — stay intact so tests can still mint keys.
+    Lifting the stub is also what makes ``auth_required_any_for_shop``'s shop
+    binding observable: with a stubbed principal there is no key to bind.
+    """
+    override = fastapi_app.dependency_overrides.pop(auth_required_any, None)
+    try:
+        yield TestClient(fastapi_app)
+    finally:
+        if override is not None:
+            fastapi_app.dependency_overrides[auth_required_any] = override
+
+
 @pytest.fixture()
 def shop():
     return make_shop(with_config=False)

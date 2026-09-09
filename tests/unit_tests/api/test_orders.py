@@ -1,5 +1,8 @@
+from uuid import uuid4
+
 import pytest
 
+from tests.unit_tests.factories.api_key import make_api_key
 from tests.unit_tests.factories.categories import make_category
 from tests.unit_tests.factories.product import make_product
 from tests.unit_tests.factories.shop import make_shop_with_shipping
@@ -18,6 +21,53 @@ def test_orders_get_multi(shop, pending_order, test_client):
         info_total += order.get("shipping_fee_inc_btw") or 0
         # Total matches info total
         assert order["total"] == info_total
+
+
+# --- Read-only order tools exposed to MCP (list_pending_orders / list_complete_orders) ---
+
+
+def test_list_pending_orders_endpoint(shop, pending_order, test_client):
+    resp = test_client.get(f"/orders/shop/{shop}/pending")
+    assert resp.status_code == 200
+    orders = resp.json()
+    assert len(orders) == 1
+    assert orders[0]["status"] == "pending"
+
+
+def test_list_complete_orders_excludes_pending(shop, pending_order, test_client):
+    """A pending order must not appear in the complete/cancelled history feed."""
+    resp = test_client.get(f"/orders/shop/{shop}/complete")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_list_pending_orders_filters_by_path_shop(shop, pending_order, test_client):
+    """Results are filtered by the path shop_id: another shop's path returns no rows.
+
+    NOTE: this only proves the query filter, not caller authorization. Whether a
+    caller is *allowed* to read the shop in the path is covered by
+    ``test_list_pending_orders_rejects_foreign_api_key`` below.
+    """
+    other_shop = uuid4()
+    resp = test_client.get(f"/orders/shop/{other_shop}/pending")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_list_pending_orders_opens_with_api_key(shop, pending_order, real_auth_client):
+    """The read-only order tool is reachable with a per-shop API key."""
+    _, plaintext = make_api_key(shop, name="orders-reader")
+    resp = real_auth_client.get(f"/orders/shop/{shop}/pending", headers={"X-API-Key": plaintext})
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()) == 1
+
+
+def test_list_pending_orders_rejects_foreign_api_key(shop, pending_order, real_auth_client):
+    """An API key minted for shop A must NOT read shop B's orders (cross-tenant PII)."""
+    other_shop = make_shop_with_shipping()
+    _, plaintext = make_api_key(other_shop, name="foreign-reader")
+    resp = real_auth_client.get(f"/orders/shop/{shop}/pending", headers={"X-API-Key": plaintext})
+    assert resp.status_code == 403, resp.text
 
 
 @pytest.fixture()

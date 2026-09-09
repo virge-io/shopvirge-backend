@@ -58,6 +58,42 @@ def test_categories_update(shop, category, test_client):
     assert category.translation.alt1_name == None
 
 
+def test_categories_partial_update(shop, category, test_client):
+    before = CategoryTable.query.filter_by(id=category).first()
+    original_name = before.translation.main_name
+    original_color = before.color
+    original_main_image = before.main_image
+
+    body = {"translation": {"main_description": "Patched description"}}
+    response = test_client.put(f"/shops/{shop}/categories/{category}", content=json_dumps(body))
+    assert response.status_code == 201, f"full response: {response.json()}"
+
+    from server.db import db
+
+    db.session.expire_all()  # drop identity-map state loaded before the PUT
+    updated = CategoryTable.query.filter_by(id=category).first()
+    assert updated.translation.main_description == "Patched description"
+    assert updated.translation.main_name == original_name
+    assert updated.color == original_color
+    assert updated.main_image == original_main_image
+
+
+def test_categories_partial_update_without_translation(shop, category, test_client):
+    """A body without `translation` must leave the existing translation untouched."""
+    before = CategoryTable.query.filter_by(id=category).first()
+    original_name = before.translation.main_name
+
+    response = test_client.put(f"/shops/{shop}/categories/{category}", content=json_dumps({"color": "#123456"}))
+    assert response.status_code == 201, f"full response: {response.json()}"
+
+    from server.db import db
+
+    db.session.expire_all()
+    updated = CategoryTable.query.filter_by(id=category).first()
+    assert updated.color == "#123456"
+    assert updated.translation.main_name == original_name
+
+
 def test_categories_delete(shop, category, test_client):
     response = test_client.delete(f"/shops/{shop}/categories/{category}")
     assert response.status_code == 204

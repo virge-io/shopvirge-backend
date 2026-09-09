@@ -46,12 +46,30 @@ EXPECTED_TOOL_NAMES = {
     "create_tag",
     "update_tag",
     "delete_tag",
+    # product tag assignments
+    "list_product_to_tags",
+    "get_product_to_tag_relation_id",
+    "get_product_to_tag",
+    "create_product_to_tag",
+    "update_product_to_tag",
+    "delete_product_to_tag",
     # attributes
     "list_attributes",
     "get_attribute",
     "create_attribute",
     "update_attribute",
     "delete_attribute",
+    # attribute options (used to select product attribute assignments)
+    "list_attribute_options",
+    "get_attribute_option",
+    "create_attribute_option",
+    "update_attribute_option",
+    "delete_attribute_option",
+    # product attribute assignments
+    "add_product_attribute_options",
+    "get_product_attributes",
+    "product_attribute_values_replace_for_product",
+    "product_attribute_values_delete",
     # revisions / trash
     "list_shop_revisions",
     "get_revision",
@@ -67,6 +85,9 @@ EXPECTED_TOOL_NAMES = {
     "restore_attribute",
     # shops
     "list_my_shops",
+    # orders (read-only)
+    "list_pending_orders",
+    "list_complete_orders",
 }
 
 
@@ -95,13 +116,9 @@ def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
     """``FastMCP.from_fastapi`` produces exactly the expected tools from the tagged routes."""
     pytest.importorskip("fastmcp")
     from fastmcp import FastMCP
+    from fastmcp.server.openapi import MCPType, RouteMap
 
     from server.mcp.server import mount_mcp  # noqa: F401 — sanity import
-
-    try:
-        from fastmcp.server.openapi import MCPType, RouteMap
-    except ImportError:  # pragma: no cover — older fastmcp module path
-        from fastmcp.server.providers.openapi import MCPType, RouteMap  # type: ignore[no-redef]
 
     mcp = FastMCP.from_fastapi(
         app=fastapi_app,
@@ -117,6 +134,61 @@ def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
     assert (
         tool_names == EXPECTED_TOOL_NAMES
     ), f"missing: {EXPECTED_TOOL_NAMES - tool_names}, extra: {tool_names - EXPECTED_TOOL_NAMES}"
+
+
+def test_update_product_tool_has_no_required_body_fields(fastapi_app: FastAPI) -> None:
+    """The update_product tool must not force the LLM to send the full product.
+
+    Required image_1..image_6 fields made the model emit `"image_6": null` for
+    empty slots, which triggered malformed streamed tool JSON under Anthropic's
+    fine-grained-tool-streaming beta. Only the path params may be required.
+    """
+    pytest.importorskip("fastmcp")
+    from fastmcp import FastMCP
+    from fastmcp.server.openapi import MCPType, RouteMap
+
+    mcp = FastMCP.from_fastapi(
+        app=fastapi_app,
+        name="shopvirge-mcp-test",
+        route_maps=[
+            RouteMap(tags={AgentTag.EXPOSED.value}, mcp_type=MCPType.TOOL),
+            RouteMap(mcp_type=MCPType.EXCLUDE),
+        ],
+    )
+
+    tools = asyncio.run(mcp.get_tools())
+    schema = tools["update_product"].parameters
+    required = set(schema.get("required", []))
+    assert not any(r.startswith("image_") for r in required), f"image fields still required: {required}"
+    assert "translation" not in required, f"translation still required: {required}"
+
+
+def test_update_category_tool_has_no_required_body_fields(fastapi_app: FastAPI) -> None:
+    """The update_category tool must not force the LLM to send the full category.
+
+    Same failure mode as update_product: required main_image/alt1_image/alt2_image
+    fields made the model emit `"alt2_image": null` for empty slots, which triggered
+    malformed streamed tool JSON under Anthropic's fine-grained-tool-streaming beta.
+    Only the path params may be required.
+    """
+    pytest.importorskip("fastmcp")
+    from fastmcp import FastMCP
+    from fastmcp.server.openapi import MCPType, RouteMap
+
+    mcp = FastMCP.from_fastapi(
+        app=fastapi_app,
+        name="shopvirge-mcp-test",
+        route_maps=[
+            RouteMap(tags={AgentTag.EXPOSED.value}, mcp_type=MCPType.TOOL),
+            RouteMap(mcp_type=MCPType.EXCLUDE),
+        ],
+    )
+
+    tools = asyncio.run(mcp.get_tools())
+    schema = tools["update_category"].parameters
+    required = set(schema.get("required", []))
+    assert not any(r.endswith("_image") for r in required), f"image fields still required: {required}"
+    assert "translation" not in required, f"translation still required: {required}"
 
 
 def test_mount_mcp_is_importable() -> None:

@@ -80,6 +80,50 @@ def test_products_update(shop_with_config, product, category, test_client):
     assert product.translation.alt1_name == None
 
 
+def test_products_partial_update(shop_with_config, product, test_client):
+    before = ProductTable.query.filter_by(id=product).first()
+    original_name = before.translation.main_name
+    original_category_id = before.category_id
+    original_price = before.price
+    original_image_1 = before.image_1
+
+    body = {"translation": {"main_description_short": "Patched short description"}}
+    response = test_client.put(f"/shops/{shop_with_config}/products/{product}", content=json_dumps(body))
+    assert response.status_code == 201, f"full response: {response.json()}"
+
+    from server.db import db
+
+    db.session.expire_all()  # drop identity-map state loaded before the PUT
+    updated = ProductTable.query.filter_by(id=product).first()
+    assert updated.translation.main_description_short == "Patched short description"
+    assert updated.translation.main_name == original_name
+    assert updated.category_id == original_category_id
+    assert updated.price == original_price
+    assert updated.image_1 == original_image_1
+
+
+def test_products_partial_update_without_translation(shop_with_config, product, test_client):
+    """A body without `translation` must work even with force_unique_product_names enabled."""
+    import copy
+    import json
+
+    from sqlalchemy.orm.attributes import flag_modified
+
+    from server.db import ShopTable, db
+
+    shop = ShopTable.query.filter_by(id=shop_with_config).first()
+    config = json.loads(shop.config) if isinstance(shop.config, str) else copy.deepcopy(shop.config)
+    config["toggles"]["force_unique_product_names"] = True
+    shop.config = config
+    flag_modified(shop, "config")
+    db.session.commit()
+
+    response = test_client.put(f"/shops/{shop_with_config}/products/{product}", content=json_dumps({"stock": 42}))
+    assert response.status_code == 201, f"full response: {response.json()}"
+    updated = ProductTable.query.filter_by(id=product).first()
+    assert updated.stock == 42
+
+
 def test_products_delete(shop_with_config, product, test_client):
     response = test_client.delete(f"/shops/{shop_with_config}/products/{product}")
     assert response.status_code == 204

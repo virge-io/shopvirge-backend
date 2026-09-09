@@ -31,7 +31,21 @@ from server.schemas.shop import (
 )
 from server.security import CustomCognitoToken, auth_required, has_admin_group
 
+# Three routers, split by auth posture so the per-shop guard can be applied at
+# the mount in ``server/api/api.py`` rather than route by route:
+#
+#   router            collection ops (no shop in the path) + public storefront reads
+#   shop_router       per-shop operations, path param ``{shop_id}``
+#   legacy_id_router  per-shop operations whose path param is spelled ``{id}``
+#
+# The last one exists only because those paths predate the ``{shop_id}`` convention.
+# Renaming the param would change the generated client symbol and argument key
+# (FastAPI derives operation_id from the path template), so it needs a coordinated
+# change with shop-editor. Splitting routers, by contrast, leaves operation_id and
+# the URLs untouched — see shop_access_required_by_id in server/security.py.
 router = APIRouter()
+shop_router = APIRouter()
+legacy_id_router = APIRouter()
 logger = structlog.get_logger(__name__)
 
 
@@ -147,7 +161,7 @@ def get_by_id(id: UUID):
     return item
 
 
-@router.put(
+@shop_router.put(
     "/{shop_id}",
     response_model=ShopSchema,
     status_code=HTTPStatus.CREATED,
@@ -167,7 +181,7 @@ def update(*, shop_id: UUID, item_in: ShopUpdate, current_user: CustomCognitoTok
     return shop
 
 
-@router.delete(
+@shop_router.delete(
     "/{shop_id}",
     response_model=None,
     status_code=HTTPStatus.NO_CONTENT,
@@ -194,7 +208,7 @@ def get_config(
     return shop
 
 
-@router.put(
+@legacy_id_router.put(
     "/config/{id}",
     response_model=ShopConfigUpdate,
     status_code=HTTPStatus.CREATED,
@@ -237,7 +251,7 @@ def update_config(
     return shop
 
 
-@router.get(
+@legacy_id_router.get(
     "/allowed-ips/{id}",
     response_model=List[str],
     summary="List allowed IPs",
@@ -257,7 +271,7 @@ def get_allowed_ips(
         return []
 
 
-@router.post(
+@legacy_id_router.post(
     "/allowed-ips/{id}",
     response_model=List[str],
     summary="Add allowed IP",
@@ -292,7 +306,7 @@ def add_new_ip(id: UUID, new_ip: ShopIp, current_user: CustomCognitoToken = Depe
     return updated_shop.allowed_ips
 
 
-@router.post(
+@legacy_id_router.post(
     "/allowed-ips/{id}/remove",
     response_model=List[str],
     summary="Remove allowed IP",

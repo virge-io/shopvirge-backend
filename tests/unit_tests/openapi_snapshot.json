@@ -741,10 +741,7 @@
         "required": [
           "shop_id",
           "color",
-          "translation",
-          "main_image",
-          "alt1_image",
-          "alt2_image"
+          "translation"
         ],
         "title": "CategoryCreate",
         "type": "object"
@@ -853,9 +850,6 @@
           "shop_id",
           "color",
           "translation",
-          "main_image",
-          "alt1_image",
-          "alt2_image",
           "id"
         ],
         "title": "CategorySchema",
@@ -923,6 +917,78 @@
         "title": "CategoryTranslationBase",
         "type": "object"
       },
+      "CategoryTranslationUpdate": {
+        "properties": {
+          "alt1_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Description"
+          },
+          "alt1_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Name"
+          },
+          "alt2_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Description"
+          },
+          "alt2_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Name"
+          },
+          "main_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Description"
+          },
+          "main_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Name"
+          }
+        },
+        "title": "CategoryTranslationUpdate",
+        "type": "object"
+      },
       "CategoryUpdate": {
         "properties": {
           "alt1_image": {
@@ -956,8 +1022,15 @@
             "title": "Alt2 Image"
           },
           "color": {
-            "title": "Color",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
           },
           "icon": {
             "anyOf": [
@@ -997,22 +1070,28 @@
             "title": "Order Number"
           },
           "shop_id": {
-            "format": "uuid",
-            "title": "Shop Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Id"
           },
           "translation": {
-            "$ref": "#/components/schemas/CategoryTranslationBase"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryTranslationUpdate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": [
-          "shop_id",
-          "color",
-          "translation",
-          "main_image",
-          "alt1_image",
-          "alt2_image"
-        ],
         "title": "CategoryUpdate",
         "type": "object"
       },
@@ -3339,12 +3418,6 @@
           "featured",
           "new_product",
           "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
           "translation"
         ],
         "title": "ProductCreate",
@@ -3801,6 +3874,111 @@
         "title": "ProductTranslationBase",
         "type": "object"
       },
+      "ProductTranslationUpdate": {
+        "properties": {
+          "alt1_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Description"
+          },
+          "alt1_description_short": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Description Short"
+          },
+          "alt1_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Name"
+          },
+          "alt2_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Description"
+          },
+          "alt2_description_short": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Description Short"
+          },
+          "alt2_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Name"
+          },
+          "main_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Description"
+          },
+          "main_description_short": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Description Short"
+          },
+          "main_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Name"
+          }
+        },
+        "title": "ProductTranslationUpdate",
+        "type": "object"
+      },
       "ProductUpdate": {
         "properties": {
           "category_id": {
@@ -3866,8 +4044,15 @@
             "title": "Discounted To"
           },
           "featured": {
-            "title": "Featured",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Featured"
           },
           "image_1": {
             "anyOf": [
@@ -3960,8 +4145,15 @@
             "title": "Image 6"
           },
           "max_one": {
-            "title": "Max One",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max One"
           },
           "modified_at": {
             "anyOf": [
@@ -3976,8 +4168,15 @@
             "title": "Modified At"
           },
           "new_product": {
-            "title": "New Product",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Product"
           },
           "order_number": {
             "anyOf": [
@@ -4036,13 +4235,27 @@
             "title": "Recurring Price Yearly"
           },
           "shippable": {
-            "title": "Shippable",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shippable"
           },
           "shop_id": {
-            "format": "uuid",
-            "title": "Shop Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Id"
           },
           "sku": {
             "anyOf": [
@@ -4068,28 +4281,27 @@
             "title": "Stock"
           },
           "tax_category": {
-            "title": "Tax Category",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Category"
           },
           "translation": {
-            "$ref": "#/components/schemas/ProductTranslationBase"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductTranslationUpdate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": [
-          "shop_id",
-          "max_one",
-          "shippable",
-          "featured",
-          "new_product",
-          "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
-          "translation"
-        ],
         "title": "ProductUpdate",
         "type": "object"
       },
@@ -4423,12 +4635,6 @@
           "featured",
           "new_product",
           "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
           "translation",
           "id"
         ],
@@ -4742,12 +4948,6 @@
           "featured",
           "new_product",
           "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
           "translation",
           "id"
         ],
@@ -6084,7 +6284,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.4.4"
+    "version": "0.5.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -7667,8 +7867,8 @@
     },
     "/orders/shop/{shop_id}/complete": {
       "get": {
-        "description": "Returns all orders with status `complete` or `cancelled` for the given shop. Used for order history and reporting.",
-        "operationId": "show_all_complete_orders_per_shop_orders_shop__shop_id__complete_get",
+        "description": "Read-only. Returns the shop's orders with status `complete` or `cancelled` - the order history, useful for reporting. Scoped to the shop in the path; you cannot read other shops' orders. Results include customer names and totals, so treat them as personal data. Supports pagination (`skip`/`limit`), filtering and sorting via the common query parameters. `filter` matches order fields only (status, dates, totals, etc.) and does NOT match customer name or email - to find a customer's orders, list the shop's orders and match on `account_name` client-side.",
+        "operationId": "list_complete_orders",
         "parameters": [
           {
             "in": "path",
@@ -7727,6 +7927,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -7737,7 +7953,7 @@
                   "items": {
                     "$ref": "#/components/schemas/OrderSchema"
                   },
-                  "title": "Response Show All Complete Orders Per Shop Orders Shop  Shop Id  Complete Get",
+                  "title": "Response List Complete Orders",
                   "type": "array"
                 }
               }
@@ -7755,21 +7971,18 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List completed orders for a shop",
         "tags": [
-          "orders"
+          "orders",
+          "agent-exposed",
+          "agent-large"
         ]
       }
     },
     "/orders/shop/{shop_id}/pending": {
       "get": {
-        "description": "Returns all orders with status `pending` for the given shop. These are orders awaiting fulfilment.",
-        "operationId": "show_all_pending_orders_per_shop_orders_shop__shop_id__pending_get",
+        "description": "Read-only. Returns the shop's orders with status `pending` - orders awaiting fulfilment. Scoped to the shop in the path; you cannot read other shops' orders. Results include customer names and totals, so treat them as personal data. Supports pagination (`skip`/`limit`), filtering and sorting via the common query parameters. `filter` matches order fields only (status, dates, totals, etc.) and does NOT match customer name or email - to find a customer's orders, list the shop's orders and match on `account_name` client-side.",
+        "operationId": "list_pending_orders",
         "parameters": [
           {
             "in": "path",
@@ -7828,6 +8041,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -7838,7 +8067,7 @@
                   "items": {
                     "$ref": "#/components/schemas/OrderSchema"
                   },
-                  "title": "Response Show All Pending Orders Per Shop Orders Shop  Shop Id  Pending Get",
+                  "title": "Response List Pending Orders",
                   "type": "array"
                 }
               }
@@ -7856,14 +8085,11 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List pending orders for a shop",
         "tags": [
-          "orders"
+          "orders",
+          "agent-exposed",
+          "agent-large"
         ]
       }
     },
@@ -8911,6 +9137,16 @@
         "operationId": "get_multi_shops__shop_id__accounts__get",
         "parameters": [
           {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "skip",
             "required": false,
@@ -8999,6 +9235,18 @@
       "post": {
         "description": "Manually create a new customer account for a shop.",
         "operationId": "create_shops__shop_id__accounts__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -9055,6 +9303,16 @@
               "title": "Account Id",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -9094,6 +9352,16 @@
             "schema": {
               "format": "uuid",
               "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -9152,6 +9420,16 @@
             "schema": {
               "format": "uuid",
               "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -9356,7 +9634,7 @@
     "/shops/{shop_id}/attribute-options/": {
       "get": {
         "description": "Retrieve a paginated list of all attribute options (e.g., 'Small', 'XL') across all attributes within a shop.",
-        "operationId": "list_options_for_shop_shops__shop_id__attribute_options__get",
+        "operationId": "list_attribute_options",
         "parameters": [
           {
             "in": "path",
@@ -9415,6 +9693,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -9425,7 +9719,7 @@
                   "items": {
                     "$ref": "#/components/schemas/AttributeOptionSchema"
                   },
-                  "title": "Response List Options For Shop Shops  Shop Id  Attribute Options  Get",
+                  "title": "Response List Attribute Options",
                   "type": "array"
                 }
               }
@@ -9443,20 +9737,17 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List attribute options for a shop",
         "tags": [
           "shops",
-          "attributes"
+          "attributes",
+          "agent-exposed",
+          "agent-large"
         ]
       },
       "post": {
         "description": "Create a new option for a specific attribute within a shop. The attribute_id must be provided in the request body.",
-        "operationId": "create_option_v2_shops__shop_id__attribute_options__post",
+        "operationId": "create_attribute_option",
         "parameters": [
           {
             "in": "path",
@@ -9466,6 +9757,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9501,22 +9808,18 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Create attribute option",
         "tags": [
           "shops",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       }
     },
     "/shops/{shop_id}/attribute-options/{option_id}": {
       "delete": {
         "description": "Remove an attribute option, ensuring it belongs to the shop.",
-        "operationId": "delete_option_v2_shops__shop_id__attribute_options__option_id__delete",
+        "operationId": "delete_attribute_option",
         "parameters": [
           {
             "in": "path",
@@ -9549,6 +9852,22 @@
               "title": "Force",
               "type": "boolean"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -9566,20 +9885,16 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Delete attribute option",
         "tags": [
           "shops",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       },
       "get": {
         "description": "Retrieve the details of a specific attribute option by its unique ID, ensuring it belongs to the shop.",
-        "operationId": "get_option_v2_shops__shop_id__attribute_options__option_id__get",
+        "operationId": "get_attribute_option",
         "parameters": [
           {
             "in": "path",
@@ -9599,6 +9914,22 @@
               "format": "uuid",
               "title": "Option Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9624,20 +9955,16 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Get attribute option",
         "tags": [
           "shops",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       },
       "put": {
         "description": "Update the details of an existing attribute option, ensuring it belongs to the shop.",
-        "operationId": "update_option_v2_shops__shop_id__attribute_options__option_id__put",
+        "operationId": "update_attribute_option",
         "parameters": [
           {
             "in": "path",
@@ -9657,6 +9984,22 @@
               "format": "uuid",
               "title": "Option Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9692,15 +10035,11 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Update attribute option",
         "tags": [
           "shops",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       }
     },
@@ -10943,6 +11282,16 @@
         "operationId": "get_multi_shops__shop_id__categories_images__get",
         "parameters": [
           {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "skip",
             "required": false,
@@ -11036,6 +11385,16 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -11093,6 +11452,16 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -11136,6 +11505,16 @@
             "schema": {
               "format": "uuid",
               "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -11589,7 +11968,7 @@
         ]
       },
       "put": {
-        "description": "Update an existing category's details and translations.",
+        "description": "Partially update a category. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `main_image`, `alt1_image` and `alt2_image` are S3 object filenames managed by the image-upload flow - do not set them unless explicitly given a filename.",
         "operationId": "update_category",
         "parameters": [
           {
@@ -12468,6 +12847,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -12496,11 +12891,6 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List product attribute values",
         "tags": [
           "shops",
@@ -12521,6 +12911,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -12591,6 +12997,22 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -12608,16 +13030,12 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Delete product attribute value",
         "tags": [
           "shops",
           "products",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       },
       "get": {
@@ -12643,6 +13061,22 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -12667,11 +13101,6 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Get product attribute value",
         "tags": [
           "shops",
@@ -12682,8 +13111,8 @@
     },
     "/shops/{shop_id}/product-attribute-values/{product_id}": {
       "post": {
-        "description": "Create new product attribute value(s) for a specific product using product_id in the URL.\n\nThis deprecates the old POST / endpoint that required product_id in the body.\n\nNotes:\n- attribute_id is omitted; it will be inferred from option_id, as the option is already tied to an attribute_id.\n\n- This endpoint first validates that all option_ids belong to attributes that belong to the shop.\n- And that these options actually exist.\n- If everything is passed, it will create the product attribute values.\n- Duplicates are ignored, and the endpoint returns 201 Created for each successful creation. That means no 409 is raised when a duplicate is encountered; it just won't be created.",
-        "operationId": "product_attribute_values_create_for_product",
+        "description": "Assign existing attribute options to a product.\n\nProvide the shop and product UUIDs in the path and a non-empty ``option_ids``\nlist in the body. Each option must belong to an attribute in the same shop;\nits attribute is inferred automatically. Existing assignments are left intact,\nso repeating a request is safe and does not create duplicates.",
+        "operationId": "add_product_attribute_options",
         "parameters": [
           {
             "in": "path",
@@ -12703,6 +13132,22 @@
               "format": "uuid",
               "title": "Product Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -12736,16 +13181,12 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Create product attribute values for product",
         "tags": [
           "shops",
           "products",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       },
       "put": {
@@ -12770,6 +13211,22 @@
               "format": "uuid",
               "title": "Product Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -12798,24 +13255,30 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Replace product attribute values for product",
         "tags": [
           "shops",
           "products",
-          "attributes"
+          "attributes",
+          "agent-exposed"
         ]
       }
     },
     "/shops/{shop_id}/products-to-tags/": {
       "get": {
         "description": "Returns all product-to-tag relationship records for a shop.",
-        "operationId": "get_multi_shops__shop_id__products_to_tags__get",
+        "operationId": "list_product_to_tags",
         "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "skip",
@@ -12863,6 +13326,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -12873,7 +13352,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ProductToTagSchema"
                   },
-                  "title": "Response Get Multi Shops  Shop Id  Products To Tags  Get",
+                  "title": "Response List Product To Tags",
                   "type": "array"
                 }
               }
@@ -12891,20 +13370,45 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List product-tag associations",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed",
+          "agent-large"
         ]
       },
       "post": {
         "description": "Create an association between a product and a tag. Both must exist within the shop.",
-        "operationId": "create_shops__shop_id__products_to_tags__post",
+        "operationId": "create_product_to_tag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -12930,23 +13434,29 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Add tag to product",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed"
         ]
       }
     },
     "/shops/{shop_id}/products-to-tags/get_relation_id": {
       "get": {
         "description": "Find the UUID of the association record between a specific product and tag. Returns 400 if the relation does not exist.",
-        "operationId": "get_relation_id_shops__shop_id__products_to_tags_get_relation_id_get",
+        "operationId": "get_product_to_tag_relation_id",
         "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "tag_id",
@@ -12965,6 +13475,22 @@
               "format": "uuid",
               "title": "Product Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -12988,22 +13514,18 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Get product-tag relation ID",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed"
         ]
       }
     },
     "/shops/{shop_id}/products-to-tags/{id}": {
       "get": {
         "description": "Retrieve a single product-to-tag association by its UUID.",
-        "operationId": "get_by_id_shops__shop_id__products_to_tags__id__get",
+        "operationId": "get_product_to_tag",
         "parameters": [
           {
             "in": "path",
@@ -13013,6 +13535,32 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -13038,22 +13586,18 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Get product-tag association",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed"
         ]
       }
     },
     "/shops/{shop_id}/products-to-tags/{product_to_tag_id}": {
       "delete": {
         "description": "Delete the association between a product and a tag.",
-        "operationId": "delete_shops__shop_id__products_to_tags__product_to_tag_id__delete",
+        "operationId": "delete_product_to_tag",
         "parameters": [
           {
             "in": "path",
@@ -13063,6 +13607,32 @@
               "format": "uuid",
               "title": "Product To Tag Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -13081,20 +13651,16 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Remove tag from product",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed"
         ]
       },
       "put": {
         "description": "Update an existing product-tag association record.",
-        "operationId": "update_shops__shop_id__products_to_tags__product_to_tag_id__put",
+        "operationId": "update_product_to_tag",
         "parameters": [
           {
             "in": "path",
@@ -13104,6 +13670,32 @@
               "format": "uuid",
               "title": "Product To Tag Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -13132,15 +13724,11 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Update product-tag association",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed"
         ]
       }
     },
@@ -13649,7 +14237,7 @@
         ]
       },
       "put": {
-        "description": "Update an existing product's details, including name, description, pricing, stock, and feature flags.",
+        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not set them unless explicitly given a filename.",
         "operationId": "update_product",
         "parameters": [
           {
@@ -14131,7 +14719,7 @@
     "/shops/{shop_id}/products/{product_id}/with_attributes": {
       "get": {
         "description": "Retrieve a single product together with its assigned attribute values (e.g. size, color). Public endpoint \u2014 no authentication required.",
-        "operationId": "get_by_id_with_attributes_shops__shop_id__products__product_id__with_attributes_get",
+        "operationId": "get_product_attributes",
         "parameters": [
           {
             "in": "path",
@@ -14179,7 +14767,8 @@
         "summary": "Get product with attributes",
         "tags": [
           "shops",
-          "products"
+          "products",
+          "agent-exposed"
         ]
       }
     },
