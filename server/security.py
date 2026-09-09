@@ -100,13 +100,13 @@ async def auth_required_any(
             if candidate.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
                 plaintext = candidate
 
-    if plaintext is not None and plaintext.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
+    if app_settings.API_KEYS_ENABLED and plaintext is not None and plaintext.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
         row = api_key_crud.lookup_by_plaintext(plaintext)
         if row is None:
             raise HTTPException(status_code=401, detail="Invalid API key")
         return row
 
-    # No API key supplied — defer to Cognito.
+    # No API key supplied (or API keys disabled) — defer to Cognito.
     token = await cognito_eu.auth_required(request)
     return auth_required(token)
 

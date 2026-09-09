@@ -3339,12 +3339,6 @@
           "featured",
           "new_product",
           "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
           "translation"
         ],
         "title": "ProductCreate",
@@ -3801,6 +3795,111 @@
         "title": "ProductTranslationBase",
         "type": "object"
       },
+      "ProductTranslationUpdate": {
+        "properties": {
+          "alt1_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Description"
+          },
+          "alt1_description_short": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Description Short"
+          },
+          "alt1_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Name"
+          },
+          "alt2_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Description"
+          },
+          "alt2_description_short": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Description Short"
+          },
+          "alt2_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Name"
+          },
+          "main_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Description"
+          },
+          "main_description_short": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Description Short"
+          },
+          "main_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Name"
+          }
+        },
+        "title": "ProductTranslationUpdate",
+        "type": "object"
+      },
       "ProductUpdate": {
         "properties": {
           "category_id": {
@@ -3866,8 +3965,15 @@
             "title": "Discounted To"
           },
           "featured": {
-            "title": "Featured",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Featured"
           },
           "image_1": {
             "anyOf": [
@@ -3960,8 +4066,15 @@
             "title": "Image 6"
           },
           "max_one": {
-            "title": "Max One",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max One"
           },
           "modified_at": {
             "anyOf": [
@@ -3976,8 +4089,15 @@
             "title": "Modified At"
           },
           "new_product": {
-            "title": "New Product",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Product"
           },
           "order_number": {
             "anyOf": [
@@ -4036,13 +4156,27 @@
             "title": "Recurring Price Yearly"
           },
           "shippable": {
-            "title": "Shippable",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shippable"
           },
           "shop_id": {
-            "format": "uuid",
-            "title": "Shop Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Id"
           },
           "sku": {
             "anyOf": [
@@ -4068,28 +4202,27 @@
             "title": "Stock"
           },
           "tax_category": {
-            "title": "Tax Category",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Category"
           },
           "translation": {
-            "$ref": "#/components/schemas/ProductTranslationBase"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductTranslationUpdate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": [
-          "shop_id",
-          "max_one",
-          "shippable",
-          "featured",
-          "new_product",
-          "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
-          "translation"
-        ],
         "title": "ProductUpdate",
         "type": "object"
       },
@@ -4423,12 +4556,6 @@
           "featured",
           "new_product",
           "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
           "translation",
           "id"
         ],
@@ -4742,12 +4869,6 @@
           "featured",
           "new_product",
           "tax_category",
-          "image_1",
-          "image_2",
-          "image_3",
-          "image_4",
-          "image_5",
-          "image_6",
           "translation",
           "id"
         ],
@@ -6084,7 +6205,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.4.4"
+    "version": "0.4.5"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -13649,7 +13770,7 @@
         ]
       },
       "put": {
-        "description": "Update an existing product's details, including name, description, pricing, stock, and feature flags.",
+        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not set them unless explicitly given a filename.",
         "operationId": "update_product",
         "parameters": [
           {

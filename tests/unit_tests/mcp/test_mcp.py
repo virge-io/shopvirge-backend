@@ -119,6 +119,37 @@ def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
     ), f"missing: {EXPECTED_TOOL_NAMES - tool_names}, extra: {tool_names - EXPECTED_TOOL_NAMES}"
 
 
+def test_update_product_tool_has_no_required_body_fields(fastapi_app: FastAPI) -> None:
+    """The update_product tool must not force the LLM to send the full product.
+
+    Required image_1..image_6 fields made the model emit `"image_6": null` for
+    empty slots, which triggered malformed streamed tool JSON under Anthropic's
+    fine-grained-tool-streaming beta. Only the path params may be required.
+    """
+    pytest.importorskip("fastmcp")
+    from fastmcp import FastMCP
+
+    try:
+        from fastmcp.server.openapi import MCPType, RouteMap
+    except ImportError:  # pragma: no cover — older fastmcp module path
+        from fastmcp.server.providers.openapi import MCPType, RouteMap  # type: ignore[no-redef]
+
+    mcp = FastMCP.from_fastapi(
+        app=fastapi_app,
+        name="shopvirge-mcp-test",
+        route_maps=[
+            RouteMap(tags={AgentTag.EXPOSED.value}, mcp_type=MCPType.TOOL),
+            RouteMap(mcp_type=MCPType.EXCLUDE),
+        ],
+    )
+
+    tools = asyncio.run(mcp.get_tools())
+    schema = tools["update_product"].parameters
+    required = set(schema.get("required", []))
+    assert not any(r.startswith("image_") for r in required), f"image fields still required: {required}"
+    assert "translation" not in required, f"translation still required: {required}"
+
+
 def test_mount_mcp_is_importable() -> None:
     """The mount_mcp helper imports cleanly (catches dotted-path drift in fastmcp)."""
     pytest.importorskip("fastmcp")

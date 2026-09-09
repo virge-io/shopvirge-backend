@@ -365,23 +365,7 @@ def patch(
                 f"Updating stock for order {product.id} , old stock: {product.stock}, new stock: {product.stock - order_product['quantity']}"
             )
 
-            new_product = ProductUpdate(
-                shop_id=product.shop_id,
-                category_id=product.category_id,
-                max_one=product.max_one,
-                shippable=product.shippable,
-                featured=product.featured,
-                new_product=product.new_product,
-                tax_category=product.tax_category,
-                stock=product.stock - order_product["quantity"],
-                translation=product.translation,
-                image_1=product.image_1,
-                image_2=product.image_2,
-                image_3=product.image_3,
-                image_4=product.image_4,
-                image_5=product.image_5,
-                image_6=product.image_6,
-            )
+            new_product = ProductUpdate(stock=product.stock - order_product["quantity"])
             product_crud.update(db_obj=product, obj_in=new_product)
 
     # Fetch account once for Discord and email notifications

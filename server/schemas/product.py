@@ -63,12 +63,12 @@ class ProductBase(BoilerplateBaseModel):
     order_number: Optional[int] = None
     stock: Optional[int] = 1
     sku: Optional[str] = None
-    image_1: Union[Optional[dict], Optional[str]]
-    image_2: Union[Optional[dict], Optional[str]]
-    image_3: Union[Optional[dict], Optional[str]]
-    image_4: Union[Optional[dict], Optional[str]]
-    image_5: Union[Optional[dict], Optional[str]]
-    image_6: Union[Optional[dict], Optional[str]]
+    image_1: Union[Optional[dict], Optional[str]] = None
+    image_2: Union[Optional[dict], Optional[str]] = None
+    image_3: Union[Optional[dict], Optional[str]] = None
+    image_4: Union[Optional[dict], Optional[str]] = None
+    image_5: Union[Optional[dict], Optional[str]] = None
+    image_6: Union[Optional[dict], Optional[str]] = None
     translation: ProductTranslationBase
 
 
@@ -77,8 +77,23 @@ class ProductCreate(ProductBase):
     pass
 
 
-# Properties to receive via API on update
+class ProductTranslationUpdate(ProductTranslationBase):
+    main_name: Optional[str] = None
+    main_description: Optional[str] = None
+    main_description_short: Optional[str] = None
+
+
+# Properties to receive via API on update. All fields are optional: the CRUD
+# layer updates with exclude_unset=True (PATCH semantics), so omitted fields
+# are left untouched.
 class ProductUpdate(ProductBase):
+    shop_id: Optional[UUID] = None
+    max_one: Optional[bool] = None
+    shippable: Optional[bool] = None
+    featured: Optional[bool] = None
+    new_product: Optional[bool] = None
+    tax_category: Optional[str] = None
+    translation: Optional[ProductTranslationUpdate] = None
     modified_at: Optional[datetime] = None
 
 

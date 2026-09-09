@@ -43,6 +43,11 @@ class AppSettings(BaseSettings):
     # How many revisions to keep per entity (product/category). Pruned on write.
     # The PIM undo story assumes at least 10; values below that are ignored.
     REVISION_RETENTION: int = 25
+    # Deprecated — no longer read by order logic. Kept so existing .env files
+    # that still set it don't fail settings validation on startup.
+    ORDER_API_KEY: Optional[str] = None
+    # Set to False to bypass all API key auth (X-Order-Api-Key on orders + sv_ keys on CRUD).
+    API_KEYS_ENABLED: bool = True
     # SESSION_SECRET: str = "".join(secrets.choice(string.ascii_letters) for i in range(16))  # noqa: S311
     SESSION_SECRET: str = "CHANGEME"
 
@@ -80,16 +85,7 @@ class AppSettings(BaseSettings):
         "OPTIONS",
         "HEAD",
     ]
-    # Todo: find correct header settings for upload of file with:
-    #  No 'Access-Control-Allow-Origin' header is present on the requested resource.
-    CORS_ALLOW_HEADERS: List[str] = [
-        "If-None-Match",
-        "Authorization",
-        "If-Match",
-        "Content-Type",
-        "Access-Control-Allow-Origin",
-    ]
-    # CORS_ALLOW_HEADERS: List[str] = ["*"]
+    CORS_ALLOW_HEADERS: List[str] = ["*"]
 
     CORS_EXPOSE_HEADERS: List[str] = [
         "Cache-Control",

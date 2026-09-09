@@ -326,7 +326,12 @@ def create(
     tags=[AgentTag.EXPOSED],
     operation_id="update_product",
     summary="Update product",
-    description="Update an existing product's details, including name, description, pricing, stock, and feature flags.",
+    description=(
+        "Partially update a product. Send ONLY the fields you want to change; omitted fields are left "
+        "untouched. Names and descriptions live in the nested `translation` object and can also be sent "
+        "partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not "
+        "set them unless explicitly given a filename."
+    ),
 )
 def update(
     *,
@@ -344,7 +349,11 @@ def update(
     shop = get_shop(shop_id)
     raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
     toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
-    if toggles.force_unique_product_names:
+    if (
+        toggles.force_unique_product_names
+        and item_in.translation is not None
+        and item_in.translation.main_name is not None
+    ):
         _assert_unique_name(shop_id, item_in.translation.main_name, exclude_product_id=product_id)
 
     item_in.modified_at = datetime.now(timezone.utc)
