@@ -5,7 +5,7 @@ description: Cross-shop account inspection endpoints for linking and syncing Str
 
 # Admin accounts
 
-Cross-shop endpoints for **investigating local `Account` records and reconciling them with Stripe**. Mounted under `/admin/accounts` (`server/api/endpoints/admin_accounts.py`).
+Cross-shop endpoints for **investigating local `Account` records and reconciling them with Stripe**. Mounted under `/admin/accounts` (`server/api/endpoints/accounts/admin.py`).
 
 ## Why this exists
 
