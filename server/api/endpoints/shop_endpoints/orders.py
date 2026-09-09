@@ -440,7 +440,7 @@ def update(
         obj_in=item_in,
     )
 
-    updated_order = OrderUpdated(
+    return OrderUpdated(
         account_id=order.account_id,
         notes=order.notes,
         total=order.total,
@@ -450,8 +450,6 @@ def update(
         order_info=order.order_info,
         id=order.id,
     )
-
-    return updated_order
 
 
 @router.delete(

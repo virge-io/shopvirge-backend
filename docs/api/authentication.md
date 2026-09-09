@@ -34,7 +34,7 @@ All auth settings come from environment variables loaded by `server/settings.py`
 | `AWS_COGNITO_REGION` | AWS region of the user pool. |
 | `AWS_COGNITO_CLIENT_ID` | Expected `aud` for user tokens. |
 | `AWS_COGNITO_M2M_CLIENT_ID` | Expected `client_id` for M2M tokens. |
-| `AWS_COGNITO_MCP_CLIENT_ID` | `client_id` of the MCP app client. Tokens from it are **user** tokens, not M2M — they carry `cognito:groups` and face the same admin group check. |
+| `AWS_COGNITO_MCP_CLIENT_ID` | `client_id` of the MCP app client. `auth_required` treats tokens from it as **user** tokens, not M2M. |
 | `MCP_ENABLED` | Default `false`. Mount the [MCP server](mcp.md) at `/mcp`. |
 
 Cognito itself — user pool, app clients, domain, groups — is managed outside this repo.
@@ -64,18 +64,6 @@ def admin_route(_ = Depends(admin_required)):
     ...
 ```
 
-`admin_required` wraps `auth_required` and then branches on the token shape:
-
-- A **user token** (from either app client) must be in the `admins` / `Admins`
-  group, or it gets a 403.
-- An **M2M token** is trusted as admin, because `auth_required` has already
-  required the `/api` scope and there are no groups on such a token.
-
-Both dependencies decide "is this a user token?" through the same
-`user_client_ids()` helper, so they cannot disagree. That matters: while
-`admin_required` compared only against `AWS_COGNITO_CLIENT_ID`, an MCP app-client
-token was misfiled as M2M and reached admin routes without any group check.
-
 For endpoints that should also accept API keys (currently the MCP-exposed shop CRUD routes), use `auth_required_any` instead:
 
 ```python
@@ -101,4 +89,4 @@ Authentication proves *who* is calling. Which shops they can touch is determined
 ## Troubleshooting
 
 - **401 on every Cognito-protected route:** verify `AWS_COGNITO_USERPOOL_ID`, region, and client IDs in the environment. Placeholder defaults in `server/settings.py` will not work against real tokens.
-- **403 on an admin route:** the user authenticated successfully but is not a member of the Cognito `admins` or legacy `Admins` group. This applies equally to tokens minted through the MCP app client.
+- **403 on an admin route:** the user authenticated successfully but is not a member of the Cognito `admins` or legacy `Admins` group.
