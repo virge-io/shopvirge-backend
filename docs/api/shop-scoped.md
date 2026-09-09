@@ -78,6 +78,6 @@ every handler:
   `HTTPException`) that produced differently shaped 404 bodies.
 - `list_page(crud, page, response, shop_id=…, query=…)` — the filter / sort /
   paginate call plus the `Content-Range` header.
-- `page_params_for(crud)` in `server/api/deps.py` — builds the `skip` / `limit` /
-  `filter` / `sort` dependency for one resource, so the OpenAPI description of
-  `filter` lists that model's real columns instead of a generic sentence.
+- `page_params_for(crud)` in `server/api/deps.py` — the typed `skip` / `limit` /
+  `filter` / `sort` dependency that `list_page` consumes. Same parameter names
+  and descriptions as `common_parameters`, so the spec does not change.

@@ -68,18 +68,20 @@ def filterable_keys(crud: "CRUDBase[Any, Any, Any]") -> List[str]:
 
 
 def page_params_for(crud: "CRUDBase[Any, Any, Any]") -> Callable[..., Coroutine[Any, Any, PageParams]]:
-    """Build the pagination dependency for one resource, with its real filterable keys in the docs.
+    """Build the typed pagination dependency for one resource.
 
-    The inner function keeps the parameter names ``skip``/``limit``/``filter``/``sort``,
-    so switching a route over changes only the two descriptions in the OpenAPI spec.
+    The inner function keeps the parameter names and descriptions of
+    :func:`common_parameters`, so switching a route over leaves the OpenAPI spec
+    byte-identical. Naming the resource's filterable keys in the description
+    (see :func:`filterable_keys`) is deliberately deferred to the endpoint-merge
+    work, where the spec changes anyway.
     """
-    keys = ", ".join(f"`{key}`" for key in filterable_keys(crud))
 
     async def page_params(
         skip: int = 0,
         limit: int = 100,
-        filter: List[str] = Query(None, description=f"{_FILTER_SYNTAX} Valid keys for this resource: {keys}."),
-        sort: List[str] = Query(None, description=f"{_SORT_SYNTAX} Valid columns: {keys}."),
+        filter: List[str] = Query(None, description=_FILTER_SYNTAX),
+        sort: List[str] = Query(None, description=_SORT_SYNTAX),
     ) -> PageParams:
         return PageParams(skip=skip, limit=limit, filter=filter, sort=sort)
 
