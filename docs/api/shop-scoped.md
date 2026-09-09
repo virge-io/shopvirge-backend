@@ -64,9 +64,12 @@ spell the shop id `{id}`) and `orders.per_shop_router` (orders mount at
 Inside a package one module holds one posture — `shops/public.py`,
 `shops/collection.py`, `orders/management.py`, `orders/per_shop.py`,
 `orders/public.py` — and a handler takes the principal as a parameter only when
-its body reads it. `tests/unit_tests/api/test_router_posture.py` pins every
-route on the split routers to its posture and asserts that no route is shadowed
-by an earlier one (FastAPI matches in registration order, so tier order matters).
+its body reads it. `tests/unit_tests/api/test_router_posture.py` sweeps the whole
+route table without credentials: every route off the `public`/`shop_public` tiers
+must answer 401 and every route on them must not, so the tiers themselves are the
+definition of "public" and there is no allowlist to maintain. It also asserts that
+no route is shadowed by an earlier one (FastAPI matches in registration order, so
+tier order matters).
 
 ## Route helpers
 

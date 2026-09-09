@@ -10,89 +10,80 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Pin the auth posture of every route on the routers that were split by posture.
+"""Check the live route table against the auth posture declared in ``server/api/api.py``.
 
-``shops.py``, ``orders.py`` and ``faq.py`` each used to be one router mixing
-public reads with authenticated writes, so the guard was repeated per route and
-a new route shipped unauthenticated if its author forgot. They are now split
-into single-posture routers whose guard is declared at the mount in
-``server/api/api.py``; these tests are what stops a route from silently moving
-between them.
+Auth is declared per tier there, not per route. The two public tiers (``public``
+and ``shop_public``) carry no guard; every other tier, and each direct include,
+carries one. So the set of public routes is not a list to maintain here: it is
+whatever is mounted on those two tiers. The sweep sends every route a request
+with no credentials and checks both directions.
 
-``test_endpoint_auth`` in test_authentication.py only sweeps paths ending in
-``/`` and skips several of these, so none of them had coverage before.
+* Not on a public tier: must answer 401. Catches a tier or direct include that
+  lost its guard, a guard that bypasses ``auth_required`` / ``auth_required_any``
+  (the two the fixture overrides), and a protected route shadowed by an earlier
+  public one.
+* On a public tier: must answer anything but 401. Catches a public module that
+  grew a per-route guard, and a public route shadowed by an earlier protected one.
+
+Intent is deliberately not pinned: moving a handler from a protected module into
+a public one passes both checks. That move is a file change plus a router change,
+which is what the one-posture-per-module layout makes reviewable.
 """
 
 import re
-import uuid
 
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-SHOP_ID = str(uuid.uuid4())
-ID = str(uuid.uuid4())
+from server.api import api
 
-PROTECTED = [
-    # shops
-    ("GET", "/shops/"),
-    ("GET", "/shops/my-shops"),
-    ("POST", "/shops/"),
-    ("PUT", f"/shops/{SHOP_ID}"),
-    ("DELETE", f"/shops/{SHOP_ID}"),
-    ("PUT", f"/shops/config/{SHOP_ID}"),
-    ("GET", f"/shops/allowed-ips/{SHOP_ID}"),
-    ("POST", f"/shops/allowed-ips/{SHOP_ID}"),
-    ("POST", f"/shops/allowed-ips/{SHOP_ID}/remove"),
-    # orders
-    ("GET", "/orders/"),
-    ("GET", f"/orders/shop/{SHOP_ID}/pending"),
-    ("GET", f"/orders/shop/{SHOP_ID}/complete"),
-    ("PUT", f"/orders/{ID}"),
-    ("DELETE", f"/orders/{ID}"),
-    # faq
-    ("POST", "/faq/"),
-    ("PUT", f"/faq/{ID}"),
-    ("DELETE", f"/faq/{ID}"),
-    # licenses
-    ("GET", "/licenses/"),
-    ("GET", f"/licenses/{ID}"),
-    ("POST", "/licenses/"),
-    ("PUT", f"/licenses/{ID}"),
-    ("DELETE", f"/licenses/{ID}"),
-]
-
-PUBLIC = [
-    # shops: storefront cache-invalidation polling, before anyone signs in
-    ("GET", f"/shops/cache-status/{SHOP_ID}"),
-    ("GET", f"/shops/last-completed-order/{SHOP_ID}"),
-    ("GET", f"/shops/last-pending-order/{SHOP_ID}"),
-    ("GET", f"/shops/{SHOP_ID}"),
-    ("GET", f"/shops/config/{SHOP_ID}"),
-    # orders: the checkout / POS flow
-    ("GET", f"/orders/{ID}"),
-    ("GET", f"/orders/check/{ID}"),
-    ("POST", "/orders/"),
-    ("PATCH", f"/orders/{ID}"),
-    ("GET", f"/orders/stock/{ID}"),
-    # faq: public content
-    ("GET", "/faq/"),
-    ("GET", f"/faq/{ID}"),
-    # licenses: looked up by the improviser app without a session
-    ("GET", f"/licenses/improviser/{ID}"),  # improviser_user is a UUID column
-]
+SAMPLE_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 
 
-@pytest.mark.parametrize("method, path", PROTECTED)
-def test_protected_routes_require_a_token(fastapi_app_not_authenticated, method, path):
-    response = TestClient(fastapi_app_not_authenticated).request(method, path)
-    assert response.status_code == 401, f"{method} {path} responded {response.status_code}, not 401"
+def _operations(*routers) -> list[tuple[str, str]]:
+    return sorted(
+        {
+            (method, route.path)
+            for router in routers
+            for route in router.routes
+            if isinstance(route, APIRoute)
+            for method in route.methods
+        }
+    )
 
 
-@pytest.mark.parametrize("method, path", PUBLIC)
-def test_public_routes_stay_reachable_without_a_token(fastapi_app_not_authenticated, method, path):
-    response = TestClient(fastapi_app_not_authenticated).request(method, path)
-    assert response.status_code != 401, f"{method} {path} responded 401 but is meant to be public"
+PUBLIC_OPERATIONS = _operations(api.public, api.shop_public)
+GUARDED_OPERATIONS = sorted(set(_operations(api.api_router)) - set(PUBLIC_OPERATIONS))
+
+
+def _ids(operations):
+    return [f"{method} {path}" for method, path in operations]
+
+
+def _request_without_credentials(app, method, path):
+    concrete = re.sub(r"\{[^}]+\}", SAMPLE_ID, path)
+    # A public route may 500 on a made-up id, or on purpose (``/sentry/``). That is
+    # still "not 401", which is all these tests are about.
+    return TestClient(app, raise_server_exceptions=False).request(method, concrete)
+
+
+def test_the_tiers_cover_the_whole_route_table():
+    """Guards live on the tiers, so a route outside them is a route nobody guards."""
+    assert len(PUBLIC_OPERATIONS) + len(GUARDED_OPERATIONS) == len(_operations(api.api_router))
+    assert PUBLIC_OPERATIONS, "no public tier is mounted at all"
+
+
+@pytest.mark.parametrize("method, path", GUARDED_OPERATIONS, ids=_ids(GUARDED_OPERATIONS))
+def test_routes_off_the_public_tiers_answer_401_without_a_token(fastapi_app_not_authenticated, method, path):
+    response = _request_without_credentials(fastapi_app_not_authenticated, method, path)
+    assert response.status_code == 401, f"{method} {path} answered {response.status_code} without a token"
+
+
+@pytest.mark.parametrize("method, path", PUBLIC_OPERATIONS, ids=_ids(PUBLIC_OPERATIONS))
+def test_routes_on_the_public_tiers_answer_without_a_token(fastapi_app_not_authenticated, method, path):
+    response = _request_without_credentials(fastapi_app_not_authenticated, method, path)
+    assert response.status_code != 401, f"{method} {path} is on a public tier but answered 401"
 
 
 def test_no_route_is_shadowed_by_an_earlier_one(fastapi_app_not_authenticated):
@@ -102,10 +93,9 @@ def test_no_route_is_shadowed_by_an_earlier_one(fastapi_app_not_authenticated):
     auth tiers in a deliberate order; this pins that no route is unreachable.
     """
     routes = [r for r in fastapi_app_not_authenticated.routes if isinstance(r, APIRoute)]
-    sample = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
     shadowed = []
     for index, route in enumerate(routes):
-        concrete = re.sub(r"\{[^}]+\}", sample, route.path)
+        concrete = re.sub(r"\{[^}]+\}", SAMPLE_ID, route.path)
         for earlier in routes[:index]:
             if (
                 earlier.methods & route.methods
