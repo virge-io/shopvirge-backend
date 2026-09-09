@@ -231,10 +231,13 @@ def get_multi_with_attributes(
 @public_router.get(
     "/{product_id}/with_attributes",
     response_model=ProductWithAttributes,
+    tags=[AgentTag.EXPOSED],
+    operation_id="get_product_attributes",
     summary="Get product with attributes",
     description="Retrieve a single product together with its assigned attribute values (e.g. size, color). Public endpoint — no authentication required.",
 )
 def get_by_id_with_attributes(product_id: UUID, shop_id: UUID) -> ProductWithAttributes:
+    """Retrieve a product together with every attribute option currently assigned to it."""
     product = product_crud.get_id_by_shop_id(shop_id, product_id)
     if not product:
         raise_status(HTTPStatus.NOT_FOUND, f"Product with id {product_id} not found")
@@ -340,7 +343,12 @@ def create(
     tags=[AgentTag.EXPOSED],
     operation_id="update_product",
     summary="Update product",
-    description="Update an existing product's details, including name, description, pricing, stock, and feature flags.",
+    description=(
+        "Partially update a product. Send ONLY the fields you want to change; omitted fields are left "
+        "untouched. Names and descriptions live in the nested `translation` object and can also be sent "
+        "partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not "
+        "set them unless explicitly given a filename."
+    ),
 )
 def update(
     *,
@@ -358,7 +366,11 @@ def update(
     shop = get_shop(shop_id)
     raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
     toggles = Toggles.model_validate(raw.get("toggles", {}) if isinstance(raw, dict) else {})
-    if toggles.force_unique_product_names:
+    if (
+        toggles.force_unique_product_names
+        and item_in.translation is not None
+        and item_in.translation.main_name is not None
+    ):
         _assert_unique_name(shop_id, item_in.translation.main_name, exclude_product_id=product_id)
 
     item_in.modified_at = datetime.now(timezone.utc)

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
+from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.crud_attribute import attribute_crud
@@ -26,7 +27,7 @@ from server.schemas.product_attribute_value import (
     ProductAttributeValueBase,
     ProductAttributeValueSchema,
 )
-from server.security import auth_required
+from server.security import auth_required, auth_required_any
 from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
@@ -162,27 +163,23 @@ def get_attribute_options_by_ids(option_ids: list[UUID], shop_id: UUID) -> list[
     "/{product_id}",
     response_model=None,
     status_code=HTTPStatus.CREATED,
+    tags=[AgentTag.EXPOSED],
+    operation_id="add_product_attribute_options",
     summary="Create product attribute values for product",
-    operation_id="product_attribute_values_create_for_product",
 )
 def create_product_attribute_values_for_product(
     shop_id: UUID,
     product_id: UUID,
     request: Request,
     data: ProductAttributeOptionSelectionAdd = Body(...),
-    principal: Any = Depends(auth_required),
+    principal: Any = Depends(auth_required_any),
 ) -> None:
-    """Create new product attribute value(s) for a specific product using product_id in the URL.
+    """Assign existing attribute options to a product.
 
-    This deprecates the old POST / endpoint that required product_id in the body.
-
-    Notes:
-    - attribute_id is omitted; it will be inferred from option_id, as the option is already tied to an attribute_id.
-
-    - This endpoint first validates that all option_ids belong to attributes that belong to the shop.
-    - And that these options actually exist.
-    - If everything is passed, it will create the product attribute values.
-    - Duplicates are ignored, and the endpoint returns 201 Created for each successful creation. That means no 409 is raised when a duplicate is encountered; it just won't be created.
+    Provide the shop and product UUIDs in the path and a non-empty ``option_ids``
+    list in the body. Each option must belong to an attribute in the same shop;
+    its attribute is inferred automatically. Existing assignments are left intact,
+    so repeating a request is safe and does not create duplicates.
     """
     # Validate and load provided options
     if not data.option_ids:
@@ -247,6 +244,7 @@ def _create_product_attribute_values(
     "/{product_id}",
     response_model=None,
     status_code=HTTPStatus.NO_CONTENT,
+    tags=[AgentTag.EXPOSED],
     summary="Replace product attribute values for product",
     operation_id="product_attribute_values_replace_for_product",
 )
@@ -255,7 +253,7 @@ def put_selected_product_attribute_values_by_product(
     product_id: UUID,
     request: Request,
     data: ProductAttributeOptionSelectionReplace = Body(...),
-    principal: Any = Depends(auth_required),
+    principal: Any = Depends(auth_required_any),
 ) -> None:
     """New version of selected options endpoint addressed by product_id in the path.
 
@@ -354,11 +352,12 @@ def put_selected_product_attribute_values_by_product(
     "/{id}",
     response_model=None,
     status_code=HTTPStatus.NO_CONTENT,
+    tags=[AgentTag.EXPOSED],
     summary="Delete product attribute value",
     operation_id="product_attribute_values_delete",
 )
 def delete_product_attribute_value(
-    shop_id: UUID, id: UUID, request: Request, principal: Any = Depends(auth_required)
+    shop_id: UUID, id: UUID, request: Request, principal: Any = Depends(auth_required_any)
 ) -> None:
     """Delete a product attribute value if it belongs to the given shop."""
     pav = product_attribute_value_crud.get(id)

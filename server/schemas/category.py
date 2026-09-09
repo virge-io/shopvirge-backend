@@ -36,9 +36,9 @@ class CategoryBase(BoilerplateBaseModel):
     icon: Optional[str] = None
     order_number: Optional[int] = None
     translation: CategoryTranslationBase
-    main_image: Union[Optional[dict], Optional[str]]
-    alt1_image: Union[Optional[dict], Optional[str]]
-    alt2_image: Union[Optional[dict], Optional[str]]
+    main_image: Union[Optional[dict], Optional[str]] = None
+    alt1_image: Union[Optional[dict], Optional[str]] = None
+    alt2_image: Union[Optional[dict], Optional[str]] = None
 
 
 # Properties to receive via API on creation
@@ -46,9 +46,18 @@ class CategoryCreate(CategoryBase):
     pass
 
 
-# Properties to receive via API on update
+class CategoryTranslationUpdate(CategoryTranslationBase):
+    main_name: Optional[str] = None
+    main_description: Optional[str] = None
+
+
+# Properties to receive via API on update. All fields are optional: the CRUD
+# layer updates with exclude_unset=True (PATCH semantics), so omitted fields
+# are left untouched.
 class CategoryUpdate(CategoryBase):
-    pass
+    shop_id: Optional[UUID] = None
+    color: Optional[str] = None
+    translation: Optional[CategoryTranslationUpdate] = None
 
 
 class CategoryInDBBase(CategoryBase):

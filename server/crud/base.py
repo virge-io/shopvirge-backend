@@ -247,9 +247,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         #     if isinstance(v, int):
         #         update_data[k] = v
 
-        # Update translations
-        if "translation" in update_data:
-            translation_data = update_data.pop("translation")
+        # Update translations. An explicit `"translation": null` means "no
+        # translation change" (still popped so it doesn't hit the DB record loop).
+        if "translation" in update_data and (translation_data := update_data.pop("translation")) is not None:
             translation_name = db_obj.__class__.__name__.split("Table")[0]
             translation_model = globals().get(translation_name + "TranslationTable", None)
             translation = (

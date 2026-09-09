@@ -6,24 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.crud.crud_api_key import api_key_crud
-from server.security import auth_required_any
+from server.settings import app_settings
 from tests.unit_tests.factories.api_key import make_api_key
 from tests.unit_tests.factories.shop import make_shop
-
-
-@pytest.fixture
-def real_auth_client(fastapi_app):
-    """A TestClient whose ``auth_required_any`` override is removed so the
-    real dual-auth dep runs (validates X-API-Key / Bearer headers against the
-    DB). Other overrides — including the ``auth_required`` Cognito stub used
-    by the api-key management endpoints — stay intact so we can still mint
-    keys from the test."""
-    override = fastapi_app.dependency_overrides.pop(auth_required_any, None)
-    try:
-        yield TestClient(fastapi_app)
-    finally:
-        if override is not None:
-            fastapi_app.dependency_overrides[auth_required_any] = override
 
 
 def test_mint_returns_plaintext_once(test_client):
@@ -131,3 +116,137 @@ def test_revoked_api_key_stops_opening_endpoints(real_auth_client):
 
     api_key_crud.revoke(shop_id=shop_id, key_id=row.id)
     assert real_auth_client.get(f"/shops/{shop_id}/tags/", headers=headers).status_code == 401
+
+
+# --- Per-shop scoping: a key minted for shop A must not reach shop B -------------------
+#
+# The key itself is valid (auth_required_any authenticates it fine); what is
+# rejected is using it against a different shop's path. Enforced centrally by
+# ``auth_required_any_for_shop``, wired as a router-level dependency on every
+# ``/shops/{shop_id}/...`` router in ``server/api/api.py``.
+
+SHOP_SCOPED_READ_PATHS = [
+    "categories/",
+    "products/",
+    "products-to-tags/",
+    "tags/",
+    "attributes/",
+    "attribute-options/",
+    "product-attribute-values/",
+    "revisions",
+]
+
+
+@pytest.mark.parametrize("path", SHOP_SCOPED_READ_PATHS)
+def test_api_key_cannot_read_another_shop(real_auth_client, path):
+    own_shop = make_shop(random_shop_name=True)
+    other_shop = make_shop(random_shop_name=True)
+    _, plaintext = make_api_key(own_shop, name="scoped-reader")
+
+    headers = {"X-API-Key": plaintext}
+    assert real_auth_client.get(f"/shops/{own_shop}/{path}", headers=headers).status_code == 200
+    forbidden = real_auth_client.get(f"/shops/{other_shop}/{path}", headers=headers)
+    assert forbidden.status_code == 403, forbidden.text
+
+
+def test_api_key_cannot_write_to_another_shop(real_auth_client):
+    """Writes are rejected before the handler runs, so nothing is persisted."""
+    own_shop = make_shop(random_shop_name=True)
+    other_shop = make_shop(random_shop_name=True)
+    _, plaintext = make_api_key(own_shop, name="scoped-writer")
+
+    resp = real_auth_client.post(
+        f"/shops/{other_shop}/tags/",
+        headers={"X-API-Key": plaintext},
+        json={"shop_id": str(other_shop), "name": "smuggled"},
+    )
+    assert resp.status_code == 403, resp.text
+
+    # And the tag really was not created.
+    listing = real_auth_client.get(f"/shops/{other_shop}/tags/", headers={"X-API-Key": plaintext})
+    assert listing.status_code == 403
+
+
+# --- Per-shop scoping for Cognito users --------------------------------------------
+#
+# Same rule, other principal type: a user reaches shops whose UUID is one of their
+# Cognito groups, or every shop if they are in an admin group.
+
+
+def test_cognito_admin_reaches_any_shop(test_client):
+    """The default stub token is in `admins`, so every shop stays reachable."""
+    other_shop = make_shop(random_shop_name=True)
+    assert test_client.get(f"/shops/{other_shop}/tags/").status_code == 200
+
+
+def test_cognito_user_reaches_only_their_own_shop(as_cognito_user):
+    own_shop = make_shop(random_shop_name=True)
+    other_shop = make_shop(random_shop_name=True)
+    client = as_cognito_user([str(own_shop)])
+
+    assert client.get(f"/shops/{own_shop}/tags/").status_code == 200
+    assert client.get(f"/shops/{other_shop}/tags/").status_code == 403
+
+
+def test_cognito_user_without_groups_is_refused(as_cognito_user):
+    shop_id = make_shop(random_shop_name=True)
+    client = as_cognito_user([])
+    assert client.get(f"/shops/{shop_id}/tags/").status_code == 403
+
+
+def test_mcp_client_token_is_scoped_like_a_user(fastapi_app, monkeypatch):
+    """A token from the MCP app client is a person, not a service — scope it.
+
+    ``auth_required`` already treats the MCP client id as a user token; the shop
+    check must agree, or the agent login flow would reach every shop.
+    """
+    from server.security import auth_required, auth_required_any
+    from tests.unit_tests.conftest import _cognito_token
+
+    monkeypatch.setattr(app_settings, "AWS_COGNITO_MCP_CLIENT_ID", "mcp-client-id")
+    own_shop = make_shop(random_shop_name=True)
+    other_shop = make_shop(random_shop_name=True)
+
+    token = _cognito_token([str(own_shop)])
+    token.client_id = "mcp-client-id"
+    saved = {d: fastapi_app.dependency_overrides.get(d) for d in (auth_required, auth_required_any)}
+    for dep in saved:
+        fastapi_app.dependency_overrides[dep] = lambda: token
+    try:
+        client = TestClient(fastapi_app)
+        assert client.get(f"/shops/{own_shop}/tags/").status_code == 200
+        assert client.get(f"/shops/{other_shop}/tags/").status_code == 403
+    finally:
+        for dep, original in saved.items():
+            fastapi_app.dependency_overrides[dep] = original
+
+
+# --- API key management is itself shop-scoped ---------------------------------------
+#
+# Without this the per-shop key binding above is bypassable: mint a key *for* the
+# shop you want and the binding is satisfied.
+
+
+def test_cannot_mint_api_key_for_another_shop(as_cognito_user):
+    own_shop = make_shop(random_shop_name=True)
+    other_shop = make_shop(random_shop_name=True)
+    client = as_cognito_user([str(own_shop)])
+
+    assert client.post(f"/shops/{own_shop}/api-keys/", json={"name": "mine"}).status_code == 201
+    forbidden = client.post(f"/shops/{other_shop}/api-keys/", json={"name": "smuggled"})
+    assert forbidden.status_code == 403, forbidden.text
+
+
+def test_cannot_list_or_revoke_another_shops_api_keys(as_cognito_user):
+    own_shop = make_shop(random_shop_name=True)
+    other_shop = make_shop(random_shop_name=True)
+    victim_key, _ = make_api_key(other_shop, name="victim")
+    client = as_cognito_user([str(own_shop)])
+
+    assert client.get(f"/shops/{other_shop}/api-keys/").status_code == 403
+    assert client.delete(f"/shops/{other_shop}/api-keys/{victim_key.id}").status_code == 403
+
+    # The victim's key is untouched.
+    still_active = api_key_crud.list_by_shop(other_shop)
+    assert [r.id for r in still_active] == [victim_key.id]
+    assert still_active[0].revoked_at is None

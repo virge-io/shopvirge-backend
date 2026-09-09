@@ -6,7 +6,7 @@ The integration follows the pattern from [`workfloworchestrator/orchestrator-cor
 
 ## What gets exposed
 
-Twenty tools, one per shop CRUD operation. Tool names match the route's `operation_id`:
+Fifty tools. Tool names match the route's `operation_id`:
 
 | Resource | List | Get | Create | Update | Delete |
 |----------|------|-----|--------|--------|--------|
@@ -14,10 +14,28 @@ Twenty tools, one per shop CRUD operation. Tool names match the route's `operati
 | Categories | `list_categories` | `get_category` | `create_category` | `update_category` | `delete_category` |
 | Tags | `list_tags` | `get_tag` | `create_tag` | `update_tag` | `delete_tag` |
 | Attributes | `list_attributes` | `get_attribute` | `create_attribute` | `update_attribute` | `delete_attribute` |
+| Attribute options | `list_attribute_options` | `get_attribute_option` | `create_attribute_option` | `update_attribute_option` | `delete_attribute_option` |
+| Product ↔ tag links | `list_product_to_tags` | `get_product_to_tag` | `create_product_to_tag` | `update_product_to_tag` | `delete_product_to_tag` |
+
+Plus `get_product_to_tag_relation_id` to resolve a (product, tag) pair to its association id.
+
+**Product attribute assignments** — attaching existing attribute options to a product:
+`get_product_attributes`, `add_product_attribute_options`,
+`product_attribute_values_replace_for_product`, `product_attribute_values_delete`.
+
+**Orders (read-only)** — `list_pending_orders` and `list_complete_orders`. These are the
+only order tools: creating, updating and deleting orders stays REST-only. Both return
+customer names and totals, so treat the results as personal data.
+
+**Revisions / trash** — `list_shop_revisions`, `get_revision`, `list_product_revisions`,
+`get_product_revision`, and the `restore_*` family.
+
+**Shops** — `list_my_shops`, the single resolution point for which shops a Cognito user
+may touch.
 
 List tools also carry `AgentTag.LARGE`, signalling to well-behaved clients that they should filter before calling.
 
-Any route *not* tagged with `AgentTag.EXPOSED` is invisible to MCP — even though it's still served by the same REST API. Orders, accounts, prices, Stripe, shop config etc. are intentionally REST-only.
+Any route *not* tagged with `AgentTag.EXPOSED` is invisible to MCP — even though it's still served by the same REST API. Order writes, accounts, prices, Stripe and shop config are intentionally REST-only.
 
 ## Enabling the endpoint
 
@@ -38,6 +56,19 @@ Three methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are 
 3. **Cognito JWT (interactive user)** — `Authorization: Bearer <jwt>` from the Next.js app client or the MCP browser-login flow. Useful when a logged-in user drives the agent from a browser.
 
 The dual-auth dependency is `server.security.auth_required_any`. It either resolves the API key against the `api_keys` table (returning the matched row) or delegates to the existing Cognito flow (returning a `CustomCognitoToken`). Endpoints not tagged for MCP still use `auth_required` (Cognito only) — an API key cannot reach the full REST surface.
+
+### API keys are bound to one shop
+
+A key is minted for exactly one shop, and `server.security.auth_required_any_for_shop`
+enforces that: if the key's `shop_id` does not match the `{shop_id}` in the request path,
+the request is rejected with **403**, before the handler runs. It is wired as a
+router-level dependency on every `/shops/{shop_id}/...` router in `server/api/api.py`,
+and per-route on the order feeds (whose `shop_id` sits inside the route path instead of
+the prefix). Swapping the path is therefore not a way to read or write another tenant's
+data with a valid key.
+
+Cognito principals are not shop-bound by this dependency — their shop access comes from
+Cognito group membership, resolved via `GET /shops/my-shops`.
 
 ### Issuing an API key
 
@@ -130,7 +161,7 @@ curl -X POST https://api.example.com/mcp/ \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-You should see all 20 tool definitions in the response.
+You should see all 50 tool definitions in the response.
 
 ## How auth flows through `from_fastapi`
 

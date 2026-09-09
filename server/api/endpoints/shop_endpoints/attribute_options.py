@@ -9,6 +9,7 @@ from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
+from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.crud_attribute import attribute_crud
@@ -20,7 +21,7 @@ from server.schemas.attribute_option import (
     AttributeOptionSchema,
     AttributeOptionUpdate,
 )
-from server.security import auth_required
+from server.security import auth_required, auth_required_any
 from server.services.revisions import actor, ensure_baseline_attribute_revision, record_attribute_revision
 
 logger = structlog.get_logger(__name__)
@@ -180,6 +181,8 @@ def _delete_option(
 @router.get(
     "/",
     response_model=List[AttributeOptionSchema],
+    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
+    operation_id="list_attribute_options",
     summary="List attribute options for a shop",
     description="Retrieve a paginated list of all attribute options (e.g., 'Small', 'XL') across all attributes within a shop.",
 )
@@ -203,11 +206,16 @@ def list_options_for_shop(
     "/",
     response_model=AttributeOptionSchema,
     status_code=HTTPStatus.CREATED,
+    tags=[AgentTag.EXPOSED],
+    operation_id="create_attribute_option",
     summary="Create attribute option",
     description="Create a new option for a specific attribute within a shop. The attribute_id must be provided in the request body.",
 )
 def create_option_v2(
-    shop_id: UUID, request: Request, data: AttributeOptionCreate = Body(...), principal: Any = Depends(auth_required)
+    shop_id: UUID,
+    request: Request,
+    data: AttributeOptionCreate = Body(...),
+    principal: Any = Depends(auth_required_any),
 ) -> AttributeOptionSchema:
     """
     Create a new option for an attribute within a shop.
@@ -239,6 +247,8 @@ def create_option_v2(
 @router.get(
     "/{option_id}",
     response_model=AttributeOptionSchema,
+    tags=[AgentTag.EXPOSED],
+    operation_id="get_attribute_option",
     summary="Get attribute option",
     description="Retrieve the details of a specific attribute option by its unique ID, ensuring it belongs to the shop.",
 )
@@ -258,6 +268,8 @@ def get_option_v2(shop_id: UUID, option_id: UUID) -> AttributeOptionSchema:
 @router.put(
     "/{option_id}",
     response_model=AttributeOptionSchema,
+    tags=[AgentTag.EXPOSED],
+    operation_id="update_attribute_option",
     summary="Update attribute option",
     description="Update the details of an existing attribute option, ensuring it belongs to the shop.",
 )
@@ -266,7 +278,7 @@ def update_option_v2(
     option_id: UUID,
     request: Request,
     data: AttributeOptionUpdate = Body(...),
-    principal: Any = Depends(auth_required),
+    principal: Any = Depends(auth_required_any),
 ) -> AttributeOptionSchema:
     """Update an attribute option."""
     option = (
@@ -297,6 +309,8 @@ def update_option_v2(
     "/{option_id}",
     response_model=None,
     status_code=HTTPStatus.NO_CONTENT,
+    tags=[AgentTag.EXPOSED],
+    operation_id="delete_attribute_option",
     summary="Delete attribute option",
     description="Remove an attribute option, ensuring it belongs to the shop.",
 )
@@ -305,7 +319,7 @@ def delete_option_v2(
     option_id: UUID,
     request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
-    principal: Any = Depends(auth_required),
+    principal: Any = Depends(auth_required_any),
 ) -> None:
     """Delete an attribute option."""
     option = (
