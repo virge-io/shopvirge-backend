@@ -15,7 +15,8 @@
 Routes are grouped into *tiers* by auth posture. A tier is an ``APIRouter``
 that carries its guard once; each domain plugs its routers into the tier that
 matches their posture, so a guard is never written per include and never per
-route. Prefixes and tags stay on the include, exactly as before the packages.
+route. Each package's ``router.py`` is the surface it exposes; prefixes and
+tags stay on the include here, exactly as before the packages.
 
     public          none                          storefront, checkout, system
     authenticated   auth_required                 collection management
@@ -36,20 +37,18 @@ registered before ``public`` (which holds ``GET /shops/{id}``).
 
 from fastapi import APIRouter, Depends
 
-from server.api.endpoints import (
-    accounts,
-    attributes,
-    categories,
-    checkout,
-    content,
-    images,
-    orders,
-    products,
-    revisions,
-    shops,
-    system,
-    tags,
-)
+from server.api.endpoints.accounts import router as accounts
+from server.api.endpoints.attributes import router as attributes
+from server.api.endpoints.categories import router as categories
+from server.api.endpoints.checkout import router as checkout
+from server.api.endpoints.content import router as content
+from server.api.endpoints.images import router as images
+from server.api.endpoints.orders import router as orders
+from server.api.endpoints.products import router as products
+from server.api.endpoints.revisions import router as revisions
+from server.api.endpoints.shops import router as shops
+from server.api.endpoints.system import router as system
+from server.api.endpoints.tags import router as tags
 from server.security import (
     admin_required,
     auth_required,

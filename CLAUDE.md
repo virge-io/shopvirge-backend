@@ -66,7 +66,7 @@ PYTHONPATH=. uv run alembic revision --message "Description"
 **Request flow:** Request → SessionMiddleware → DBSessionMiddleware → CORS → API Router → Endpoint → CRUD → Database
 
 **Key layers:**
-- `server/api/endpoints/<domain>/` — route handlers, one package per domain (`shops/`, `orders/`, `products/`, `categories/`, `attributes/`, `tags/`, `revisions/`, `accounts/`, `images/`, `checkout/`, `content/`, `system/`). A module inside a package holds one auth posture; `server/api/api.py` composes the packages into auth tiers.
+- `server/api/endpoints/<domain>/` — route handlers, one package per domain (`shops/`, `orders/`, `products/`, `categories/`, `attributes/`, `tags/`, `revisions/`, `accounts/`, `images/`, `checkout/`, `content/`, `system/`). A module inside a package holds one auth posture, the package's `router.py` exposes its routers, and `server/api/api.py` composes those into auth tiers.
 - `server/crud/` — CRUD classes inheriting `CRUDBase` from `server/crud/base.py`. Named `CRUD<Model>` with instances `<model>_crud`.
 - `server/db/models.py` — SQLAlchemy models. Suffixed with `Table` (e.g., `ProductTable`). All inherit `BaseModel` from `server.db.database`.
 - `server/schemas/` — Pydantic models for request/response validation.
