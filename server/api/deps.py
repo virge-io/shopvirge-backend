@@ -27,7 +27,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, Optional, Union
 
 from fastapi.param_functions import Query
-from sqlalchemy.inspection import inspect as sa_inspect
 
 if TYPE_CHECKING:
     from server.crud.base import CRUDBase
@@ -60,21 +59,12 @@ class PageParams:
     sort: Optional[List[str]] = None
 
 
-def filterable_keys(crud: "CRUDBase[Any, Any, Any]") -> List[str]:
-    """Keys ``filter=<key>:<value>`` accepts for ``crud``: its model's columns, plus any the CRUD resolves itself."""
-    mapper = sa_inspect(crud.model)
-    columns = set(mapper.columns.keys()) if mapper is not None else set()
-    return sorted(columns | set(getattr(crud, "extra_filter_keys", ())))
-
-
 def page_params_for(crud: "CRUDBase[Any, Any, Any]") -> Callable[..., Coroutine[Any, Any, PageParams]]:
     """Build the typed pagination dependency for one resource.
 
     The inner function keeps the parameter names and descriptions of
     :func:`common_parameters`, so switching a route over leaves the OpenAPI spec
-    byte-identical. Naming the resource's filterable keys in the description
-    (see :func:`filterable_keys`) is deliberately deferred to the endpoint-merge
-    work, where the spec changes anyway.
+    byte-identical.
     """
 
     async def page_params(
