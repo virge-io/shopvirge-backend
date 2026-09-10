@@ -36,7 +36,7 @@ from server.schemas.order import (
     OrderStatusUpdate,
     OrderUpdated,
 )
-from server.security import CustomCognitoToken, auth_required, auth_required_any_for_shop
+from server.security import CustomCognitoToken, admin_required, auth_required, auth_required_any_for_shop
 from server.services import stripe_client
 from server.services.shipping import compute_shipping_for_cart, resolve_vat_rate
 from server.services.stripe_client import StripeNotConfigured
@@ -555,7 +555,9 @@ def update(
     summary="Delete order",
     description="Permanently remove an order record. Requires authentication.",
 )
-def delete(order_id: UUID, current_user: CustomCognitoToken = Depends(auth_required)) -> None:
+def delete(order_id: UUID, _: object = Depends(admin_required)) -> None:
+    # Orders are not shop-scoped on this route (no shop in the path), so until the
+    # order-management routes are reworked, deleting is restricted to admins.
     return order_crud.delete(id=order_id)
 
 
