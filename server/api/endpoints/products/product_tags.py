@@ -3,7 +3,7 @@ from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -16,8 +16,8 @@ from server.crud.crud_tag import tag_crud
 from server.db import db
 from server.db.models import ProductToTagTable
 from server.schemas.product_to_tag import ProductToTagCreate, ProductToTagSchema, ProductToTagUpdate
-from server.security import auth_required_any
-from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -89,7 +89,7 @@ def get_by_id(id: UUID) -> ProductToTagSchema:
     tags=[AgentTag.EXPOSED],
     description="Create an association between a product and a tag. Both must exist within the shop.",
 )
-def create(request: Request, data: ProductToTagCreate = Body(...), principal: Any = Depends(auth_required_any)) -> None:
+def create(data: ProductToTagCreate = Body(...), principal: Principal = Depends(current_principal)) -> None:
     tag = tag_crud.get(data.tag_id)
     # Lock the product: tag links record a product revision and the shop UI
     # saves multiple links concurrently
@@ -101,8 +101,7 @@ def create(request: Request, data: ProductToTagCreate = Body(...), principal: An
     logger.info("Saving product_to_tag", data=data)
     ensure_baseline_product_revision(product)
     db.session.add(ProductToTagTable(**data.model_dump()))
-    created_by, source = actor(principal, request)
-    record_product_revision(product, action="update", created_by=created_by, source=source)
+    record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
     return
 
@@ -120,8 +119,7 @@ def update(
     *,
     product_to_tag_id: UUID,
     item_in: ProductToTagUpdate,
-    request: Request,
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> Any:
     product_to_tag = product_to_tag_crud.get(id=product_to_tag_id)
     logger.info("Updating product_to_tag", data=product_to_tag)
@@ -137,8 +135,7 @@ def update(
         commit=False,
     )
     if product is not None:
-        created_by, source = actor(principal, request)
-        record_product_revision(product, action="update", created_by=created_by, source=source)
+        record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
     return product_to_tag
 
@@ -152,7 +149,7 @@ def update(
     description="Delete the association between a product and a tag.",
     tags=[AgentTag.EXPOSED],
 )
-def delete(product_to_tag_id: UUID, request: Request, principal: Any = Depends(auth_required_any)) -> None:
+def delete(product_to_tag_id: UUID, principal: Principal = Depends(current_principal)) -> None:
     relation = product_to_tag_crud.get(product_to_tag_id)
     if not relation:
         raise_status(HTTPStatus.NOT_FOUND, f"ProductToTag with id {product_to_tag_id} not found")
@@ -161,7 +158,6 @@ def delete(product_to_tag_id: UUID, request: Request, principal: Any = Depends(a
         ensure_baseline_product_revision(product)
     db.session.delete(relation)
     if product is not None:
-        created_by, source = actor(principal, request)
-        record_product_revision(product, action="update", created_by=created_by, source=source)
+        record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
     return

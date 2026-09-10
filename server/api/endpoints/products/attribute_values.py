@@ -8,7 +8,7 @@ from typing import Any, List, Set
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -27,8 +27,8 @@ from server.schemas.product_attribute_value import (
     ProductAttributeValueBase,
     ProductAttributeValueSchema,
 )
-from server.security import auth_required, auth_required_any
-from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
+from server.security import Principal, current_principal, require_cognito
+from server.services.revisions import ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -86,13 +86,13 @@ def get_product_attribute_value(shop_id: UUID, id: UUID) -> ProductAttributeValu
     status_code=HTTPStatus.CREATED,
     deprecated=True,
     summary="Create product attribute values (deprecated)",
+    dependencies=[Depends(require_cognito)],  # stricter than its router: Cognito only, as before
     operation_id="product_attribute_values_create_deprecated",
 )
 def create_product_attribute_values(
     shop_id: UUID,
-    request: Request,
     data: ProductAttributeValueBase = Body(...),
-    principal: Any = Depends(auth_required),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     """DEPRECATED: Create a new product attribute value for a product within a shop.
 
@@ -138,8 +138,7 @@ def create_product_attribute_values(
     # Create + record a product revision in the same transaction
     ensure_baseline_product_revision(product)
     db.session.add(ProductAttributeValueTable(**data.model_dump()))
-    created_by, source = actor(principal, request)
-    record_product_revision(product, action="update", created_by=created_by, source=source)
+    record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
 
 
@@ -169,9 +168,8 @@ def get_attribute_options_by_ids(option_ids: list[UUID], shop_id: UUID) -> list[
 def create_product_attribute_values_for_product(
     shop_id: UUID,
     product_id: UUID,
-    request: Request,
     data: ProductAttributeOptionSelectionAdd = Body(...),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     """Assign existing attribute options to a product.
 
@@ -206,8 +204,7 @@ def create_product_attribute_values_for_product(
     if new_pavs:
         ensure_baseline_product_revision(product)
         db.session.add_all(new_pavs)
-        created_by, source = actor(principal, request)
-        record_product_revision(product, action="update", created_by=created_by, source=source)
+        record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
 
     return
@@ -249,9 +246,8 @@ def _create_product_attribute_values(
 def put_selected_product_attribute_values_by_product(
     shop_id: UUID,
     product_id: UUID,
-    request: Request,
     data: ProductAttributeOptionSelectionReplace = Body(...),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     """New version of selected options endpoint addressed by product_id in the path.
 
@@ -339,8 +335,7 @@ def put_selected_product_attribute_values_by_product(
         db.session.delete(obj)
 
     if to_add_objs or to_delete_objs:
-        created_by, source = actor(principal, request)
-        record_product_revision(product, action="update", created_by=created_by, source=source)
+        record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
 
     return
@@ -354,9 +349,7 @@ def put_selected_product_attribute_values_by_product(
     summary="Delete product attribute value",
     operation_id="product_attribute_values_delete",
 )
-def delete_product_attribute_value(
-    shop_id: UUID, id: UUID, request: Request, principal: Any = Depends(auth_required_any)
-) -> None:
+def delete_product_attribute_value(shop_id: UUID, id: UUID, principal: Principal = Depends(current_principal)) -> None:
     """Delete a product attribute value if it belongs to the given shop."""
     pav = product_attribute_value_crud.get(id)
     if not pav:
@@ -368,7 +361,6 @@ def delete_product_attribute_value(
         raise_status(HTTPStatus.NOT_FOUND, f"ProductAttributeValue with id {id} not found for this shop")
     ensure_baseline_product_revision(product)
     db.session.delete(pav)
-    created_by, source = actor(principal, request)
-    record_product_revision(product, action="update", created_by=created_by, source=source)
+    record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
     return

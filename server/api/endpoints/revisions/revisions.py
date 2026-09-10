@@ -12,11 +12,11 @@
 # limitations under the License.
 """Revision history, restore and trash endpoints for the PIM."""
 
-from typing import Any, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -24,7 +24,6 @@ from starlette.responses import Response
 from server.agent_tags import AgentTag
 from server.db import db
 from server.db.models import (
-    ApiKeyTable,
     AttributeTable,
     CategoryTable,
     ProductTable,
@@ -33,7 +32,7 @@ from server.db.models import (
     TagTable,
 )
 from server.schemas.revision import RestoreReport, RevisionDetail, RevisionSummary, TrashItem
-from server.security import auth_required_any
+from server.security import Principal, current_principal
 from server.services.restore import (
     restore_attribute_from_trash,
     restore_attribute_revision,
@@ -44,7 +43,7 @@ from server.services.restore import (
     restore_tag_from_trash,
     restore_tag_revision,
 )
-from server.services.revisions import ENTITY_ATTRIBUTE, ENTITY_CATEGORY, ENTITY_PRODUCT, ENTITY_TAG, actor
+from server.services.revisions import ENTITY_ATTRIBUTE, ENTITY_CATEGORY, ENTITY_PRODUCT, ENTITY_TAG
 
 logger = structlog.get_logger(__name__)
 
@@ -224,26 +223,24 @@ def restore_product_revision_endpoint(
     shop_id: UUID,
     product_id: UUID,
     revision_no: int,
-    request: Request,
     force: bool = Query(
         False,
         description="Recreate the product from the snapshot even if it was permanently purged (user credentials required).",
     ),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    if force and isinstance(principal, ApiKeyTable):
+    if force and principal.kind == "api_key":
         raise HTTPException(
             status_code=403,
             detail="Recreating a purged product requires user credentials; API keys cannot use force=true.",
         )
-    created_by, source = actor(principal, request)
     return restore_product_revision(
         shop_id=shop_id,
         product_id=product_id,
         revision_no=revision_no,
         allow_recreate=force,
-        created_by=created_by,
-        source=source,
+        created_by=principal.label,
+        source=principal.via,
     )
 
 
@@ -261,11 +258,11 @@ def restore_product_revision_endpoint(
 def restore_product_endpoint(
     shop_id: UUID,
     product_id: UUID,
-    request: Request,
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    created_by, source = actor(principal, request)
-    return restore_product_from_trash(shop_id=shop_id, product_id=product_id, created_by=created_by, source=source)
+    return restore_product_from_trash(
+        shop_id=shop_id, product_id=product_id, created_by=principal.label, source=principal.via
+    )
 
 
 @router.get(
@@ -293,17 +290,15 @@ def list_category_revisions(shop_id: UUID, category_id: UUID) -> List[RevisionSu
 def restore_category_endpoint(
     shop_id: UUID,
     category_id: UUID,
-    request: Request,
     restore_products: bool = Query(True, description="Also restore the products trashed together with this category."),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    created_by, source = actor(principal, request)
     return restore_category_from_trash(
         shop_id=shop_id,
         category_id=category_id,
         restore_products=restore_products,
-        created_by=created_by,
-        source=source,
+        created_by=principal.label,
+        source=principal.via,
     )
 
 
@@ -325,28 +320,26 @@ def restore_category_revision_endpoint(
     shop_id: UUID,
     category_id: UUID,
     revision_no: int,
-    request: Request,
     force: bool = Query(
         False,
         description=(
             "Recreate the category from the snapshot even if it was permanently purged (user credentials required)."
         ),
     ),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    if force and isinstance(principal, ApiKeyTable):
+    if force and principal.kind == "api_key":
         raise HTTPException(
             status_code=403,
             detail="Recreating a purged category requires user credentials; API keys cannot use force=true.",
         )
-    created_by, source = actor(principal, request)
     return restore_category_revision(
         shop_id=shop_id,
         category_id=category_id,
         revision_no=revision_no,
         allow_recreate=force,
-        created_by=created_by,
-        source=source,
+        created_by=principal.label,
+        source=principal.via,
     )
 
 
@@ -367,26 +360,24 @@ def restore_tag_revision_endpoint(
     shop_id: UUID,
     tag_id: UUID,
     revision_no: int,
-    request: Request,
     force: bool = Query(
         False,
         description="Recreate the tag from the snapshot even if it was permanently purged (user credentials required).",
     ),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    if force and isinstance(principal, ApiKeyTable):
+    if force and principal.kind == "api_key":
         raise HTTPException(
             status_code=403,
             detail="Recreating a purged tag requires user credentials; API keys cannot use force=true.",
         )
-    created_by, source = actor(principal, request)
     return restore_tag_revision(
         shop_id=shop_id,
         tag_id=tag_id,
         revision_no=revision_no,
         allow_recreate=force,
-        created_by=created_by,
-        source=source,
+        created_by=principal.label,
+        source=principal.via,
     )
 
 
@@ -404,11 +395,9 @@ def restore_tag_revision_endpoint(
 def restore_tag_endpoint(
     shop_id: UUID,
     tag_id: UUID,
-    request: Request,
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    created_by, source = actor(principal, request)
-    return restore_tag_from_trash(shop_id=shop_id, tag_id=tag_id, created_by=created_by, source=source)
+    return restore_tag_from_trash(shop_id=shop_id, tag_id=tag_id, created_by=principal.label, source=principal.via)
 
 
 @router.post(
@@ -431,29 +420,27 @@ def restore_attribute_revision_endpoint(
     shop_id: UUID,
     attribute_id: UUID,
     revision_no: int,
-    request: Request,
     force: bool = Query(
         False,
         description=(
             "Recreate the attribute from the snapshot even if it was permanently purged (user credentials required)."
         ),
     ),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    if force and isinstance(principal, ApiKeyTable):
+    if force and principal.kind == "api_key":
         raise HTTPException(
             status_code=403,
             detail="Recreating a purged attribute requires user credentials; API keys cannot use force=true.",
         )
-    created_by, source = actor(principal, request)
     try:
         return restore_attribute_revision(
             shop_id=shop_id,
             attribute_id=attribute_id,
             revision_no=revision_no,
             allow_recreate=force,
-            created_by=created_by,
-            source=source,
+            created_by=principal.label,
+            source=principal.via,
         )
     except IntegrityError:
         raise HTTPException(
@@ -480,12 +467,10 @@ def restore_attribute_revision_endpoint(
 def restore_attribute_endpoint(
     shop_id: UUID,
     attribute_id: UUID,
-    request: Request,
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> RestoreReport:
-    created_by, source = actor(principal, request)
     return restore_attribute_from_trash(
-        shop_id=shop_id, attribute_id=attribute_id, created_by=created_by, source=source
+        shop_id=shop_id, attribute_id=attribute_id, created_by=principal.label, source=principal.via
     )
 
 

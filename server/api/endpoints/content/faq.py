@@ -18,7 +18,7 @@ logger = structlog.get_logger(__name__)
 # ``server/api/api.py``:
 #
 #   public_router   reads — the FAQ is public content     none
-#   router          writes                                auth_required
+#   router          writes                                require_cognito
 router = APIRouter()
 
 faq_page_params = page_params_for(faq_crud)

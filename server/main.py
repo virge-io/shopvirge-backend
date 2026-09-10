@@ -72,7 +72,7 @@ async def lifespan(app_: FastAPI):
         yield
 
 
-APP_VERSION = "0.5.2"
+APP_VERSION = "0.5.3"
 
 # Assigned after the api_router is included if MCP_ENABLED. The lifespan
 # closure above references it.

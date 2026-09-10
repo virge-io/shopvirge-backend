@@ -120,9 +120,9 @@ def test_revoked_api_key_stops_opening_endpoints(real_auth_client):
 
 # --- Per-shop scoping: a key minted for shop A must not reach shop B -------------------
 #
-# The key itself is valid (auth_required_any authenticates it fine); what is
+# The key itself is valid (current_principal authenticates it fine); what is
 # rejected is using it against a different shop's path. Enforced centrally by
-# ``auth_required_any_for_shop``, wired as a router-level dependency on every
+# ``require_shop``, wired as a router-level dependency on every
 # ``/shops/{shop_id}/...`` router in ``server/api/api.py``.
 
 SHOP_SCOPED_READ_PATHS = [
@@ -197,10 +197,10 @@ def test_cognito_user_without_groups_is_refused(as_cognito_user):
 def test_mcp_client_token_is_scoped_like_a_user(fastapi_app, monkeypatch):
     """A token from the MCP app client is a person, not a service — scope it.
 
-    ``auth_required`` already treats the MCP client id as a user token; the shop
+    ``Principal.from_token`` already classifies the MCP client id as a user; the shop
     check must agree, or the agent login flow would reach every shop.
     """
-    from server.security import auth_required, auth_required_any
+    from server.security import Principal, current_principal
     from tests.unit_tests.conftest import _cognito_token
 
     monkeypatch.setattr(app_settings, "AWS_COGNITO_MCP_CLIENT_ID", "mcp-client-id")
@@ -209,16 +209,16 @@ def test_mcp_client_token_is_scoped_like_a_user(fastapi_app, monkeypatch):
 
     token = _cognito_token([str(own_shop)])
     token.client_id = "mcp-client-id"
-    saved = {d: fastapi_app.dependency_overrides.get(d) for d in (auth_required, auth_required_any)}
-    for dep in saved:
-        fastapi_app.dependency_overrides[dep] = lambda: token
+    principal = Principal.from_token(token)
+    assert principal.kind == "user"
+    saved = fastapi_app.dependency_overrides[current_principal]
+    fastapi_app.dependency_overrides[current_principal] = lambda: principal
     try:
         client = TestClient(fastapi_app)
         assert client.get(f"/shops/{own_shop}/tags/").status_code == 200
         assert client.get(f"/shops/{other_shop}/tags/").status_code == 403
     finally:
-        for dep, original in saved.items():
-            fastapi_app.dependency_overrides[dep] = original
+        fastapi_app.dependency_overrides[current_principal] = saved
 
 
 # --- API key management is itself shop-scoped ---------------------------------------

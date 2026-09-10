@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from server.api.endpoints.accounts import admin, api_keys, shop
 
-# shop tier (relative to /shops/{shop_id}): Cognito only — a key must not be
+# shop_cognito tier (relative to /shops/{shop_id}): keys refused — a key must not be
 # able to mint another key, and a user must not mint one for a shop they lack.
 shop_router = APIRouter()
 shop_router.include_router(shop.router, prefix="/accounts", tags=["shops", "accounts"])

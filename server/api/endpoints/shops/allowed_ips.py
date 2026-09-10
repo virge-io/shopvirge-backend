@@ -41,23 +41,23 @@ def _set_allowed_ips(shop: ShopTable, allowed_ips: List[str]) -> List[str]:
 
 
 @router.get(
-    "/allowed-ips/{id}",
+    "/allowed-ips/{shop_id}",
     response_model=List[str],
     summary="List allowed IPs",
     description="Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
 )
-def get_allowed_ips(id: UUID) -> List[str]:
-    return list(shop_or_404(id).allowed_ips or [])
+def get_allowed_ips(shop_id: UUID) -> List[str]:
+    return list(shop_or_404(shop_id).allowed_ips or [])
 
 
 @router.post(
-    "/allowed-ips/{id}",
+    "/allowed-ips/{shop_id}",
     response_model=List[str],
     summary="Add allowed IP",
     description="Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
 )
-def add_new_ip(id: UUID, new_ip: ShopIp) -> List[str]:
-    shop = shop_or_404(id)
+def add_new_ip(shop_id: UUID, new_ip: ShopIp) -> List[str]:
+    shop = shop_or_404(shop_id)
     allowed_ips = list(shop.allowed_ips or [])
     if new_ip.ip in allowed_ips:
         raise_status(HTTPStatus.BAD_REQUEST, f"IP {new_ip.ip} already exists")
@@ -66,13 +66,13 @@ def add_new_ip(id: UUID, new_ip: ShopIp) -> List[str]:
 
 
 @router.post(
-    "/allowed-ips/{id}/remove",
+    "/allowed-ips/{shop_id}/remove",
     response_model=List[str],
     summary="Remove allowed IP",
     description="Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
 )
-def remove_ip(id: UUID, old_ip: ShopIp) -> List[str]:
-    shop = shop_or_404(id)
+def remove_ip(shop_id: UUID, old_ip: ShopIp) -> List[str]:
+    shop = shop_or_404(shop_id)
     allowed_ips = list(shop.allowed_ips or [])
     if old_ip.ip not in allowed_ips:
         raise_status(HTTPStatus.BAD_REQUEST, f"IP {old_ip.ip} not on list")

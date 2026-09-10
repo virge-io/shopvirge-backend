@@ -12,7 +12,7 @@ ShopVirge is a FastAPI REST API backed by PostgreSQL via SQLAlchemy 2.0, with a 
 | **Models** | `server/db/models.py` | SQLAlchemy 2.0 models suffixed `Table`, inheriting `BaseModel` from `server/db/database.py`. |
 | **Schemas** | `server/schemas/` | Pydantic 2 models for request and response validation. |
 | **Settings** | `server/settings.py` | Pydantic `BaseSettings`; loads env vars and `.env`. |
-| **Security** | `server/security.py` | AWS Cognito + JWT + `auth_required` dependency. |
+| **Security** | `server/security.py` | AWS Cognito + API keys: `current_principal` resolver and the `require_*` guards. |
 | **Email** | `server/mail.py` + `server/mail_templates/{en,nl}/` | Jinja2-rendered transactional email. |
 
 ## Multi-tenancy

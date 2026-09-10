@@ -10,7 +10,7 @@ Almost every resource in ShopVirge belongs to a specific shop. Most of those end
 /shops/{shop_id}/<resource>/<sub-resource>/{id}
 ```
 
-Handlers that accept a `shop_id` path parameter are gated by an auth dependency (`auth_required` or `auth_required_any`), except for the deliberately public storefront reads listed under [Public sub-routers](#public-sub-routers). Which shops a caller may access is determined by their Cognito group membership — see [Authentication](authentication.md).
+Handlers that accept a `shop_id` path parameter are gated by `require_shop` on their tier, except for the deliberately public storefront reads listed under [Public sub-routers](#public-sub-routers). Which shops a caller may access is determined by their Cognito group membership — see [Authentication](authentication.md).
 
 CRUDs for shop-owned resources use the shop-aware helpers on `CRUDBase`:
 
@@ -36,7 +36,7 @@ The shop-related domain packages under `server/api/endpoints/`:
 | `products/prices.py` | Price management. |
 | `accounts/shop.py` | Shop-level customer/vendor accounts. |
 | `checkout/stripe.py` | Stripe integration for one-time PaymentIntents and subscription create/cancel. |
-| `accounts/api_keys.py` | Per-shop API key management (mint, list, revoke). Keys are accepted on MCP-exposed routes via `auth_required_any`. |
+| `accounts/api_keys.py` | Per-shop API key management (mint, list, revoke). Keys are accepted on tiers that mount `require_shop` without `require_cognito`. |
 | `categories/images.py` | Category image uploads. |
 | `images/shop.py` | Generic shop image uploads. |
 | `content/info_request.py` | Incoming info requests. The file also exposes the public `POST /info-request/form` endpoint, which uses `pydantic-forms`; see [Forms](forms.md). |
@@ -51,15 +51,15 @@ posture, so a guard is never repeated per include or per route:
 | Tier | Guard | Holds |
 |------|-------|-------|
 | `public` | none | storefront reads, checkout, system probes |
-| `authenticated` | `auth_required` | collection management: `shops`, `orders`, `faq`, `forms`, `early-access` |
-| `admin` | `admin_required` | the cross-shop accounts view |
-| `shop` | `shop_access_required` | per-shop, Cognito only: accounts, API keys, image uploads |
-| `shop_any` | `auth_required_any_for_shop` | per-shop, API key or Cognito — the MCP-exposed CRUD surface |
+| `authenticated` | `require_cognito` | collection management: `shops`, `orders`, `faq`, `forms`, `early-access` |
+| `admin` | `require_cognito`, `require_admin` | the cross-shop accounts view |
+| `shop` | `require_shop` | per-shop, API key or Cognito — the MCP-exposed CRUD surface |
+| `shop_cognito` | `require_cognito`, `require_shop` | per-shop, keys refused: accounts, API keys, image uploads |
 
-Two routers are included outside the tiers with their guard spelled out, until
-the changes that remove them land: `shops.legacy_id_router` (paths that still
-spell the shop id `{id}`) and `orders.per_shop_router` (orders mount at
-`/orders`, not under the shop).
+Two routers are included outside the tiers with their guard spelled out,
+because their own path is the shop segment: `shops.shop_router` (`/shops/{shop_id}`,
+`/shops/config/{shop_id}`, `/shops/allowed-ips/{shop_id}`) and `orders.per_shop_router`
+(orders mount at `/orders`, not under the shop); the orders merge removes the latter.
 
 Inside a package one module holds one posture — `shops/public.py`,
 `shops/collection.py`, `orders/management.py`, `orders/per_shop.py`,

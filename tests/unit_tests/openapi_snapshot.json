@@ -6303,7 +6303,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.5.2"
+    "version": "0.5.3"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6396,6 +6396,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -6453,6 +6469,22 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -6508,6 +6540,22 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -6575,6 +6623,22 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -6638,6 +6702,22 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -6788,6 +6868,24 @@
     "/early-access/": {
       "post": {
         "operationId": "create_early_access__post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6917,6 +7015,24 @@
       "post": {
         "description": "Add a new FAQ question and answer. Requires authentication. Returns 409 if a FAQ with the same question already exists.",
         "operationId": "create_faq__post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6974,6 +7090,22 @@
               "title": "Faq Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -7013,6 +7145,22 @@
               "format": "uuid",
               "title": "Faq Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -7107,6 +7255,24 @@
       "get": {
         "description": "Retrieve all forms.\n\nArgs:\n    response: Response\n\nReturns:\n    Form titles",
         "operationId": "get_forms_forms_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7121,6 +7287,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -7162,6 +7338,22 @@
                 }
               ],
               "title": "Shop Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -7433,6 +7625,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -7474,6 +7682,24 @@
       "post": {
         "description": "Create a new license. Recurring licenses must not have an `end_date`. Requires superuser privileges.",
         "operationId": "create_licenses_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7574,6 +7800,22 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -7613,6 +7855,22 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -7660,6 +7918,22 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -7757,6 +8031,22 @@
               },
               "title": "Sort",
               "type": "array"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -8032,6 +8322,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List completed orders for a shop",
         "tags": [
           "orders",
@@ -8146,6 +8441,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List pending orders for a shop",
         "tags": [
           "orders",
@@ -8257,6 +8557,22 @@
               "title": "Order Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -8348,6 +8664,22 @@
               "format": "uuid",
               "title": "Order Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -8527,6 +8859,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -8568,6 +8916,24 @@
       "post": {
         "description": "Create a new shop on the platform. Returns the created shop record.",
         "operationId": "create_shops__post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -8611,19 +8977,35 @@
         ]
       }
     },
-    "/shops/allowed-ips/{id}": {
+    "/shops/allowed-ips/{shop_id}": {
       "get": {
         "description": "Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
-        "operationId": "get_allowed_ips_shops_allowed_ips__id__get",
+        "operationId": "get_allowed_ips_shops_allowed_ips__shop_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -8635,7 +9017,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "title": "Response Get Allowed Ips Shops Allowed Ips  Id  Get",
+                  "title": "Response Get Allowed Ips Shops Allowed Ips  Shop Id  Get",
                   "type": "array"
                 }
               }
@@ -8665,16 +9047,32 @@
       },
       "post": {
         "description": "Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
-        "operationId": "add_new_ip_shops_allowed_ips__id__post",
+        "operationId": "add_new_ip_shops_allowed_ips__shop_id__post",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -8696,7 +9094,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "title": "Response Add New Ip Shops Allowed Ips  Id  Post",
+                  "title": "Response Add New Ip Shops Allowed Ips  Shop Id  Post",
                   "type": "array"
                 }
               }
@@ -8725,19 +9123,35 @@
         ]
       }
     },
-    "/shops/allowed-ips/{id}/remove": {
+    "/shops/allowed-ips/{shop_id}/remove": {
       "post": {
         "description": "Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
-        "operationId": "remove_ip_shops_allowed_ips__id__remove_post",
+        "operationId": "remove_ip_shops_allowed_ips__shop_id__remove_post",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -8759,7 +9173,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "title": "Response Remove Ip Shops Allowed Ips  Id  Remove Post",
+                  "title": "Response Remove Ip Shops Allowed Ips  Shop Id  Remove Post",
                   "type": "array"
                 }
               }
@@ -8788,18 +9202,18 @@
         ]
       }
     },
-    "/shops/cache-status/{id}": {
+    "/shops/cache-status/{shop_id}": {
       "get": {
         "description": "Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
-        "operationId": "get_cache_status_shops_cache_status__id__get",
+        "operationId": "get_cache_status_shops_cache_status__shop_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -8832,18 +9246,18 @@
         ]
       }
     },
-    "/shops/config/{id}": {
+    "/shops/config/{shop_id}": {
       "get": {
         "description": "Retrieve the shop's full configuration object, including feature toggles (e.g. stock tracking, checkout behaviour) and payment settings.",
-        "operationId": "get_config_shops_config__id__get",
+        "operationId": "get_config_shops_config__shop_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -8877,16 +9291,32 @@
       },
       "put": {
         "description": "Update the shop's configuration. Partial updates are supported \u2014 only provided fields are changed.",
-        "operationId": "update_config_shops_config__id__put",
+        "operationId": "update_config_shops_config__shop_id__put",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -8933,18 +9363,18 @@
         ]
       }
     },
-    "/shops/last-completed-order/{id}": {
+    "/shops/last-completed-order/{shop_id}": {
       "get": {
         "description": "Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
-        "operationId": "get_last_completed_order_shops_last_completed_order__id__get",
+        "operationId": "get_last_completed_order_shops_last_completed_order__shop_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -8977,18 +9407,18 @@
         ]
       }
     },
-    "/shops/last-pending-order/{id}": {
+    "/shops/last-pending-order/{shop_id}": {
       "get": {
         "description": "Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
-        "operationId": "get_last_pending_order_shops_last_pending_order__id__get",
+        "operationId": "get_last_pending_order_shops_last_pending_order__shop_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -9025,6 +9455,24 @@
       "get": {
         "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Always call this first \u2014 before saying anything to the user.",
         "operationId": "list_my_shops",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -9035,6 +9483,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -9049,18 +9507,74 @@
         ]
       }
     },
-    "/shops/{id}": {
-      "get": {
-        "description": "Retrieve a shop by its UUID, including all associated price records.",
-        "operationId": "get_by_id_shops__id__get",
+    "/shops/{shop_id}": {
+      "delete": {
+        "description": "Permanently remove a shop from the platform.",
+        "operationId": "delete_shops__shop_id__delete",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "shop_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Id",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete shop",
+        "tags": [
+          "shops"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a shop by its UUID, including all associated price records.",
+        "operationId": "get_by_id_shops__shop_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
               "type": "string"
             }
           }
@@ -9091,48 +9605,6 @@
         "tags": [
           "shops"
         ]
-      }
-    },
-    "/shops/{shop_id}": {
-      "delete": {
-        "description": "Permanently remove a shop from the platform.",
-        "operationId": "delete_shops__shop_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "shop_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Shop Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Delete shop",
-        "tags": [
-          "shops"
-        ]
       },
       "put": {
         "description": "Update shop details such as name, description, and VAT rates.",
@@ -9146,6 +9618,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9254,6 +9742,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -9305,6 +9809,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9374,6 +9894,22 @@
               "title": "Shop Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -9424,6 +9960,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9493,6 +10045,22 @@
               "title": "Shop Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -9541,6 +10109,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9593,6 +10177,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9662,6 +10262,22 @@
               "format": "uuid",
               "title": "Key Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -9798,6 +10414,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List attribute options for a shop",
         "tags": [
           "shops",
@@ -9869,6 +10490,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create attribute option",
         "tags": [
           "shops",
@@ -9946,6 +10572,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete attribute option",
         "tags": [
           "shops",
@@ -10016,6 +10647,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute option",
         "tags": [
           "shops",
@@ -10096,6 +10732,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update attribute option",
         "tags": [
           "shops",
@@ -10210,6 +10851,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List shop attributes",
         "tags": [
           "shops",
@@ -10281,6 +10927,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create attribute",
         "tags": [
           "shops",
@@ -10353,6 +11004,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute by ID",
         "tags": [
           "shops",
@@ -10425,6 +11081,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute by ID with options",
         "tags": [
           "shops",
@@ -10495,6 +11156,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute by name",
         "tags": [
           "shops",
@@ -10608,6 +11274,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List shop attributes with options",
         "tags": [
           "shops",
@@ -10684,6 +11355,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete attribute (moves to trash)",
         "tags": [
           "shops",
@@ -10764,6 +11440,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update attribute",
         "tags": [
           "shops",
@@ -10845,6 +11526,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -10907,6 +11604,22 @@
               "format": "uuid",
               "title": "Attribute Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -11003,6 +11716,22 @@
               "title": "Force",
               "type": "boolean"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -11064,6 +11793,22 @@
               "format": "uuid",
               "title": "Option Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -11165,6 +11910,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore attribute from trash",
         "tags": [
           "shops",
@@ -11258,6 +12008,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore attribute to a revision",
         "tags": [
           "shops",
@@ -11330,6 +12085,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get attribute by ID with options",
         "tags": [
           "shops",
@@ -11399,6 +12159,22 @@
               "title": "Sort",
               "type": "array"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -11455,6 +12231,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -11523,6 +12315,22 @@
               "title": "Shop Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -11577,6 +12385,22 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -11728,6 +12552,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List categories",
         "tags": [
           "categories",
@@ -11796,6 +12625,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create category",
         "tags": [
           "categories",
@@ -11866,6 +12700,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get category by name",
         "tags": [
           "categories"
@@ -11953,6 +12792,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete category (moves to trash)",
         "tags": [
           "categories",
@@ -12022,6 +12866,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get category",
         "tags": [
           "categories",
@@ -12099,6 +12948,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update category",
         "tags": [
           "categories",
@@ -12417,6 +13271,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore category from trash",
         "tags": [
           "shops",
@@ -12493,6 +13352,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List category revisions",
         "tags": [
           "shops",
@@ -12585,6 +13449,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore category to a revision",
         "tags": [
           "shops",
@@ -12664,6 +13533,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Reorder category",
         "tags": [
           "categories"
@@ -12691,6 +13565,22 @@
             "schema": {
               "title": "Image Name",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -12952,6 +13842,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List product attribute values",
         "tags": [
           "shops",
@@ -13091,6 +13986,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete product attribute value",
         "tags": [
           "shops",
@@ -13162,6 +14062,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product attribute value",
         "tags": [
           "shops",
@@ -13242,6 +14147,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create product attribute values for product",
         "tags": [
           "shops",
@@ -13316,6 +14226,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Replace product attribute values for product",
         "tags": [
           "shops",
@@ -13431,6 +14346,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List product-tag associations",
         "tags": [
           "shops",
@@ -13495,6 +14415,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Add tag to product",
         "tags": [
           "shops",
@@ -13575,6 +14500,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product-tag relation ID",
         "tags": [
           "shops",
@@ -13647,6 +14577,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product-tag association",
         "tags": [
           "shops",
@@ -13712,6 +14647,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Remove tag from product",
         "tags": [
           "shops",
@@ -13785,6 +14725,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update product-tag association",
         "tags": [
           "shops",
@@ -13916,6 +14861,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List products",
         "tags": [
           "shops",
@@ -13985,6 +14935,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create product",
         "tags": [
           "shops",
@@ -14160,6 +15115,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List products with attributes",
         "tags": [
           "shops",
@@ -14236,6 +15196,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete product (moves to trash)",
         "tags": [
           "shops",
@@ -14368,6 +15333,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update product",
         "tags": [
           "shops",
@@ -14440,6 +15410,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore product from trash",
         "tags": [
           "shops",
@@ -14516,6 +15491,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List product revisions",
         "tags": [
           "shops",
@@ -14598,6 +15578,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get product revision",
         "tags": [
           "shops",
@@ -14691,6 +15676,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore product to a revision",
         "tags": [
           "shops",
@@ -14770,6 +15760,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Reorder product",
         "tags": [
           "shops",
@@ -15005,6 +16000,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List all revisions in a shop",
         "tags": [
           "shops",
@@ -15078,6 +16078,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get one revision by id",
         "tags": [
           "shops",
@@ -15354,6 +16359,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List tags",
         "tags": [
           "shops",
@@ -15423,6 +16433,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create tag",
         "tags": [
           "shops",
@@ -15494,6 +16509,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get tag by name",
         "tags": [
           "shops",
@@ -15570,6 +16590,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Delete tag (moves to trash)",
         "tags": [
           "shops",
@@ -15640,6 +16665,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get tag",
         "tags": [
           "shops",
@@ -15718,6 +16748,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update tag",
         "tags": [
           "shops",
@@ -15790,6 +16825,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore tag from trash",
         "tags": [
           "shops",
@@ -15883,6 +16923,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Restore tag to a revision",
         "tags": [
           "shops",
@@ -15949,6 +16994,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List trashed products, categories, tags and attributes",
         "tags": [
           "shops",

@@ -4,7 +4,7 @@ from typing import Any, List
 from uuid import UUID, uuid4
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -24,9 +24,8 @@ from server.schemas.category import (
     CategorySchema,
     CategoryUpdate,
 )
-from server.security import auth_required_any
+from server.security import Principal, current_principal
 from server.services.revisions import (
-    actor,
     ensure_baseline_category_revision,
     ensure_baseline_product_revision,
     record_category_revision,
@@ -104,16 +103,13 @@ def get_by_name(name: str, shop_id: UUID) -> CategorySchema:
     summary="Create category",
     description="Add a new category to a shop. The `order_number` is automatically set to the next available value.",
 )
-def create(
-    shop_id: UUID, request: Request, data: CategoryCreate = Body(...), principal: Any = Depends(auth_required_any)
-) -> None:
+def create(shop_id: UUID, data: CategoryCreate = Body(...), principal: Principal = Depends(current_principal)) -> None:
     category = CategoryTable.query.filter_by(shop_id=shop_id).order_by(CategoryTable.order_number.desc()).first()
     data.order_number = (category.order_number + 1) if category is not None else 0
 
     logger.info("Saving category", data=data)
-    created_by, source = actor(principal, request)
     category = category_crud.create_by_shop_id(obj_in=data, shop_id=shop_id, commit=False)
-    record_category_revision(category, action="create", created_by=created_by, source=source)
+    record_category_revision(category, action="create", created_by=principal.label, source=principal.via)
     db.session.commit()
     db.session.refresh(category)
     return category
@@ -138,22 +134,20 @@ def update(
     category_id: UUID,
     shop_id: UUID,
     item_in: CategoryUpdate,
-    request: Request,
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> Any:
     category = category_crud.get_id_by_shop_id(shop_id, category_id, for_update=True)
     logger.info("Updating category", data=category)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    created_by, source = actor(principal, request)
     ensure_baseline_category_revision(category)
     category = category_crud.update(
         db_obj=category,
         obj_in=item_in,
         commit=False,
     )
-    record_category_revision(category, action="update", created_by=created_by, source=source)
+    record_category_revision(category, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
 
     return category
@@ -214,10 +208,9 @@ def swap(shop_id: UUID, category_id: UUID, move_up: bool):
 def delete(
     category_id: UUID,
     shop_id: UUID,
-    request: Request,
     force: bool = Query(False, description="Also move all products in this category to the trash."),
     detach: bool = Query(False, description="Keep the products; clear their category reference instead."),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     if force and detach:
         raise HTTPException(status_code=422, detail="force and detach are mutually exclusive")
@@ -246,14 +239,13 @@ def delete(
             },
         )
 
-    created_by, source = actor(principal, request)
     now = datetime.now(timezone.utc)
     extra_data = None
 
     if products and force:
         batch_id = uuid4()
         for product in products:
-            record_product_revision(product, action="delete", created_by=created_by, source=source)
+            record_product_revision(product, action="delete", created_by=principal.label, source=principal.via)
             product.deleted_at = now
             product.deleted_batch_id = batch_id
         extra_data = {"deleted_batch_id": str(batch_id), "deleted_product_count": len(products)}
@@ -266,13 +258,15 @@ def delete(
             record_product_revision(
                 product,
                 action="update",
-                created_by=created_by,
-                source=source,
+                created_by=principal.label,
+                source=principal.via,
                 extra_data={"detached_from_category": detached_from},
             )
         extra_data = {"detached_product_count": len(products)}
 
-    record_category_revision(category, action="delete", created_by=created_by, source=source, extra_data=extra_data)
+    record_category_revision(
+        category, action="delete", created_by=principal.label, source=principal.via, extra_data=extra_data
+    )
     category.deleted_at = now
     db.session.commit()
     return

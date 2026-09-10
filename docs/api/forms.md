@@ -61,7 +61,7 @@ Implementation:
 
 Authentication:
 
-- Protected by `auth_required`
+- Protected by `require_cognito` (the `authenticated` tier)
 
 ### `POST /forms/{form_key}`
 

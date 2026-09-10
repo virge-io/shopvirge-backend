@@ -111,13 +111,16 @@ PYTHONPATH=. uv run alembic revision --message "Description"
 
 ## Authentication
 
-Three auth dependencies in `server/security.py`:
+One resolver and three guards in `server/security.py`:
 
-- `auth_required` — Cognito JWT only (user tokens or M2M tokens with `/api` scope). Used on management routes.
-- `auth_required_any` — API key **or** Cognito JWT. Used on MCP-exposed CRUD routes (products, categories, tags, attributes).
-- `admin_required` — wraps `auth_required`; additionally asserts membership in the Cognito `admins` group or its legacy `Admins` casing.
+- `current_principal` — authenticates whatever credential the request carries (an `sv_` API key via `X-API-Key` or `Authorization: Bearer sv_…`, a Cognito user token, or a Cognito M2M token with the `/api` scope) and returns a `Principal` (`kind` user/m2m/api_key, `subject`, `groups`, `shop_id`, `via` rest/mcp).
+- `require_shop` — the `shop_id` in the path must be one the principal may touch (`Principal.may_touch`): a key its own shop, a user the shops in its groups, an admin any.
+- `require_cognito` — refuses API keys; for api-key management and other Cognito-only routes.
+- `require_admin` — `Principal.is_admin`: the Cognito `admins` group (or legacy `Admins`), or an M2M token.
 
-API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach routes using `auth_required_any` — the full REST surface requires Cognito.
+Guards are mounted per tier in `server/api/api.py`, never per route. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
+
+API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach tiers that mount `require_shop` without `require_cognito` — the full REST surface requires Cognito.
 
 Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `GET /shops/my-shops` is the single resolution point; individual shop endpoints do not re-enforce this.
 
@@ -131,7 +134,7 @@ Tools are **auto-generated from the FastAPI route table** by `fastmcp`. A route 
 
 1. Adding `tags=[AgentTag.EXPOSED]` (plus `AgentTag.LARGE` for list endpoints) to the route decorator.
 2. Setting `operation_id="short_snake_case"` — this becomes the tool name (public API contract).
-3. Using `Depends(auth_required_any)` so API-key clients can reach it.
+3. Mounting it on the `shop` tier (`require_shop` only, no `require_cognito`) so API-key clients can reach it.
 4. Writing the docstring for an LLM: state intent, list required params, call out side effects.
 
 Any route not tagged `AgentTag.EXPOSED` is excluded from MCP by default.

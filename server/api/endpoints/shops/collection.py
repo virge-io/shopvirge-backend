@@ -16,7 +16,7 @@ from server.schemas.shop import (
     ShopCreate,
     ShopSchema,
 )
-from server.security import CustomCognitoToken, auth_required, has_admin_group
+from server.security import Principal, current_principal, has_admin_group
 
 logger = structlog.get_logger(__name__)
 
@@ -51,14 +51,14 @@ def get_multi(response: Response, page: PageParams = Depends(shop_page_params)) 
     ),
 )
 def get_my_shops(
-    token: CustomCognitoToken = Depends(auth_required),
+    principal: Principal = Depends(current_principal),
 ) -> MyShopsResponse:
     shops, _ = shop_crud.get_multi(skip=0, limit=1000, filter_parameters=[], sort_parameters=[])
-    is_admin = has_admin_group(token.cognito_groups)
+    is_admin = has_admin_group(principal.groups)
     if is_admin:
         accessible = shops
     else:
-        accessible_ids = set(token.cognito_groups)
+        accessible_ids = set(principal.groups)
         accessible = [s for s in shops if str(s.id) in accessible_ids]
     return MyShopsResponse(shops=accessible, is_admin=is_admin, can_write=len(accessible) > 0)
 
