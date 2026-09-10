@@ -14,7 +14,7 @@
 
 Mounted at ``/admin/accounts``. All handlers require membership of the
 Cognito ``Admins`` group (M2M tokens are trusted) via
-the ``admin`` tier in ``server/api/api.py`` (``admin_required``). The shop-scoped ``/shops/{shop_id}/accounts``
+the ``admin`` tier in ``server/api/api.py`` (``require_admin``). The shop-scoped ``/shops/{shop_id}/accounts``
 routes remain the standard read/write path for end-user shops; this
 router exists so an admin can:
 
@@ -38,6 +38,7 @@ from starlette.responses import Response
 
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
+from server.api.route_helpers import get_or_404
 from server.crud.crud_account import account_crud
 from server.db import db
 from server.db.models import Account
@@ -55,19 +56,16 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-def _load_account_or_404(id: UUID) -> Account:
-    account = account_crud.get(id)
-    if not account:
-        raise_status(HTTPStatus.NOT_FOUND, f"Account with id {id} not found")
-    return account
+def valid_account(id: UUID) -> Account:
+    """Path ``{id}`` resolved to the account, or 404."""
+    return get_or_404(account_crud.get(id), f"Account with id {id} not found")
 
 
-def _require_linked_shop(account: Account) -> None:
+def linked_account(account: Account = Depends(valid_account)) -> Account:
+    """Anything Stripe-related needs an account attached to a shop, else 400."""
     if account.shop_id is None or account.shop is None:
-        raise_status(
-            HTTPStatus.BAD_REQUEST,
-            f"Account {account.id} is not linked to a shop",
-        )
+        raise_status(HTTPStatus.BAD_REQUEST, f"Account {account.id} is not linked to a shop")
+    return account
 
 
 @router.get(
@@ -130,9 +128,8 @@ def list_accounts(
     },
 )
 def get_account(
-    id: UUID,
+    account: Account = Depends(valid_account),
 ) -> AdminAccountSchema:
-    account = _load_account_or_404(id)
     return build_admin_account(account)
 
 
@@ -148,15 +145,13 @@ def get_account(
     },
 )
 def get_stripe_customer(
-    id: UUID,
+    account: Account = Depends(linked_account),
 ) -> dict:
     """Read-through: fetch the Stripe customer for this account.
 
     Does NOT persist anything; use ``POST /sync-stripe`` to write the
     snapshot back into the account's ``details`` column.
     """
-    account = _load_account_or_404(id)
-    _require_linked_shop(account)
 
     try:
         customer_id = stripe_client.get_customer_id(account)
@@ -168,11 +163,11 @@ def get_stripe_customer(
     except StripeNotConfigured as exc:
         raise_status(HTTPStatus.BAD_REQUEST, str(exc))
     except stripe.error.StripeError as exc:
-        logger.warning("Stripe error fetching customer", account_id=str(id), error=str(exc))
+        logger.warning("Stripe error fetching customer", account_id=str(account.id), error=str(exc))
         raise_status(HTTPStatus.BAD_GATEWAY, f"Stripe error: {exc}")
 
     return {
-        "account_id": str(id),
+        "account_id": str(account.id),
         "stripe_customer_id": customer_id,
         "stripe_customer": customer,
     }
@@ -191,7 +186,7 @@ def get_stripe_customer(
     },
 )
 def sync_stripe(
-    id: UUID,
+    account: Account = Depends(linked_account),
 ) -> SyncStripeResponse:
     """Pull the Stripe customer snapshot and persist it on the account.
 
@@ -199,8 +194,6 @@ def sync_stripe(
     ``details["stripe_synced_at"]`` (ISO timestamp). Existing keys in
     ``details`` are preserved.
     """
-    account = _load_account_or_404(id)
-    _require_linked_shop(account)
 
     try:
         customer_id = stripe_client.get_customer_id(account)
@@ -212,7 +205,7 @@ def sync_stripe(
     except StripeNotConfigured as exc:
         raise_status(HTTPStatus.BAD_REQUEST, str(exc))
     except stripe.error.StripeError as exc:
-        logger.warning("Stripe error during sync", account_id=str(id), error=str(exc))
+        logger.warning("Stripe error during sync", account_id=str(account.id), error=str(exc))
         raise_status(HTTPStatus.BAD_GATEWAY, f"Stripe error: {exc}")
 
     synced_at = datetime.now(timezone.utc)
@@ -246,7 +239,7 @@ def sync_stripe(
     },
 )
 def link_stripe(
-    id: UUID,
+    account: Account = Depends(valid_account),
     body: LinkStripeBody = Body(...),
 ) -> AdminAccountSchema:
     """Manually associate a Stripe customer id with an account.
@@ -255,7 +248,6 @@ def link_stripe(
     auto-customer-create flow. This does NOT call Stripe; follow up
     with ``POST /sync-stripe`` to pull the snapshot.
     """
-    account = _load_account_or_404(id)
 
     new_details = dict(account.details or {})
     new_details["stripe_customer_id"] = body.stripe_customer_id

@@ -1,9 +1,9 @@
 from http import HTTPStatus
-from typing import Any, List
+from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -18,8 +18,8 @@ from server.db.models import AttributeOptionTable
 from server.schemas.attribute_option import (
     AttributeOptionSchema,
 )
-from server.security import auth_required
-from server.services.revisions import actor, ensure_baseline_attribute_revision, record_attribute_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_attribute_revision, record_attribute_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -85,9 +85,8 @@ def get_option(shop_id: UUID, attribute_id: UUID, option_id: UUID) -> AttributeO
 def create_option(
     shop_id: UUID,
     attribute_id: UUID,
-    request: Request,
     data: dict = Body(...),
-    principal: Any = Depends(auth_required),
+    principal: Principal = Depends(current_principal),
 ) -> AttributeOptionSchema:
     """Create a new option for an attribute within a shop.
 
@@ -106,12 +105,11 @@ def create_option(
 
     logger.info("Saving attribute option", attribute_id=str(attribute_id), value_key=value_key)
 
-    created_by, source = actor(principal, request)
     ensure_baseline_attribute_revision(attribute)
     option = AttributeOptionTable(attribute_id=attribute_id, value_key=value_key)
     db.session.add(option)
     try:
-        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        record_attribute_revision(attribute, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
@@ -132,9 +130,8 @@ def delete_option(
     shop_id: UUID,
     attribute_id: UUID,
     option_id: UUID,
-    request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
-    principal: Any = Depends(auth_required),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     """Delete an attribute option."""
     # Ensure attribute belongs to shop; lock for revision numbering
@@ -146,4 +143,4 @@ def delete_option(
     if not option or option.attribute_id != attribute_id:
         raise_status(HTTPStatus.NOT_FOUND, f"Option with id {option_id} not found for this attribute")
 
-    return _delete_option(attribute, option, force, principal, request)
+    return _delete_option(attribute, option, force, principal)

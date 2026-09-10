@@ -10,19 +10,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Iterable, List, Optional
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterable, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import Header, HTTPException, Request, Security
 from fastapi.param_functions import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi_cognito import CognitoAuth, CognitoSettings, CognitoToken
+from fastapi_cognito import CognitoAuth, CognitoSettings
 from pydantic import BaseModel, Field, HttpUrl
-from structlog import get_logger
 
 from server.settings import app_settings, auth_settings
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from server.db.models import ApiKeyTable
 
 ADMIN_GROUPS = ("Admins", "admins")
 
@@ -54,7 +55,7 @@ cognito_eu = CognitoAuth(settings=CognitoSettings.from_global_settings(auth_sett
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def user_client_ids() -> set:
+def user_client_ids() -> set[str]:
     """Client ids that issue *user* tokens (as opposed to M2M service tokens).
 
     The MCP browser-login flow has its own app client, so a token from it is
@@ -66,43 +67,84 @@ def user_client_ids() -> set:
     } - {""}
 
 
-def auth_required(
-    token: CognitoToken = Depends(cognito_eu.auth_required),
-    _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
-):
-    if token.client_id in user_client_ids():
-        # No need to check scopes for user tokens
-        return token
-
-    # M2M tokens: check required scope
-    if token.scope.endswith("/api"):
-        return token
-
-    raise HTTPException(status_code=401, detail="Invalid OAuth2 scope")
+Kind = Literal["user", "m2m", "api_key"]
+Via = Literal["rest", "mcp"]
 
 
-async def auth_required_any(
+@dataclass(frozen=True)
+class Principal:
+    """Who is calling, resolved once from whichever credential the request carried.
+
+    ``kind`` is ``"user"`` (Cognito user token), ``"m2m"`` (Cognito service
+    token) or ``"api_key"``. ``subject`` is the Cognito ``sub`` or the key's id.
+    ``groups`` are the Cognito groups (users only); ``shop_id`` is set for keys.
+    """
+
+    kind: Kind
+    subject: str
+    groups: tuple[str, ...] = ()
+    shop_id: Optional[UUID] = None
+    via: Via = "rest"
+    """``"mcp"`` when the call came through the MCP server, else ``"rest"``."""
+
+    @property
+    def label(self) -> Optional[str]:
+        """Audit label for revision rows: ``api_key:<id>`` or ``cognito:<sub>``."""
+        if self.kind == "api_key":
+            return f"api_key:{self.subject}"
+        return f"cognito:{self.subject}" if self.subject else None
+
+    @property
+    def is_admin(self) -> bool:
+        """M2M tokens are trusted across shops; users need an admin group."""
+        return self.kind == "m2m" or has_admin_group(self.groups)
+
+    def may_touch(self, shop_id: UUID) -> bool:
+        """The one shop-access rule: a key its own shop, a user its groups' shops, an admin any."""
+        if self.kind == "api_key":
+            return self.shop_id == shop_id
+        return self.is_admin or str(shop_id) in self.groups
+
+    @classmethod
+    def from_token(cls, token: CustomCognitoToken, via: Via = "rest") -> "Principal":
+        """Classify a verified Cognito token; a service token needs the ``/api`` scope."""
+        # "user" must cover the whole user-client set: comparing against
+        # AWS_COGNITO_CLIENT_ID alone once classified MCP app-client tokens as M2M,
+        # which the admin check then trusted without the group check.
+        kind: Kind
+        if token.client_id in user_client_ids():
+            kind = "user"
+        elif token.scope.endswith("/api"):
+            kind = "m2m"
+        else:
+            raise HTTPException(status_code=401, detail="Invalid OAuth2 scope")
+        return cls(kind=kind, subject=token.cognito_id, groups=tuple(token.cognito_groups), via=via)
+
+    @classmethod
+    def from_api_key(cls, row: "ApiKeyTable", via: Via = "rest") -> "Principal":
+        """A per-shop API key: may touch its own shop and nothing else."""
+        return cls(kind="api_key", subject=str(row.id), shop_id=row.shop_id, via=via)
+
+
+async def current_principal(
     request: Request,
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
-):
-    """Accept either a Cognito JWT or a per-shop API key.
+    _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+) -> Principal:
+    """The caller, from whichever credential the request carries.
 
-    Resolution order:
-        1. ``X-API-Key`` header, if present.
-        2. ``Authorization: Bearer <token>`` where ``<token>`` starts with the
-           API-key prefix (``sv_``).
-        3. Otherwise fall back to the standard Cognito flow.
+    1. ``X-API-Key``, or ``Authorization: Bearer sv_…`` — a per-shop API key.
+    2. Otherwise ``Authorization: Bearer <jwt>`` — a Cognito user token, or an
+       M2M token carrying the ``/api`` scope.
 
-    Returns an :class:`server.db.models.ApiKeyTable` row on API-key auth, or a
-    :class:`CustomCognitoToken` on Cognito auth.
-
-    .. warning::
-       This dep authenticates but does **not** authorize: it never compares the
-       key's shop to the ``shop_id`` in the path. Prefer
-       :func:`auth_required_any_for_shop` on any shop-scoped route.
+    Authenticates only. Which routes a principal may reach is decided by the
+    guards below, mounted per tier in ``server/api/api.py``.
     """
     # Lazy import — avoids a CRUD<->security cycle.
     from server.crud.crud_api_key import KEY_PLAINTEXT_PREFIX, api_key_crud
+
+    # fastmcp forwards the MCP session header into the in-process request it makes.
+    via: Via = "mcp" if request.headers.get("mcp-session-id") else "rest"
 
     plaintext: Optional[str] = x_api_key
     if plaintext is None:
@@ -116,103 +158,36 @@ async def auth_required_any(
         row = api_key_crud.lookup_by_plaintext(plaintext)
         if row is None:
             raise HTTPException(status_code=401, detail="Invalid API key")
-        return row
+        return Principal.from_api_key(row, via=via)
 
-    # No API key supplied — defer to Cognito.
     token = await cognito_eu.auth_required(request)
-    return auth_required(token)
+    return Principal.from_token(token, via=via)
 
 
-def assert_shop_access(principal: Any, shop_id: UUID) -> Any:
-    """Assert ``principal`` may act on ``shop_id``, or raise 403.
+async def require_shop(shop_id: UUID, principal: Principal = Depends(current_principal)) -> Principal:
+    """Shop tiers: the ``shop_id`` in the path must be one the caller may touch, else 403.
 
-    One rule, both principal types:
-
-    * **API key** — minted for exactly one shop, so it may only touch that shop.
-    * **Cognito user** — may touch shops whose UUID is one of their groups, or
-      any shop if they're in an admin group. This is the same mapping
-      ``GET /shops/my-shops`` reports; here it is enforced rather than advised.
-
-    M2M tokens carry no ``cognito:groups`` and are trusted across shops, matching
-    how :func:`admin_required` already treats them. Tokens from the MCP app client
-    are *users*, not M2M, so they are scoped like any other user — see
-    :func:`user_client_ids`.
+    A key is minted for exactly one shop and a user is attached to shops via
+    group membership — nothing else ties either to the path, so without this
+    check swapping the path reaches another tenant's data. Same mapping
+    ``GET /shops/my-shops`` reports; here it is enforced rather than advised.
     """
-    # Lazy import — avoids a models<->security import cycle.
-    from server.db.models import ApiKeyTable
-
-    if isinstance(principal, ApiKeyTable):
-        if principal.shop_id != shop_id:
-            raise HTTPException(status_code=403, detail="API key is not valid for this shop")
+    if principal.may_touch(shop_id):
         return principal
-
-    if getattr(principal, "client_id", None) not in user_client_ids():
-        return principal
-
-    groups = getattr(principal, "cognito_groups", [])
-    if has_admin_group(groups) or str(shop_id) in groups:
-        return principal
-
+    if principal.kind == "api_key":
+        raise HTTPException(status_code=403, detail="API key is not valid for this shop")
     raise HTTPException(status_code=403, detail="User has no access to this shop")
 
 
-async def auth_required_any_for_shop(shop_id: UUID, principal: Any = Depends(auth_required_any)) -> Any:
-    """Like :func:`auth_required_any`, but scopes the principal to the shop in the path.
-
-    A per-shop ``sv_`` key is minted for exactly one shop, and a Cognito user is
-    attached to shops via group membership — yet nothing else ties either to the
-    ``shop_id`` path param, so without this check swapping the path reaches
-    another tenant's data. See :func:`assert_shop_access` for the rule.
-
-    Use this — not ``auth_required_any`` — on every route that reads or writes
-    shop-scoped data. It works both as a router-level dependency (the ``shop_id``
-    comes from the ``/shops/{shop_id}/...`` prefix) and as a per-route dependency
-    for routers where ``shop_id`` sits in the route path instead (e.g. orders).
-    """
-    return assert_shop_access(principal, shop_id)
+async def require_cognito(principal: Principal = Depends(current_principal)) -> Principal:
+    """Cognito-only tiers: an API key is refused — a key must not mint another key, for instance."""
+    if principal.kind == "api_key":
+        raise HTTPException(status_code=401, detail="API keys are not accepted on this route")
+    return principal
 
 
-def shop_access_required(shop_id: UUID, token: CustomCognitoToken = Depends(auth_required)) -> Any:
-    """Cognito-only counterpart of :func:`auth_required_any_for_shop`.
-
-    For routes that must not be reachable with an API key at all — currently
-    api-key management, where a key minting another key would be an escalation.
-    """
-    return assert_shop_access(token, shop_id)
-
-
-def shop_access_required_by_id(id: UUID, token: CustomCognitoToken = Depends(auth_required)) -> Any:
-    """:func:`shop_access_required` for routes whose shop id path param is ``{id}``.
-
-    ``/shops/config/{id}`` and ``/shops/allowed-ips/{id}`` predate the ``{shop_id}``
-    convention. FastAPI matches a dependency's parameter *name* against the path
-    template, so those routes need a guard whose parameter is literally ``id`` —
-    hence this near-duplicate. Mounted on ``shops.legacy_id_router``, which holds
-    exactly those routes.
-
-    Renaming the paths would remove the need for it, but FastAPI derives
-    ``operation_id`` from the path template, so ``{id}`` -> ``{shop_id}`` renames the
-    generated client symbol (``getConfigShopsConfigIdGet``) *and* its argument key —
-    20 call sites across 10 files in shop-editor. That needs its own coordinated change.
-    """
-    return assert_shop_access(token, id)
-
-
-# Marks the per-shop guards so tests can assert coverage without hardcoding names.
-auth_required_any_for_shop.__shop_guard__ = True  # type: ignore[attr-defined]
-shop_access_required.__shop_guard__ = True  # type: ignore[attr-defined]
-shop_access_required_by_id.__shop_guard__ = True  # type: ignore[attr-defined]
-
-
-def admin_required(token: CognitoToken = Depends(auth_required)):
-    # M2M tokens (already validated by auth_required) are trusted as admin. This
-    # must test membership of the *whole* user-client set: comparing against
-    # AWS_COGNITO_CLIENT_ID alone classified MCP app-client tokens as M2M, so any
-    # authenticated MCP user passed admin routes without the group check.
-    if token.client_id not in user_client_ids():
-        return token
-
-    if has_admin_group(getattr(token, "cognito_groups", [])):
-        return token
-
+async def require_admin(principal: Principal = Depends(current_principal)) -> Principal:
+    """The admin tier — see :meth:`Principal.is_admin`."""
+    if principal.is_admin:
+        return principal
     raise HTTPException(status_code=403, detail="User is not a member of the 'Admins' group")

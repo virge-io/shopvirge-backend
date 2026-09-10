@@ -5,7 +5,7 @@ from typing import Any, List, Literal
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
 
@@ -15,7 +15,7 @@ from server.api.error_handling import raise_status
 from server.crud import crud_shop
 from server.crud.crud_product import product_crud
 from server.db import db
-from server.db.models import ApiKeyTable, ProductTable, ProductTranslationTable
+from server.db.models import ProductTable, ProductTranslationTable
 from server.schemas.product import (
     AttributeFilters,
     ProductCreate,
@@ -26,8 +26,8 @@ from server.schemas.product import (
 )
 from server.schemas.product_attribute import ProductAttributeItem
 from server.schemas.shop import Toggles
-from server.security import auth_required_any
-from server.services.revisions import actor, ensure_baseline_product_revision, record_product_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -234,9 +234,8 @@ def get_multi_with_attributes(
 )
 def create(
     shop_id: UUID,
-    request: Request,
     data: ProductCreate = Body(...),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     shop = get_shop(shop_id)
     raw = json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
@@ -254,11 +253,10 @@ def create(
     data.order_number = (product.order_number + 1) if product is not None else 0
 
     logger.info("Saving product", data=data)
-    created_by, source = actor(principal, request)
     try:
         product = product_crud.create_by_shop_id(obj_in=data, shop_id=shop_id, commit=False)
         db.session.flush()
-        record_product_revision(product, action="create", created_by=created_by, source=source)
+        record_product_revision(product, action="create", created_by=principal.label, source=principal.via)
         db.session.commit()
         db.session.refresh(product)
     except IntegrityError as e:
@@ -289,8 +287,7 @@ def update(
     product_id: UUID,
     shop_id: UUID,
     item_in: ProductUpdate,
-    request: Request,
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> Any:
     product = product_crud.get_id_by_shop_id(shop_id, product_id, for_update=True)
     logger.info("Updating product", data=product)
@@ -309,7 +306,6 @@ def update(
 
     item_in.modified_at = datetime.now(timezone.utc)
 
-    created_by, source = actor(principal, request)
     ensure_baseline_product_revision(product)
     product = product_crud.update(
         db_obj=product,
@@ -317,7 +313,7 @@ def update(
         commit=False,
     )
     db.session.flush()
-    record_product_revision(product, action="update", created_by=created_by, source=source)
+    record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
     return product
 
@@ -392,16 +388,15 @@ def swap(shop_id: UUID, product_id: UUID, move_up: bool):
 def delete(
     product_id: UUID,
     shop_id: UUID,
-    request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     product = product_crud.get_id_by_shop_id(shop_id, product_id, for_update=True, include_deleted=force)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
     if force:
-        if isinstance(principal, ApiKeyTable):
+        if principal.kind == "api_key":
             raise HTTPException(
                 status_code=403,
                 detail="Purging a product is irreversible and requires user credentials; API keys may only trash.",
@@ -410,8 +405,7 @@ def delete(
         # cascades). Revision rows are intentionally kept.
         return product_crud.delete_by_shop_id(shop_id=shop_id, id=product_id, include_deleted=True)
 
-    created_by, source = actor(principal, request)
-    record_product_revision(product, action="delete", created_by=created_by, source=source)
+    record_product_revision(product, action="delete", created_by=principal.label, source=principal.via)
     product.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
     return None

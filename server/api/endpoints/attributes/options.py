@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import Any, List
+from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -21,19 +21,16 @@ from server.schemas.attribute_option import (
     AttributeOptionSchema,
     AttributeOptionUpdate,
 )
-from server.security import auth_required_any
-from server.services.revisions import actor, ensure_baseline_attribute_revision, record_attribute_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_attribute_revision, record_attribute_revision
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
 
-def _delete_option(
-    attribute: AttributeTable, option: AttributeOptionTable, force: bool, principal: Any, request: Request
-) -> None:
+def _delete_option(attribute: AttributeTable, option: AttributeOptionTable, force: bool, principal: Principal) -> None:
     """Shared delete flow: soft delete by default, hard purge with force; both record an attribute revision."""
-    created_by, source = actor(principal, request)
     ensure_baseline_attribute_revision(attribute)
 
     if force:
@@ -42,7 +39,7 @@ def _delete_option(
         option.deleted_at = datetime.now(timezone.utc)
 
     try:
-        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        record_attribute_revision(attribute, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
@@ -88,9 +85,8 @@ def list_options_for_shop(
 )
 def create_option_v2(
     shop_id: UUID,
-    request: Request,
     data: AttributeOptionCreate = Body(...),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> AttributeOptionSchema:
     """Create a new option for an attribute within a shop.
 
@@ -104,12 +100,11 @@ def create_option_v2(
 
     logger.info("Saving attribute option", attribute_id=str(data.attribute_id), value_key=data.value_key)
 
-    created_by, source = actor(principal, request)
     ensure_baseline_attribute_revision(attribute)
     option = AttributeOptionTable(**data.model_dump())
     db.session.add(option)
     try:
-        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        record_attribute_revision(attribute, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
@@ -150,9 +145,8 @@ def get_option_v2(shop_id: UUID, option_id: UUID) -> AttributeOptionSchema:
 def update_option_v2(
     shop_id: UUID,
     option_id: UUID,
-    request: Request,
     data: AttributeOptionUpdate = Body(...),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> AttributeOptionSchema:
     """Update an attribute option."""
     option = (
@@ -167,11 +161,10 @@ def update_option_v2(
     # Locked fetch instead of option.attribute: revision numbering must
     # serialize with concurrent option writes
     attribute = attribute_crud.get_id_by_shop_id(shop_id=shop_id, id=option.attribute_id, for_update=True)
-    created_by, source = actor(principal, request)
     ensure_baseline_attribute_revision(attribute)
     try:
         option = attribute_option_crud.update(db_obj=option, obj_in=data, commit=False)
-        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        record_attribute_revision(attribute, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
         return option
     except IntegrityError:
@@ -191,9 +184,8 @@ def update_option_v2(
 def delete_option_v2(
     shop_id: UUID,
     option_id: UUID,
-    request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     """Delete an attribute option."""
     option = (
@@ -211,4 +203,4 @@ def delete_option_v2(
     attribute = attribute_crud.get_id_by_shop_id(
         shop_id=shop_id, id=option.attribute_id, for_update=True, include_deleted=force
     )
-    return _delete_option(attribute, option, force, principal, request)
+    return _delete_option(attribute, option, force, principal)

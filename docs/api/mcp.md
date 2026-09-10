@@ -55,11 +55,11 @@ Three methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are 
 2. **Cognito JWT (M2M / service-to-service)** — `Authorization: Bearer <jwt>` with scope ending in `/api`.
 3. **Cognito JWT (interactive user)** — `Authorization: Bearer <jwt>` from the Next.js app client or the MCP browser-login flow. Useful when a logged-in user drives the agent from a browser.
 
-The dual-auth dependency is `server.security.auth_required_any`. It either resolves the API key against the `api_keys` table (returning the matched row) or delegates to the existing Cognito flow (returning a `CustomCognitoToken`). Endpoints not tagged for MCP still use `auth_required` (Cognito only) — an API key cannot reach the full REST surface.
+The resolver is `server.security.current_principal`. It either resolves the API key against the `api_keys` table or delegates to the Cognito flow, and returns a `Principal` either way. Tiers that are not MCP-exposed also mount `require_cognito` — an API key cannot reach the full REST surface.
 
 ### API keys are bound to one shop
 
-A key is minted for exactly one shop, and `server.security.auth_required_any_for_shop`
+A key is minted for exactly one shop, and `server.security.require_shop`
 enforces that: if the key's `shop_id` does not match the `{shop_id}` in the request path,
 the request is rejected with **403**, before the handler runs. It is wired as a
 router-level dependency on every `/shops/{shop_id}/...` router in `server/api/api.py`,
@@ -165,7 +165,7 @@ You should see all 50 tool definitions in the response.
 
 ## How auth flows through `from_fastapi`
 
-`FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `auth_required_any`.
+`FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `current_principal` and `require_shop`.
 
 fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.)
 
@@ -249,7 +249,7 @@ To rotate the client, run the same `create-user-pool-client` command again with 
 2. On the route decorator, add:
    - `tags=[AgentTag.EXPOSED]` (add `AgentTag.LARGE` too for list endpoints).
    - `operation_id="<short_snake_case>"`. **This becomes the MCP tool name** — treat it like a public API contract.
-3. Give the route `Depends(auth_required_any)` if you want API-key clients to reach it. (Cognito-only endpoints stay on `auth_required`.)
+3. Mount the route on the `shop` tier in `server/api/api.py` (`require_shop` only) so API-key clients can reach it; Cognito-only routes go on the `shop_cognito` tier, which adds `require_cognito`. If the handler needs the caller, declare `principal: Principal = Depends(current_principal)`.
 4. Bump `APP_VERSION` in `server/main.py`, then regenerate the OpenAPI snapshot:
 
     ```bash
@@ -283,7 +283,7 @@ API keys themselves are stored in the `api_keys` table (migration `c1a2b3d4e5f6`
 
 - `server/mcp/server.py` — `mount_mcp(app)`.
 - `server/agent_tags.py` — the `AgentTag` enum.
-- `server/security.py` — `auth_required` / `auth_required_any` dependencies.
+- `server/security.py` — `current_principal` and the `require_*` guards.
 - `server/crud/crud_api_key.py` — minting, lookup, revocation.
 - `server/api/endpoints/accounts/api_keys.py` — REST management endpoints.
 - `server/api/endpoints/system/oauth_discovery.py` — OAuth discovery + DCR shim for the browser-login flow.

@@ -19,9 +19,8 @@ whatever is mounted on those two tiers. The sweep sends every route a request
 with no credentials and checks both directions.
 
 * Not on a public tier: must answer 401. Catches a tier or direct include that
-  lost its guard, a guard that bypasses ``auth_required`` / ``auth_required_any``
-  (the two the fixture overrides), and a protected route shadowed by an earlier
-  public one.
+  lost its guard, a guard that bypasses ``current_principal`` (the resolver the
+  fixture overrides), and a protected route shadowed by an earlier public one.
 * On a public tier: must answer anything but 401. Catches a public module that
   grew a per-route guard, and a public route shadowed by an earlier protected one.
 

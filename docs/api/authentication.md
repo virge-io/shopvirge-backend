@@ -9,7 +9,7 @@ Authentication lives in `server/security.py` and is built on [AWS Cognito](https
 
 ## Summary
 
-- `auth_required` is the main dependency for Cognito-backed API access.
+- `current_principal` is the single authentication dependency; `require_shop`, `require_cognito` and `require_admin` are the guards mounted per tier.
 - Three credential shapes are accepted: user tokens, M2M client-credentials tokens, and per-shop API keys.
 - **Both** the web app client and the MCP app client issue *user* tokens. Only a token from neither is treated as M2M.
 - Authentication and shop authorization are separate checks.
@@ -34,48 +34,35 @@ All auth settings come from environment variables loaded by `server/settings.py`
 | `AWS_COGNITO_REGION` | AWS region of the user pool. |
 | `AWS_COGNITO_CLIENT_ID` | Expected `aud` for user tokens. |
 | `AWS_COGNITO_M2M_CLIENT_ID` | Expected `client_id` for M2M tokens. |
-| `AWS_COGNITO_MCP_CLIENT_ID` | `client_id` of the MCP app client. `auth_required` treats tokens from it as **user** tokens, not M2M. |
+| `AWS_COGNITO_MCP_CLIENT_ID` | `client_id` of the MCP app client. `Principal.from_token` treats tokens from it as **user** tokens, not M2M. |
 | `MCP_ENABLED` | Default `false`. Mount the [MCP server](mcp.md) at `/mcp`. |
 
 Cognito itself — user pool, app clients, domain, groups — is managed outside this repo.
 
 ## Dependency usage
 
-Protect an endpoint with the `auth_required()` dependency:
+Routes are guarded by the tier they are mounted on in `server/api/api.py`: `require_cognito` for Cognito-only tiers, `require_shop` for shop-scoped tiers, `require_admin` for the admin tier. A handler only declares the caller when it needs it, and then receives a `Principal`, never the raw token:
 
 ```python
 from fastapi import Depends
-from server.security import auth_required
+from server.security import Principal, current_principal
 
 @router.get("/protected")
-def protected_route(token = Depends(auth_required)):
-    ...
+def protected_route(principal: Principal = Depends(current_principal)):
+    ...  # principal.kind is "user", "m2m" or "api_key"; principal.subject is the sub or key id
 ```
 
-`auth_required` accepts both user and M2M tokens. For M2M-only endpoints, the handler can assert on `token.scope` inside the body.
+`current_principal` accepts user tokens, M2M tokens with the `/api` scope, and API keys. For M2M-only behaviour, the handler can check `principal.kind == "m2m"` inside the body.
 
-For endpoints that require membership of the Cognito `admins` group (or the legacy `Admins` casing), use `admin_required` instead:
+Endpoints that require membership of the Cognito `admins` group (or the legacy `Admins` casing) go on the `admin` tier, which mounts `require_cognito` and `require_admin`:
 
 ```python
-from server.security import admin_required
+from server.security import require_admin, require_cognito
 
-@router.get("/admin-only")
-def admin_route(_ = Depends(admin_required)):
-    ...
+admin = APIRouter(dependencies=[Depends(require_cognito), Depends(require_admin)])
 ```
 
-For endpoints that should also accept API keys (currently the MCP-exposed shop CRUD routes), use `auth_required_any` instead:
-
-```python
-from server.security import auth_required_any
-
-@router.get("/protected")
-def protected_route(principal = Depends(auth_required_any)):
-    # principal is either a CustomCognitoToken or an ApiKeyTable row.
-    ...
-```
-
-`auth_required_any` resolves `X-API-Key` or `Authorization: Bearer sv_…` first, then falls back to Cognito.
+Endpoints that should also accept API keys (the MCP-exposed shop CRUD routes) go on a tier that mounts `require_shop` without `require_cognito`. `current_principal` resolves `X-API-Key` or `Authorization: Bearer sv_…` first, then falls back to Cognito; `principal.shop_id` is set for keys.
 
 ## Shop access
 
