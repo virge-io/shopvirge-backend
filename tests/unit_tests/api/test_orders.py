@@ -394,3 +394,21 @@ def test_create_order_uses_selected_recurring_plan(shop_no_shipping_with_product
     )
     assert response.status_code == 201, response.json()
     assert response.json()["total"] == 12.1
+
+
+# --- DELETE /orders/{order_id} is admin-only -----------------------------------
+#
+# The route has no shop in its path, so nothing can bind the caller to the order's
+# shop. Until the order-management routes are reworked, deleting is for admins.
+
+
+def test_delete_order_refuses_a_shop_user(shop, pending_order, as_cognito_user):
+    client = as_cognito_user([str(shop)])  # a user attached to the order's own shop, not an admin
+
+    assert client.delete(f"/orders/{pending_order.id}").status_code == 403
+    assert OrderTable.query.filter_by(id=pending_order.id).first() is not None
+
+
+def test_delete_order_as_admin(pending_order, test_client):
+    assert test_client.delete(f"/orders/{pending_order.id}").status_code == 204
+    assert OrderTable.query.filter_by(id=pending_order.id).first() is None
