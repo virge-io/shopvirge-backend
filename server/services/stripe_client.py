@@ -36,6 +36,15 @@ class StripeCustomerMissing(Exception):
     """Raised when an account has no ``stripe_customer_id`` linked."""
 
 
+def is_missing_customer_error(exc: Exception) -> bool:
+    """Return whether Stripe rejected the customer parameter as no longer existing."""
+    return (
+        isinstance(exc, stripe.error.InvalidRequestError)
+        and getattr(exc, "param", None) == "customer"
+        and getattr(exc, "code", None) == "resource_missing"
+    )
+
+
 def configure_for_shop(shop: ShopTable) -> ModuleType:
     """Set ``stripe.api_key`` from the shop's secret key.
 
