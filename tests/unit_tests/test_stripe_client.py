@@ -29,6 +29,7 @@ from server.services.stripe_client import (
     StripeNotConfigured,
     configure_for_shop,
     get_customer_id,
+    is_missing_customer_error,
 )
 
 
@@ -80,6 +81,15 @@ def test_get_customer_id_raises_when_key_absent():
 def test_get_customer_id_raises_when_value_empty():
     with pytest.raises(StripeCustomerMissing):
         get_customer_id(_account({"stripe_customer_id": ""}))
+
+
+def test_is_missing_customer_error_matches_only_customer_resource_missing_errors():
+    assert is_missing_customer_error(
+        stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
+    )
+    assert not is_missing_customer_error(
+        stripe.error.InvalidRequestError("No such product", "product", code="resource_missing")
+    )
 
 
 def test_fetch_customer_returns_dict(monkeypatch):

@@ -34,7 +34,7 @@ import structlog
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
@@ -69,6 +69,18 @@ def _require_linked_shop(account: Account) -> None:
             HTTPStatus.BAD_REQUEST,
             f"Account {account.id} is not linked to a shop",
         )
+
+
+def _missing_stripe_customer_response(customer_id: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=HTTPStatus.NOT_FOUND,
+        content={
+            "detail": (
+                f"Stripe customer {customer_id} no longer exists for this shop. "
+                "Link a current Stripe customer before retrying."
+            )
+        },
+    )
 
 
 @router.get(
@@ -172,6 +184,9 @@ def get_stripe_customer(
     except StripeNotConfigured as exc:
         raise_status(HTTPStatus.BAD_REQUEST, str(exc))
     except stripe.error.StripeError as exc:
+        if stripe_client.is_missing_customer_error(exc):
+            logger.info("Stripe customer is missing", account_id=str(id), customer_id=customer_id)
+            return _missing_stripe_customer_response(customer_id)
         logger.warning("Stripe error fetching customer", account_id=str(id), error=str(exc))
         raise_status(HTTPStatus.BAD_GATEWAY, f"Stripe error: {exc}")
 
@@ -217,6 +232,9 @@ def sync_stripe(
     except StripeNotConfigured as exc:
         raise_status(HTTPStatus.BAD_REQUEST, str(exc))
     except stripe.error.StripeError as exc:
+        if stripe_client.is_missing_customer_error(exc):
+            logger.info("Stripe customer is missing", account_id=str(id), customer_id=customer_id)
+            return _missing_stripe_customer_response(customer_id)
         logger.warning("Stripe error during sync", account_id=str(id), error=str(exc))
         raise_status(HTTPStatus.BAD_GATEWAY, f"Stripe error: {exc}")
 

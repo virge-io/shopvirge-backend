@@ -242,6 +242,20 @@ def test_admin_accounts_stripe_customer_no_customer_id(test_client, account_no_s
     assert response.status_code == 400
 
 
+def test_admin_accounts_stripe_customer_missing_from_stripe_returns_not_found(
+    test_client, account_with_stripe, monkeypatch
+):
+    def _raise(customer_id):
+        raise stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
+
+    monkeypatch.setattr(stripe_client.stripe.Customer, "retrieve", _raise)
+
+    response = test_client.get(f"/admin/accounts/{account_with_stripe}/stripe-customer")
+
+    assert response.status_code == 404
+    assert "no longer exists" in response.json()["detail"]
+
+
 # ---------------------------------------------------------------------------
 # Link (manual association)
 # ---------------------------------------------------------------------------
