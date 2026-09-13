@@ -185,7 +185,7 @@ def get_stripe_customer(
         raise_status(HTTPStatus.BAD_REQUEST, str(exc))
     except stripe.error.StripeError as exc:
         if stripe_client.is_missing_customer_error(exc):
-            logger.info("Stripe customer is missing", account_id=str(id), customer_id=customer_id)
+            logger.warning("Stripe customer is missing", account_id=str(id), customer_id=customer_id)
             return _missing_stripe_customer_response(customer_id)
         logger.warning("Stripe error fetching customer", account_id=str(id), error=str(exc))
         raise_status(HTTPStatus.BAD_GATEWAY, f"Stripe error: {exc}")
@@ -233,7 +233,7 @@ def sync_stripe(
         raise_status(HTTPStatus.BAD_REQUEST, str(exc))
     except stripe.error.StripeError as exc:
         if stripe_client.is_missing_customer_error(exc):
-            logger.info("Stripe customer is missing", account_id=str(id), customer_id=customer_id)
+            logger.warning("Stripe customer is missing", account_id=str(id), customer_id=customer_id)
             return _missing_stripe_customer_response(customer_id)
         logger.warning("Stripe error during sync", account_id=str(id), error=str(exc))
         raise_status(HTTPStatus.BAD_GATEWAY, f"Stripe error: {exc}")

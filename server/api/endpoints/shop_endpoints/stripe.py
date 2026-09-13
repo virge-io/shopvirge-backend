@@ -86,7 +86,7 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
             customer_id = replace_missing_customer(order.account_id, shop_id)
-            logger.info("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
+            logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
             intent = stripe.PaymentIntent.create(**(intent_args | {"customer": customer_id}))
         return {"clientSecret": str(intent["client_secret"])}
     except Exception as exc:
