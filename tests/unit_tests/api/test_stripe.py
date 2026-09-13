@@ -79,6 +79,51 @@ def test_payment_intent_replaces_a_customer_missing_from_the_shop_stripe_account
     assert db.session.get(Account, account_id).details["stripe_customer_id"] == "cus_replacement"
 
 
+def test_subscription_replaces_a_customer_missing_from_the_shop_stripe_account(test_client, monkeypatch):
+    shop_id = make_shop()
+    account_id = make_account_with_stripe(shop_id, customer_id="cus_stale")
+    order = OrderTable(
+        shop_id=shop_id,
+        account_id=account_id,
+        customer_order_id=1,
+        order_info=[{"product_id": "product-1", "quantity": 1, "plan": "monthly"}],
+        total=Decimal("12.34"),
+    )
+    db.session.add(order)
+    db.session.commit()
+
+    subscriptions = []
+    monkeypatch.setattr(stripe_client, "configure_for_shop", lambda shop: None)
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.Customer,
+        "create",
+        lambda **_: SimpleNamespace(id="cus_replacement"),
+    )
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.Price,
+        "list",
+        lambda **_: SimpleNamespace(data=[SimpleNamespace(lookup_key="monthly-product-1", id="price_1")]),
+    )
+
+    def create_subscription(**kwargs):
+        subscriptions.append(kwargs)
+        if kwargs["customer"] == "cus_stale":
+            raise stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
+        return SimpleNamespace(
+            id="sub_replacement",
+            latest_invoice=SimpleNamespace(payment_intent=SimpleNamespace(client_secret="secret")),
+        )
+
+    monkeypatch.setattr(stripe_endpoint.stripe.Subscription, "create", create_subscription)
+
+    response = test_client.post(f"/shops/{shop_id}/stripe/subscription?order_id={order.id}")
+
+    assert response.status_code == 201, response.json()
+    assert [subscription["customer"] for subscription in subscriptions] == ["cus_stale", "cus_replacement"]
+    db.session.expire_all()
+    assert db.session.get(Account, account_id).details["stripe_customer_id"] == "cus_replacement"
+
+
 def test_payment_intent_rejects_recurring_orders(test_client):
     shop_id = make_shop()
     account_id = make_account_with_stripe(shop_id)

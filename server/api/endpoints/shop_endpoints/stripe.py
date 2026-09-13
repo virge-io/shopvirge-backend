@@ -121,16 +121,24 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
         customer_id = get_stripe_customer(order.account_id, shop_id)
         prices = get_stripe_prices(order.order_info, yearly)
 
-        subscription = stripe.Subscription.create(
-            items=prices,
-            payment_behavior="default_incomplete",
-            payment_settings={
+        subscription_args = {
+            "items": prices,
+            "payment_behavior": "default_incomplete",
+            "payment_settings": {
                 "payment_method_types": ["card", "paypal"],
                 "save_default_payment_method": "on_subscription",
             },
-            customer=customer_id,
-            expand=["latest_invoice.payment_intent"],
-        )
+            "customer": customer_id,
+            "expand": ["latest_invoice.payment_intent"],
+        }
+        try:
+            subscription = stripe.Subscription.create(**subscription_args)
+        except stripe.error.InvalidRequestError as exc:
+            if not stripe_client.is_missing_customer_error(exc):
+                raise
+            customer_id = replace_missing_customer(order.account_id, shop_id)
+            logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
+            subscription = stripe.Subscription.create(**(subscription_args | {"customer": customer_id}))
         return {
             "clientSecret": str(subscription.latest_invoice.payment_intent.client_secret),
             "subscriptionId": str(subscription.id),
