@@ -1,0 +1,69 @@
+name: Production build and deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build and push image to GHCR
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: vars
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          docker build -t "$IMAGE:latest" -t "$IMAGE:${{ steps.vars.outputs.tag }}" .
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${{ steps.vars.outputs.tag }}"
+
+  deploy:
+    name: Deploy to production ECS
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Promote image to ECR and roll ECS
+        run: bash .github/deploy/promote-and-roll.sh
+        env:
+          SRC_IMAGE: ghcr.io/${{ github.repository }}:${{ needs.build.outputs.tag }}
+          EXTRA_TAG: ${{ needs.build.outputs.tag }}
+          ECR_ENDPOINT: ${{ vars.ECR_ENDPOINT }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_REGION: eu-central-1
