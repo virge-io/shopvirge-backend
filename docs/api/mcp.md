@@ -55,7 +55,11 @@ Three methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are 
 2. **Cognito JWT (M2M / service-to-service)** — `Authorization: Bearer <jwt>` with scope ending in `/api`.
 3. **Cognito JWT (interactive user)** — `Authorization: Bearer <jwt>` from the Next.js app client or the MCP browser-login flow. Useful when a logged-in user drives the agent from a browser.
 
-The resolver is `server.security.current_principal`. It either resolves the API key against the `api_keys` table or delegates to the Cognito flow, and returns a `Principal` either way. Tiers that are not MCP-exposed also mount `require_cognito` — an API key cannot reach the full REST surface.
+Every MCP request — `initialize` and `tools/list` included — is verified first by `server.mcp.auth.PrincipalVerifier`, a fastmcp `TokenVerifier` that runs the same `server.security.authenticate()` as the REST API: an `sv_` key is looked up in the `api_keys` table, anything else goes through the Cognito flow. An anonymous client gets 401 before any MCP processing. The verified `Principal` travels in the access token; when a tool call reaches its route, `current_principal` reads it back from fastmcp's context rather than re-authenticating, so routes do not depend on header forwarding. Tiers that are not MCP-exposed also mount `require_cognito` — an API key cannot reach the full REST surface.
+
+### Read-only agents
+
+A user in the Cognito group `mcp-read-only` may only read through MCP. `PrincipalVerifier` grants the `read` scope to everyone and the `write` scope to everyone else; when the server is built, every non-`GET` tool gets `require_scopes("write")`. fastmcp itself then hides the write tools from a read-only caller on `tools/list` and refuses them on `tools/call` as unknown. Underneath, `require_shop` refuses any non-`GET` call whose principal is read-only and arrived `via="mcp"`. The restriction wins over `admins`, and it does not apply to REST: the same person keeps full access in shop-editor.
 
 ### API keys are bound to one shop
 
@@ -167,7 +171,7 @@ You should see all 50 tool definitions in the response.
 
 `FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `current_principal` and `require_shop`.
 
-fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.)
+The credential itself is not forwarded into that inner call: fastmcp 3.x strips `Authorization` from the headers it copies downstream (an earlier revision of this integration relied on 2.14.x forwarding it, and broke on upgrade). Instead the MCP layer verifies the caller once with `PrincipalVerifier`, and `current_principal` reads the verified `Principal` from fastmcp's access-token context when the inner request reaches the route. Nothing about the tool call depends on which headers fastmcp forwards.
 
 ## OAuth discovery (Claude Code browser-login)
 

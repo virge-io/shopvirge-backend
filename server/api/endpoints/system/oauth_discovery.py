@@ -39,7 +39,7 @@ validation.
 import time
 from typing import Any
 
-from fastapi import APIRouter, Body, Request, status
+from fastapi import APIRouter, Body, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from server.settings import app_settings
@@ -155,6 +155,13 @@ def oauth_register_shim(body: dict[str, Any] = Body(default_factory=dict)) -> JS
     redirect-URI allowlist is enforced by Cognito at the
     ``authorization_endpoint`` step.
     """
+    if not app_settings.AWS_COGNITO_MCP_CLIENT_ID:
+        # Without this the shim would hand back an empty client_id and the
+        # authorization request fails at Cognito with "Required parameters missing".
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AWS_COGNITO_MCP_CLIENT_ID is not configured; MCP OAuth is unavailable.",
+        )
     redirect_uris = body.get("redirect_uris") or ["http://localhost:7777/callback"]
     response = {
         "client_id": app_settings.AWS_COGNITO_MCP_CLIENT_ID,
