@@ -17,6 +17,7 @@ from server.schemas.order import (
     OrderStatusUpdate,
     OrderUpdated,
 )
+from server.security import require_admin
 
 logger = structlog.get_logger(__name__)
 
@@ -58,6 +59,9 @@ def update(*, order_id: UUID, item_in: OrderStatusUpdate) -> OrderUpdated:
     status_code=HTTPStatus.NO_CONTENT,
     summary="Delete order",
     description="Permanently remove an order record. Requires authentication.",
+    dependencies=[Depends(require_admin)],
 )
 def delete(order_id: UUID) -> None:
+    # Orders are not shop-scoped on this route (no shop in the path), so until the
+    # order-management routes are reworked, deleting is restricted to admins.
     order_crud.delete(id=order_id)
