@@ -6,7 +6,7 @@ For the end-to-end storefront flow, see [Checkout flow](../architecture/checkout
 
 ## Current backend endpoints
 
-The shop-scoped Stripe router lives in `server/api/endpoints/shop_endpoints/stripe.py` and is mounted at `/shops/{shop_id}/stripe`.
+The shop-scoped Stripe router lives in `server/api/endpoints/checkout/stripe.py` and is mounted at `/shops/{shop_id}/stripe`.
 
 ### `POST /shops/{shop_id}/stripe`
 
@@ -69,7 +69,7 @@ The helper does **not** translate `stripe.error.StripeError` into HTTP errors â€
 
 ## Customer linkage
 
-The first time a checkout email is seen for a shop, `server/api/endpoints/shop_endpoints/orders.py` creates both:
+The first time a checkout email is seen for a shop, `server/api/endpoints/orders/` creates both:
 
 - a local `Account` row
 - a Stripe customer, when `shop.stripe_secret_key` is configured

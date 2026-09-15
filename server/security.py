@@ -205,8 +205,11 @@ shop_access_required_by_id.__shop_guard__ = True  # type: ignore[attr-defined]
 
 
 def admin_required(token: CognitoToken = Depends(auth_required)):
-    # M2M tokens (already validated by auth_required) are trusted as admin.
-    if token.client_id != app_settings.AWS_COGNITO_CLIENT_ID:
+    # M2M tokens (already validated by auth_required) are trusted as admin. This
+    # must test membership of the *whole* user-client set: comparing against
+    # AWS_COGNITO_CLIENT_ID alone classified MCP app-client tokens as M2M, so any
+    # authenticated MCP user passed admin routes without the group check.
+    if token.client_id not in user_client_ids():
         return token
 
     if has_admin_group(getattr(token, "cognito_groups", [])):

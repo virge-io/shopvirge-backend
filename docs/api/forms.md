@@ -56,7 +56,7 @@ Lists the registered backend form keys.
 
 Implementation:
 
-- `server/api/endpoints/forms.py`
+- `server/api/endpoints/system/forms.py`
 - `pydantic_forms.core.list_forms`
 
 Authentication:
@@ -77,7 +77,7 @@ Optional query params:
 
 Implementation:
 
-- `server/api/endpoints/forms.py`
+- `server/api/endpoints/system/forms.py`
 - `pydantic_forms.core.asynchronous.start_form`
 - `server/forms/__init__.py` to register available forms
 
@@ -105,7 +105,7 @@ Request body:
 
 Implementation:
 
-- `server/api/endpoints/shop_endpoints/info_request.py`
+- `server/api/endpoints/content/info_request.py`
 - `pydantic_forms.core.post_form`
 
 This endpoint defines a simple one-page form with a Pydantic `EmailStr` field,
@@ -121,7 +121,7 @@ Internal/demo endpoint for exercising multi-page `pydantic-forms` behavior.
 
 Implementation:
 
-- `server/api/endpoints/test_forms.py`
+- `server/api/endpoints/system/test_forms.py`
 
 This is useful for development and experimentation, but it should not be
 treated as a stable storefront contract.

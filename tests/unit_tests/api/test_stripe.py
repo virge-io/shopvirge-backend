@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import stripe
 
-from server.api.endpoints.shop_endpoints import stripe as stripe_endpoint
+from server.api.endpoints.checkout import stripe as stripe_endpoint
 from server.db import db
 from server.db.models import Account, OrderTable
 from server.services import stripe_client

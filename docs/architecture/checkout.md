@@ -22,9 +22,9 @@ It also calls out the gaps that still exist, because several checkout concerns a
 | Front-end checkout pages | Front-end payment pages | Fetch the order, ask the backend for a Stripe client secret, and render Stripe Elements. |
 | Front-end Stripe components | Front-end payment UI components | Confirm payment with Stripe and redirect to the completion page. |
 | Front-end completion page | Front-end completion UI | Marks the order `complete` or `cancelled`, clears cart state, and cancels subscriptions on failure. |
-| Backend order API | `server/api/endpoints/shop_endpoints/orders.py` | Creates accounts and orders, validates stock, updates order status, decrements stock on completion. |
-| Backend Stripe API | `server/api/endpoints/shop_endpoints/stripe.py` | Creates PaymentIntents and Subscriptions, cancels subscriptions. |
-| Backend prices API | `server/api/endpoints/shop_endpoints/prices.py` | Returns tax-inclusive catalog input data such as `tax_percentage`, `shippable`, recurring prices, and stock. |
+| Backend order API | `server/api/endpoints/orders/` | Creates accounts and orders, validates stock, updates order status, decrements stock on completion. |
+| Backend Stripe API | `server/api/endpoints/checkout/stripe.py` | Creates PaymentIntents and Subscriptions, cancels subscriptions. |
+| Backend prices API | `server/api/endpoints/products/prices.py` | Returns tax-inclusive catalog input data such as `tax_percentage`, `shippable`, recurring prices, and stock. |
 | Stripe | Hosted API + Elements | Owns payment confirmation, payment method collection, customer, subscription, and payment state. |
 
 !!! info "Important current behavior"

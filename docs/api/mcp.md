@@ -173,7 +173,7 @@ fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's head
 
 MCP clients that follow the [MCP 2025-06-18](https://modelcontextprotocol.io/) auth spec bootstrap their OAuth flow via RFC 9728 / RFC 8414 / RFC 7591. Cognito covers most of that out of the box but does **not** support Dynamic Client Registration (RFC 7591), which Claude Code's MCP SDK attempts unconditionally even when a static `client_id` is configured ([anthropics/claude-code#26675](https://github.com/anthropics/claude-code/issues/26675)).
 
-To bridge that gap, `server/api/endpoints/oauth_discovery.py` mounts three unauthenticated endpoints at the app root:
+To bridge that gap, `server/api/endpoints/system/oauth_discovery.py` mounts three unauthenticated endpoints at the app root:
 
 | Path | Spec | Purpose |
 |------|------|---------|
@@ -285,6 +285,6 @@ API keys themselves are stored in the `api_keys` table (migration `c1a2b3d4e5f6`
 - `server/agent_tags.py` — the `AgentTag` enum.
 - `server/security.py` — `auth_required` / `auth_required_any` dependencies.
 - `server/crud/crud_api_key.py` — minting, lookup, revocation.
-- `server/api/endpoints/shop_endpoints/api_keys.py` — REST management endpoints.
-- `server/api/endpoints/oauth_discovery.py` — OAuth discovery + DCR shim for the browser-login flow.
+- `server/api/endpoints/accounts/api_keys.py` — REST management endpoints.
+- `server/api/endpoints/system/oauth_discovery.py` — OAuth discovery + DCR shim for the browser-login flow.
 - `tests/unit_tests/mcp/test_mcp.py` — verifies tag coverage and `FastMCP.from_fastapi` introspection.

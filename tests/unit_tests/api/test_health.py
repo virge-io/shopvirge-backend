@@ -10,7 +10,7 @@ def test_get_health(test_client):
     assert response.json() == "OK"
 
 
-@mock.patch("server.api.endpoints.health.ProductTable")
+@mock.patch("server.api.endpoints.system.health.ProductTable")
 def test_get_health_no_connection(mock_preference, test_client):
     mock_preference.query.with_entities().limit().first.side_effect = OperationalError("THIS", "IS", "KABOOM")
     response = test_client.get("/health/")

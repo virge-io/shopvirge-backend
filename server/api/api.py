@@ -10,220 +10,106 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Compose every endpoint package into ``api_router``.
 
-"""Module that implements process related API endpoints."""
+Routes are grouped into *tiers* by auth posture. A tier is an ``APIRouter``
+that carries its guard — and, for the per-shop tiers, the ``/shops/{shop_id}``
+prefix — exactly once. Each package's ``router.py`` composes that package's
+modules under their own path segment with their tags, and is included here
+once per tier it takes part in. Nothing below spells a full path or a guard
+per include.
+
+    public          none                          storefront, checkout, system
+    shop_public     none, /shops/{shop_id}        per-shop storefront reads
+    authenticated   auth_required                 collection management
+    admin           admin_required                cross-shop admin views
+    shop            shop_access_required          per-shop, Cognito only
+    shop_any        auth_required_any_for_shop    per-shop, API key or Cognito
+
+Three routers are included outside the tiers with their guard spelled out,
+because their own path is the shop segment rather than something under it:
+``shops.shop_router`` (``/shops/{shop_id}``), ``shops.legacy_id_router``
+(``/shops/…/{id}``) and ``orders.per_shop_router`` (``/orders/shop/{shop_id}``).
+The path-param rename and the orders merge remove them.
+
+Registration order matters: FastAPI matches routes in the order they were
+added, so ``authenticated`` (``GET /shops/my-shops``) must precede ``public``
+(``GET /shops/{id}``). ``test_router_posture.py`` asserts no route is shadowed.
+"""
 
 from fastapi import APIRouter, Depends
 
-from server.api.endpoints import (
-    admin_accounts,
-    downloads,
-    early_access,
-    faq,
-    forms,
-    health,
-    images,
-    licenses,
-    mail_test,
-    oauth_discovery,
-    sentry_test,
-    shops,
-    test_forms,
+from server.api.endpoints.accounts import router as accounts
+from server.api.endpoints.attributes import router as attributes
+from server.api.endpoints.categories import router as categories
+from server.api.endpoints.checkout import router as checkout
+from server.api.endpoints.content import router as content
+from server.api.endpoints.images import router as images
+from server.api.endpoints.orders import router as orders
+from server.api.endpoints.products import router as products
+from server.api.endpoints.revisions import router as revisions
+from server.api.endpoints.shops import router as shops
+from server.api.endpoints.system import router as system
+from server.api.endpoints.tags import router as tags
+from server.security import (
+    admin_required,
+    auth_required,
+    auth_required_any_for_shop,
+    shop_access_required,
+    shop_access_required_by_id,
 )
-from server.api.endpoints.shop_endpoints import (
-    accounts,
-    api_keys,
-    attribute_options,
-    attributes,
-    categories,
-    category_images,
-    info_request,
-    orders,
-    prices,
-    product_attribute_values,
-    products,
-    products_to_tags,
-    revisions,
-    shipping,
-    stripe,
-    tags,
-)
-from server.api.endpoints.shop_endpoints.images import router as shop_image_router
-from server.security import auth_required, auth_required_any_for_shop, shop_access_required, shop_access_required_by_id
-from server.settings import mail_settings
+
+SHOP = "/shops/{shop_id}"
+
+public = APIRouter()
+shop_public = APIRouter(prefix=SHOP)
+authenticated = APIRouter(dependencies=[Depends(auth_required)])
+admin = APIRouter(dependencies=[Depends(admin_required)])
+shop = APIRouter(prefix=SHOP, dependencies=[Depends(shop_access_required)])
+shop_any = APIRouter(prefix=SHOP, dependencies=[Depends(auth_required_any_for_shop)])
+
+authenticated.include_router(system.router)
+authenticated.include_router(shops.router)
+authenticated.include_router(orders.router)
+authenticated.include_router(content.router)
+
+admin.include_router(accounts.admin_router)
+
+shop.include_router(categories.shop_router)
+shop.include_router(images.shop_router)
+shop.include_router(accounts.shop_router)
+shop.include_router(attributes.shop_router)
+
+shop_any.include_router(categories.router)
+shop_any.include_router(products.router)
+shop_any.include_router(revisions.router)
+shop_any.include_router(tags.router)
+shop_any.include_router(attributes.router)
+
+shop_public.include_router(products.public_router)
+shop_public.include_router(categories.public_router)
+shop_public.include_router(checkout.shop_public_router)
+
+public.include_router(system.public_router)
+public.include_router(images.public_router)
+public.include_router(content.public_router)
+public.include_router(shops.public_router)
+public.include_router(orders.public_router)
+public.include_router(checkout.public_router)
 
 api_router = APIRouter()
-
-api_router.include_router(oauth_discovery.router, tags=["oauth"])
-api_router.include_router(health.router, prefix="/health", tags=["system"])
+api_router.include_router(authenticated)
+api_router.include_router(admin)
+api_router.include_router(shop)
+api_router.include_router(shop_any)
 api_router.include_router(
-    forms.router,
-    prefix="/forms",
-    tags=["forms"],
-    dependencies=[Depends(auth_required)],
-)
-api_router.include_router(images.router, prefix="/images", tags=["images"])
-
-# Todo: determine if these are also shop specific
-api_router.include_router(
-    licenses.router,
-    prefix="/licenses",
-    tags=["licenses"],
-)
-
-api_router.include_router(
-    admin_accounts.router,
-    prefix="/admin/accounts",
-    tags=["admin", "accounts"],
-)
-
-api_router.include_router(
-    downloads.router,
-    prefix="/downloads",
-    tags=["downloads"],
-)
-
-# SHOP specific endpoints
-api_router.include_router(shops.router, prefix="/shops", tags=["shops"])
-api_router.include_router(
-    shops.shop_router,
-    prefix="/shops",
-    tags=["shops"],
-    dependencies=[Depends(shop_access_required)],
+    shops.shop_router, prefix="/shops", tags=["shops"], dependencies=[Depends(shop_access_required)]
 )
 api_router.include_router(
-    shops.legacy_id_router,
-    prefix="/shops",
-    tags=["shops"],
-    # These paths spell the shop id `{id}`; see shops.py for why they aren't renamed.
-    dependencies=[Depends(shop_access_required_by_id)],
-)
-api_router.include_router(prices.router, prefix="/shops/{shop_id}/prices", tags=["shops"])
-api_router.include_router(
-    orders.router,
-    prefix="/orders",
-    tags=["orders"],
+    shops.legacy_id_router, prefix="/shops", tags=["shops"], dependencies=[Depends(shop_access_required_by_id)]
 )
 api_router.include_router(
-    shipping.router,
-    prefix="/shipping",
-    tags=["shipping"],
+    orders.per_shop_router, prefix="/orders", tags=["orders"], dependencies=[Depends(auth_required_any_for_shop)]
 )
-api_router.include_router(
-    categories.router,
-    prefix="/shops/{shop_id}/categories",
-    tags=["categories"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    categories.public_router,
-    prefix="/shops/{shop_id}/categories",
-    tags=["categories"],
-)
-api_router.include_router(
-    category_images.router,
-    prefix="/shops/{shop_id}/categories-images",
-    tags=["shops", "categories"],
-    dependencies=[Depends(shop_access_required)],
-)
-api_router.include_router(
-    shop_image_router,
-    prefix="/shops/{shop_id}/images",
-    tags=["shops", "images"],
-    dependencies=[Depends(shop_access_required)],
-)
-
-api_router.include_router(
-    products.router,
-    prefix="/shops/{shop_id}/products",
-    tags=["shops", "products"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    products.public_router,
-    prefix="/shops/{shop_id}/products",
-    tags=["shops", "products"],
-)
-api_router.include_router(
-    products_to_tags.router,
-    prefix="/shops/{shop_id}/products-to-tags",
-    tags=["shops", "products"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    revisions.router,
-    prefix="/shops/{shop_id}",
-    tags=["shops", "revisions"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    tags.router,
-    prefix="/shops/{shop_id}/tags",
-    tags=["shops", "products"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    attributes.router,
-    prefix="/shops/{shop_id}/attributes",
-    tags=["shops", "attributes"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    api_keys.router,
-    prefix="/shops/{shop_id}/api-keys",
-    tags=["shops", "api-keys"],
-    # Cognito-only: a key must not be able to mint another key, and a user must
-    # not be able to mint one for a shop they have no access to.
-    dependencies=[Depends(shop_access_required)],
-)
-api_router.include_router(
-    attribute_options.router,
-    prefix="/shops/{shop_id}/attribute-options",
-    tags=["shops", "attributes"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    attribute_options.deprecated_router,
-    prefix="/shops/{shop_id}/attributes/{attribute_id}/options",
-    tags=["shops", "attributes"],
-    dependencies=[Depends(shop_access_required)],
-)
-api_router.include_router(
-    product_attribute_values.router,
-    prefix="/shops/{shop_id}/product-attribute-values",
-    tags=["shops", "products", "attributes"],
-    dependencies=[Depends(auth_required_any_for_shop)],
-)
-api_router.include_router(
-    accounts.router,
-    prefix="/shops/{shop_id}/accounts",
-    tags=["shops", "accounts"],
-    dependencies=[Depends(shop_access_required)],
-)
-api_router.include_router(
-    stripe.router,
-    prefix="/shops/{shop_id}/stripe",
-    tags=["stripe"],
-)
-
-api_router.include_router(
-    early_access.router, prefix="/early-access", tags=["early-access"], dependencies=[Depends(auth_required)]
-)
-
-api_router.include_router(info_request.router, prefix="/info-request", tags=["info-request"])
-
-api_router.include_router(
-    sentry_test.router,
-    prefix="/sentry",
-    tags=["sentry"],
-)
-api_router.include_router(
-    test_forms.router,
-    prefix="/test-forms",
-    tags=["test-forms"],
-)
-
-api_router.include_router(faq.router, prefix="/faq", tags=["faq"])
-
-if mail_settings.MAIL_TEST_ENDPOINT_ENABLED:
-    api_router.include_router(mail_test.router, prefix="/mail-test", tags=["mail-test"])
+api_router.include_router(shop_public)
+api_router.include_router(public)
