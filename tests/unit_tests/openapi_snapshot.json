@@ -8600,6 +8600,186 @@
         ]
       }
     },
+    "/shops/allowed-ips/{id}": {
+      "get": {
+        "deprecated": true,
+        "description": "Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
+        "operationId": "get_allowed_ips_shops_allowed_ips__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Allowed Ips Shops Allowed Ips  Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List allowed IPs",
+        "tags": [
+          "shops"
+        ]
+      },
+      "post": {
+        "deprecated": true,
+        "description": "Add an IP address to the shop's order submission allowlist. Returns the updated list of allowed IPs.",
+        "operationId": "add_new_ip_shops_allowed_ips__id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShopIp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Add New Ip Shops Allowed Ips  Id  Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add allowed IP",
+        "tags": [
+          "shops"
+        ]
+      }
+    },
+    "/shops/allowed-ips/{id}/remove": {
+      "post": {
+        "deprecated": true,
+        "description": "Remove an IP address from the shop's order submission allowlist. Returns the updated list.",
+        "operationId": "remove_ip_shops_allowed_ips__id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShopIp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Remove Ip Shops Allowed Ips  Id  Remove Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove allowed IP",
+        "tags": [
+          "shops"
+        ]
+      }
+    },
     "/shops/allowed-ips/{shop_id}": {
       "get": {
         "description": "Returns the list of IP addresses permitted to submit orders to this shop. An empty list means all IPs are allowed.",
@@ -8777,6 +8957,51 @@
         ]
       }
     },
+    "/shops/cache-status/{id}": {
+      "get": {
+        "deprecated": true,
+        "description": "Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
+        "operationId": "get_cache_status_shops_cache_status__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopCacheStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get shop cache status",
+        "tags": [
+          "shops"
+        ]
+      }
+    },
     "/shops/cache-status/{shop_id}": {
       "get": {
         "description": "Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
@@ -8816,6 +9041,109 @@
           }
         },
         "summary": "Get shop cache status",
+        "tags": [
+          "shops"
+        ]
+      }
+    },
+    "/shops/config/{id}": {
+      "get": {
+        "deprecated": true,
+        "description": "Retrieve the shop's full configuration object, including feature toggles (e.g. stock tracking, checkout behaviour) and payment settings.",
+        "operationId": "get_config_shops_config__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get shop configuration",
+        "tags": [
+          "shops"
+        ]
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update the shop's configuration. Partial updates are supported \u2014 only provided fields are changed.",
+        "operationId": "update_config_shops_config__id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShopConfigUpdate-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopConfigUpdate-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update shop configuration",
         "tags": [
           "shops"
         ]
@@ -8922,6 +9250,51 @@
         ]
       }
     },
+    "/shops/last-completed-order/{id}": {
+      "get": {
+        "deprecated": true,
+        "description": "Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
+        "operationId": "get_last_completed_order_shops_last_completed_order__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopLastCompletedOrder"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get timestamp of last completed order",
+        "tags": [
+          "shops"
+        ]
+      }
+    },
     "/shops/last-completed-order/{shop_id}": {
       "get": {
         "description": "Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
@@ -8961,6 +9334,51 @@
           }
         },
         "summary": "Get timestamp of last completed order",
+        "tags": [
+          "shops"
+        ]
+      }
+    },
+    "/shops/last-pending-order/{id}": {
+      "get": {
+        "deprecated": true,
+        "description": "Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
+        "operationId": "get_last_pending_order_shops_last_pending_order__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopLastPendingOrder"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get timestamp of last pending order",
         "tags": [
           "shops"
         ]
@@ -9035,6 +9453,51 @@
         "tags": [
           "shops",
           "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{id}": {
+      "get": {
+        "deprecated": true,
+        "description": "Retrieve a shop by its UUID, including all associated price records.",
+        "operationId": "get_by_id_shops__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopWithPrices"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get shop",
+        "tags": [
+          "shops"
         ]
       }
     },

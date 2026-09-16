@@ -119,9 +119,13 @@ As above, but API keys are refused (key management, accounts, uploads).
 
 | Method | Path | MCP tool | Public | API key | Member | Admin | MCP viewer | MCP operator |
 |---|---|---|---|---|---|---|---|---|
+| GET | `/shops/allowed-ips/{id}` (deprecated) |  | – | – | R own | R any | · | · |
+| POST | `/shops/allowed-ips/{id}` (deprecated) |  | – | – | W own | W any | · | · |
+| POST | `/shops/allowed-ips/{id}/remove` (deprecated) |  | – | – | W own | W any | · | · |
 | GET | `/shops/allowed-ips/{shop_id}` |  | – | – | R own | R any | · | · |
 | POST | `/shops/allowed-ips/{shop_id}` |  | – | – | W own | W any | · | · |
 | POST | `/shops/allowed-ips/{shop_id}/remove` |  | – | – | W own | W any | · | · |
+| PUT | `/shops/config/{id}` (deprecated) |  | – | – | W own | W any | · | · |
 | PUT | `/shops/config/{shop_id}` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/{shop_id}` |  | – | – | W own | W any | · | · |
 | DELETE | `/shops/{shop_id}` |  | – | – | W own | W any | · | · |
@@ -133,16 +137,16 @@ As above, but API keys are refused (key management, accounts, uploads).
 | GET | `/shops/{shop_id}/api-keys/` |  | – | – | R own | R any | · | · |
 | POST | `/shops/{shop_id}/api-keys/` |  | – | – | W own | W any | · | · |
 | DELETE | `/shops/{shop_id}/api-keys/{key_id}` |  | – | – | W own | W any | · | · |
-| GET | `/shops/{shop_id}/attributes/{attribute_id}/options/` |  | – | – | R own | R any | · | · |
-| POST | `/shops/{shop_id}/attributes/{attribute_id}/options/` |  | – | – | W own | W any | · | · |
-| GET | `/shops/{shop_id}/attributes/{attribute_id}/options/{option_id}` |  | – | – | R own | R any | · | · |
-| DELETE | `/shops/{shop_id}/attributes/{attribute_id}/options/{option_id}` |  | – | – | W own | W any | · | · |
+| GET | `/shops/{shop_id}/attributes/{attribute_id}/options/` (deprecated) |  | – | – | R own | R any | · | · |
+| POST | `/shops/{shop_id}/attributes/{attribute_id}/options/` (deprecated) |  | – | – | W own | W any | · | · |
+| GET | `/shops/{shop_id}/attributes/{attribute_id}/options/{option_id}` (deprecated) |  | – | – | R own | R any | · | · |
+| DELETE | `/shops/{shop_id}/attributes/{attribute_id}/options/{option_id}` (deprecated) |  | – | – | W own | W any | · | · |
 | GET | `/shops/{shop_id}/categories-images/` |  | – | – | R own | R any | · | · |
 | PUT | `/shops/{shop_id}/categories-images/delete/{id}` |  | – | – | W own | W any | · | · |
 | GET | `/shops/{shop_id}/categories-images/{id}` |  | – | – | R own | R any | · | · |
 | PUT | `/shops/{shop_id}/categories-images/{id}` |  | – | – | W own | W any | · | · |
 | GET | `/shops/{shop_id}/images/signed-url/{image_name}` |  | – | – | R own | R any | · | · |
-| POST | `/shops/{shop_id}/product-attribute-values/` |  | – | – | W own | W any | · | · |
+| POST | `/shops/{shop_id}/product-attribute-values/` (deprecated) |  | – | – | W own | W any | · | · |
 
 ## Admin
 
@@ -184,10 +188,15 @@ No credential; storefront, checkout and discovery.
 | PATCH | `/orders/{order_id}` |  | W | W | W | W | · | · |
 | GET | `/sentry/` |  | R | R | R | R | · | · |
 | POST | `/shipping/calculate` |  | W | W | W | W | · | · |
+| GET | `/shops/cache-status/{id}` (deprecated) |  | R | R | R | R | · | · |
 | GET | `/shops/cache-status/{shop_id}` |  | R | R | R | R | · | · |
+| GET | `/shops/config/{id}` (deprecated) |  | R | R | R | R | · | · |
 | GET | `/shops/config/{shop_id}` |  | R | R | R | R | · | · |
+| GET | `/shops/last-completed-order/{id}` (deprecated) |  | R | R | R | R | · | · |
 | GET | `/shops/last-completed-order/{shop_id}` |  | R | R | R | R | · | · |
+| GET | `/shops/last-pending-order/{id}` (deprecated) |  | R | R | R | R | · | · |
 | GET | `/shops/last-pending-order/{shop_id}` |  | R | R | R | R | · | · |
+| GET | `/shops/{id}` (deprecated) |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}/categories/{category_id}/available-attributes` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}/categories/{category_id}/products` |  | R | R | R | R | · | · |

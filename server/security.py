@@ -245,6 +245,14 @@ async def require_shop(shop_id: UUID, request: Request, principal: Principal = D
     raise HTTPException(status_code=403, detail="No access to this shop")
 
 
+# TODO(deprecated-id-routes): remove with server/api/endpoints/shops/legacy.py, its only user.
+async def require_shop_by_id(
+    id: UUID, request: Request, principal: Principal = Depends(current_principal)
+) -> Principal:
+    """:func:`require_shop` for the deprecated shop routes whose path parameter is still ``id``."""
+    return await require_shop(id, request, principal)
+
+
 async def require_cognito(request: Request, principal: Principal = Depends(current_principal)) -> Principal:
     """Cognito-only tiers: an API key is refused — a key must not mint another key, for instance."""
     if principal.kind == "api_key":

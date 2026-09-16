@@ -24,7 +24,7 @@ from fastapi.routing import APIRoute
 
 from server.agent_tags import AgentTag
 from server.api.api import api_router
-from server.security import require_admin, require_cognito, require_shop
+from server.security import require_admin, require_cognito, require_shop, require_shop_by_id
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOC_PATH = REPO_ROOT / "docs" / "api" / "access-matrix.md"
@@ -55,6 +55,7 @@ class Route:
     path: str
     guards: frozenset[str]  # subset of {"cognito", "shop", "admin"}
     tool: str | None  # MCP tool name when the route is exposed, else None
+    deprecated: bool = False
 
     @property
     def reads(self) -> bool:
@@ -99,7 +100,7 @@ def _guards(dependant) -> frozenset[str]:
         for sub in stack.pop().dependencies:
             if sub.call is require_cognito:
                 found.add("cognito")
-            elif sub.call is require_shop:
+            elif sub.call is require_shop or sub.call is require_shop_by_id:  # TODO(deprecated-id-routes)
                 found.add("shop")
             elif sub.call is require_admin:
                 found.add("admin")
@@ -117,7 +118,15 @@ def routes() -> list[Route]:
             continue
         exposed = AgentTag.EXPOSED.value in [str(getattr(t, "value", t)) for t in route.tags]
         for method in route.methods - {"HEAD", "OPTIONS"}:
-            found.append(Route(method, route.path, _guards(route.dependant), route.operation_id if exposed else None))
+            found.append(
+                Route(
+                    method,
+                    route.path,
+                    _guards(route.dependant),
+                    route.operation_id if exposed else None,
+                    bool(route.deprecated),
+                )
+            )
     return sorted(found, key=lambda r: (r.path, METHOD_ORDER.get(r.method, 9)))
 
 
@@ -164,7 +173,8 @@ def render(found: list[Route] | None = None) -> str:
         ]
         for r in rows:
             cells = " | ".join(r.access(c) for c in CALLERS)
-            out.append(f"| {r.method} | `{r.path}` | {r.tool or ''} | {cells} |")
+            path = f"`{r.path}` (deprecated)" if r.deprecated else f"`{r.path}`"
+            out.append(f"| {r.method} | {path} | {r.tool or ''} | {cells} |")
         out.append("")
     return "\n".join(out)
 
