@@ -9,8 +9,8 @@ Authentication lives in `server/security.py` and is built on [AWS Cognito](https
 
 ## Summary
 
-- `current_principal` is the single authentication dependency; `require_shop`, `require_cognito` and `require_admin` are the guards mounted per tier. The MCP server verifies with the same `authenticate()` through `server/mcp/auth.py`.
-- The Cognito group `mcp-read-only` restricts a user to read tools through MCP only; see [MCP](mcp.md#read-only-agents).
+- `current_principal` is the single authentication dependency; `require_shop`, `require_cognito` and `require_admin` are the guards mounted per tier.
+- The Cognito group `mcp-read-only` restricts a user to reads through MCP only; see [MCP](mcp.md#read-only-agents).
 - Three credential shapes are accepted: user tokens, M2M client-credentials tokens, and per-shop API keys.
 - **Both** the web app client and the MCP app client issue *user* tokens. Only a token from neither is treated as M2M.
 - Authentication and shop authorization are separate checks.

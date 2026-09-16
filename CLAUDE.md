@@ -118,7 +118,7 @@ One resolver and three guards in `server/security.py`:
 - `require_cognito` — refuses API keys; for api-key management and other Cognito-only routes.
 - `require_admin` — `Principal.is_admin`: the Cognito `admins` group (or legacy `Admins`), or an M2M token.
 
-A member of the Cognito group `mcp-read-only` (`Principal.is_readonly`) may only read through MCP: the verifier withholds the `write` scope, non-GET tools carry `require_scopes("write")` (set in `server/mcp/server.py`), so fastmcp hides and refuses them; `require_shop` refuses non-GET calls for such a principal when `via == "mcp"` underneath. REST is unaffected, and read-only wins over admin there.
+A member of the Cognito group `mcp-read-only` (`Principal.is_readonly`) may only read through MCP: `require_shop` refuses non-GET calls for such a principal when `via == "mcp"`. REST is unaffected, and read-only wins over admin there. `via` is derived from fastmcp's request context (present only inside a tool call), not from headers.
 
 Guards are mounted per tier in `server/api/api.py`, never per route. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
 
@@ -132,7 +132,7 @@ Swagger UI Authorize button is wired via `HTTPBearer(auto_error=False)` in `secu
 
 The MCP server is off by default. Enable with `MCP_ENABLED=true`. When enabled, `server/main.py` mounts it at `/mcp` via `mount_mcp(app)` after all routers are included.
 
-Every MCP request is authenticated by `server/mcp/auth.py` (`PrincipalVerifier`, a fastmcp `TokenVerifier` running the same `authenticate()` as REST), so anonymous clients cannot list tools. Tool calls reach their routes with the already verified `Principal` (read from fastmcp's access-token context by `current_principal`), with `via="mcp"`. Non-GET tools require the `write` scope.
+The MCP transport itself is not authenticated: a tool call is authenticated by the route it reaches, because fastmcp 2.14.x forwards the caller's `Authorization` header into its in-process request. **Upgrading fastmcp to 3.x breaks this** — 3.x strips that header — and then the MCP layer must verify tokens itself (a fastmcp `TokenVerifier`), which in turn requires MCP clients to send a token on the connection (OAuth in LibreChat). Keep the pin until that is decided.
 
 Tools are **auto-generated from the FastAPI route table** by `fastmcp`. A route is exposed as an MCP tool by:
 

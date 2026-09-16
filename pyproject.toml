@@ -18,8 +18,7 @@ dependencies = [
     "fastapi~=0.115.0",
     "fastapi-cognito",
     # >=2.14 fixes transitive $defs pruning that broke the list_* MCP tools
-    # 3.4.1+ requires starlette>=1.0.1, which needs fastapi>=0.135 — a framework upgrade of its own.
-    "fastmcp==3.4.0",
+    "fastmcp~=2.14.7",
     "gunicorn~=20.0.4",
     "html2text==2024.2.26",
     "httpx>=0.28.1",
@@ -34,7 +33,7 @@ dependencies = [
     "pydantic-forms",
     "pydantic-settings>=2.5.2",
     "python-jose[cryptography]==3.2.0",
-    "python-multipart>=0.0.26",
+    "python-multipart==0.0.12",
     "python-rapidjson==1.17",
     "pytz==2024.1",
     "sentry-sdk~=2.28.0",

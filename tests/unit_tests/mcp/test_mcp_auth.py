@@ -4,17 +4,18 @@
 # You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
-"""The MCP server authenticates every request with :class:`server.mcp.auth.PrincipalVerifier`.
+"""How a tool call is authenticated and authorised through the mounted MCP server.
 
-These run over real HTTP through the mounted server, with the real
-``current_principal`` (the conftest stub is lifted) and Cognito stubbed the way
-``real_auth_client`` stubs it. API keys are looked up in the database inside the
-verifier, which is also what proves the database session reaches it.
+The MCP transport is open: ``initialize`` and ``tools/list`` need no credential.
+A tool call is authenticated by the route it reaches, because fastmcp 2.14.x
+forwards the caller's ``Authorization`` header into its in-process request; the
+tier guards then apply exactly as for REST. These tests run over real HTTP
+through the mounted server with the real ``current_principal`` (the conftest
+stub is lifted) and Cognito stubbed the way ``real_auth_client`` stubs it.
 """
 
 import contextlib
 import json
-import re
 from typing import Any, Optional
 
 import pytest
@@ -22,7 +23,6 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import server.security
-from server.crud.crud_api_key import api_key_crud
 from server.db import db
 from server.db.models import RevisionTable, TagTable
 from server.mcp.server import MCP_MOUNT_PATH, mount_mcp
@@ -50,6 +50,13 @@ def mcp_app(fastapi_app):
 
         fastapi_app.router.lifespan_context = lifespan
     return fastapi_app
+
+
+@pytest.fixture(scope="module")
+def mcp_client(mcp_app):
+    """One client for the module: the MCP session manager's lifespan may only be entered once."""
+    with TestClient(mcp_app) as client:
+        yield client
 
 
 class McpSession:
@@ -95,16 +102,13 @@ class McpSession:
         return reply["result"]
 
 
-@pytest.fixture(scope="module")
-def mcp_client(mcp_app):
-    """One client for the module: the MCP session manager's lifespan may only be entered once."""
-    with TestClient(mcp_app) as client:
-        yield client
+def _error_text(result: dict) -> str:
+    return result["content"][0]["text"] if result.get("isError") else ""
 
 
 @pytest.fixture
 def mcp(mcp_app, mcp_client, monkeypatch):
-    """Factory for authenticated sessions; ``cognito_token`` is what Cognito 'verifies' for a non-key bearer."""
+    """Factory for sessions; ``cognito_token`` is what Cognito 'verifies' for a non-key bearer."""
     override = mcp_app.dependency_overrides.pop(current_principal, None)
     state: dict[str, Any] = {"token": None}
 
@@ -114,12 +118,14 @@ def mcp(mcp_app, mcp_client, monkeypatch):
         return state["token"]
 
     monkeypatch.setattr(server.security.cognito_eu, "auth_required", _cognito)
-    monkeypatch.setattr(app_settings, "MCP_ENABLED", True)  # current_principal consults the MCP context only then
+    monkeypatch.setattr(app_settings, "MCP_ENABLED", True)  # ``via`` is derived from the MCP context only then
     try:
 
         def _session(bearer: Optional[str] = None, cognito_token=None) -> McpSession:
             state["token"] = cognito_token
-            return McpSession(mcp_client, bearer)
+            session = McpSession(mcp_client, bearer)
+            assert session.initialize() == 200
+            return session
 
         yield _session
     finally:
@@ -127,48 +133,43 @@ def mcp(mcp_app, mcp_client, monkeypatch):
             mcp_app.dependency_overrides[current_principal] = override
 
 
-def test_no_or_bad_credentials_are_refused_before_any_mcp_processing(mcp):
+def test_transport_is_open_but_tool_calls_are_authenticated_by_the_route(mcp):
+    """No credential: the whole tool list is visible, and a call fails with the route's 401."""
     shop = make_shop(random_shop_name=True)
-    revoked, revoked_plaintext = make_api_key(shop)
-    api_key_crud.revoke(shop_id=shop, key_id=revoked.id)
+    session = mcp()
 
-    assert mcp().initialize() == 401
-    assert mcp("sv_bogus_notakey").initialize() == 401
-    assert mcp(revoked_plaintext).initialize() == 401
-    assert mcp("not-a-jwt").initialize() == 401  # Cognito stub refuses when no token is set
+    assert session.tools() == sorted(EXPECTED_TOOL_NAMES)
+    denied = session.call("list_products", shop_id=str(shop))
+    assert denied.get("isError") and "401" in _error_text(denied)
 
 
-def test_api_key_lists_every_tool_and_reaches_only_its_own_shop(mcp):
+def test_api_key_bearer_is_forwarded_and_bound_to_its_shop(mcp):
     own, other = make_shop(random_shop_name=True), make_shop(random_shop_name=True)
     _, plaintext = make_api_key(own)
     session = mcp(plaintext)
 
-    assert session.initialize() == 200
-    assert session.tools() == sorted(EXPECTED_TOOL_NAMES)
     assert not session.call("list_products", shop_id=str(own)).get("isError")
     denied = session.call("list_products", shop_id=str(other))
-    assert denied.get("isError") and "403" in denied["content"][0]["text"]
+    assert denied.get("isError") and "403" in _error_text(denied)
 
 
 def test_cognito_user_is_scoped_by_its_groups(mcp):
     own, other = make_shop(random_shop_name=True), make_shop(random_shop_name=True)
     session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(own)]))
 
-    assert session.initialize() == 200
     mine = session.call("list_my_shops")
     assert [shop["id"] for shop in mine["structuredContent"]["shops"]] == [str(own)]
     assert not mine["structuredContent"]["is_admin"]
     denied = session.call("list_products", shop_id=str(other))
-    assert denied.get("isError") and "403" in denied["content"][0]["text"]
+    assert denied.get("isError") and "403" in _error_text(denied)
 
 
-def test_tool_call_reuses_the_mcp_principal_so_audit_says_mcp(mcp):
-    """The route takes the principal from fastmcp's context: same identity, and via='mcp' for the revision."""
+def test_tool_call_is_recorded_with_source_mcp(mcp):
+    """``via`` comes from fastmcp's request context, so the revision row says where the write came from."""
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
     row, plaintext = make_api_key(shop)
     session = mcp(plaintext)
-    session.initialize()
 
     result = session.call("delete_tag", shop_id=str(shop), tag_id=str(tag))
     assert not result.get("isError"), result
@@ -186,36 +187,20 @@ def test_tool_call_reuses_the_mcp_principal_so_audit_says_mcp(mcp):
 
 # --- mcp-read-only ---------------------------------------------------------------
 #
-# Membership of READONLY_GROUP means: through MCP, reads only. The verifier withholds
-# the "write" scope, write tools carry require_scopes("write"), so fastmcp hides them
-# on tools/list and refuses them on tools/call as unknown; require_shop refuses the
-# write again underneath. REST is unaffected: the same person keeps writing through
-# shop-editor.
+# Membership of READONLY_GROUP means: through MCP, reads only. The tool list is not
+# filtered (the list request carries no token on this fastmcp version); the write is
+# refused by require_shop, which every MCP tool call passes through. REST is
+# unaffected: the same person keeps writing through shop-editor.
 
 
-def _read_tools(app) -> set[str]:
-    """Every exposed GET route's tool name — what a read-only caller must see, and only that."""
-    from fastapi.routing import APIRoute
-
-    from server.agent_tags import AgentTag
-
-    return {
-        route.operation_id
-        for route in app.routes
-        if isinstance(route, APIRoute) and AgentTag.EXPOSED.value in (route.tags or []) and route.methods == {"GET"}
-    }
-
-
-def test_read_only_user_sees_only_read_tools_and_cannot_write(mcp, mcp_app):
+def test_read_only_user_can_read_but_not_write_through_mcp(mcp):
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
     session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(shop), READONLY_GROUP]))
-    session.initialize()
 
-    assert set(session.tools()) == _read_tools(mcp_app)
     assert not session.call("list_tags", shop_id=str(shop)).get("isError")
     denied = session.call("delete_tag", shop_id=str(shop), tag_id=str(tag))
-    assert denied.get("isError") and "Unknown tool" in denied["content"][0]["text"]
+    assert denied.get("isError") and "403" in _error_text(denied)
     assert TagTable.query.filter_by(id=tag).first() is not None
 
 
@@ -223,11 +208,10 @@ def test_read_only_wins_over_admin_through_mcp(mcp):
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
     session = mcp("a-cognito-jwt", cognito_token=_cognito_token(["admins", READONLY_GROUP]))
-    session.initialize()
 
     assert not session.call("list_tags", shop_id=str(shop)).get("isError")  # admin: any shop, reads
     denied = session.call("delete_tag", shop_id=str(shop), tag_id=str(tag))
-    assert denied.get("isError") and "Unknown tool" in denied["content"][0]["text"]
+    assert denied.get("isError") and "403" in _error_text(denied)
     assert TagTable.query.filter_by(id=tag).first() is not None
 
 
@@ -240,8 +224,8 @@ def test_read_only_applies_only_through_mcp(as_cognito_user):
     assert client.delete(f"/shops/{shop}/tags/{tag}").status_code == 204
 
 
-def test_route_guard_is_the_floor_for_a_read_only_mcp_principal(fastapi_app):
-    """Even with the middleware out of the picture, require_shop refuses the write."""
+def test_require_shop_is_where_the_read_only_rule_lives(fastapi_app):
+    """Drive the guard directly with a read-only MCP principal: write refused, read allowed."""
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
     saved = fastapi_app.dependency_overrides.get(current_principal)
@@ -253,33 +237,5 @@ def test_route_guard_is_the_floor_for_a_read_only_mcp_principal(fastapi_app):
         assert client.delete(f"/shops/{shop}/tags/{tag}").status_code == 403
         assert client.get(f"/shops/{shop}/tags/").status_code == 200
     finally:
-        fastapi_app.dependency_overrides[current_principal] = saved
-
-
-# --- OAuth discovery ------------------------------------------------------------
-#
-# An OAuth client (e.g. LibreChat) needs the 401 to point it at the protected-resource
-# metadata, per RFC 9728. mount_mcp wraps the server to advertise our own discovery
-# endpoint, host-derived so it is correct from inside a container.
-
-
-def test_anonymous_401_advertises_protected_resource_metadata(mcp_client):
-    init = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}},
-    }
-    r = mcp_client.post(f"{MCP_MOUNT_PATH}/", json=init, headers=HEADERS)
-    assert r.status_code == 401
-    challenge = r.headers.get("www-authenticate", "")
-    match = re.search(r'resource_metadata="([^"]+)"', challenge)
-    assert match, challenge
-
-    # the advertised URL must resolve and name this server as the resource
-    path = "/" + match.group(1).split("/", 3)[3]
-    meta = mcp_client.get(path)
-    assert meta.status_code == 200
-    body = meta.json()
-    assert body["resource"].rstrip("/").endswith("/mcp")
-    assert body["authorization_servers"]
+        if saved is not None:
+            fastapi_app.dependency_overrides[current_principal] = saved

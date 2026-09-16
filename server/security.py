@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable, List, Literal, Optional
+from typing import TYPE_CHECKING, Iterable, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import Header, HTTPException, Request, Security
@@ -19,7 +19,6 @@ from fastapi.param_functions import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_cognito import CognitoAuth, CognitoSettings
 from pydantic import BaseModel, Field, HttpUrl
-from starlette.requests import HTTPConnection
 
 from server.settings import app_settings, auth_settings
 
@@ -133,43 +132,48 @@ class Principal:
         """A per-shop API key: may touch its own shop and nothing else."""
         return cls(kind="api_key", subject=str(row.id), shop_id=row.shop_id, via=via)
 
-    def claims(self) -> dict[str, Any]:
-        """JSON-safe form, for carrying a verified principal through the MCP access token."""
-        return {
-            "kind": self.kind,
-            "subject": self.subject,
-            "groups": list(self.groups),
-            "shop_id": str(self.shop_id) if self.shop_id else None,
-            "via": self.via,
-        }
 
-    @classmethod
-    def from_claims(cls, claims: dict[str, Any]) -> "Principal":
-        return cls(
-            kind=claims["kind"],
-            subject=claims["subject"],
-            groups=tuple(claims.get("groups") or ()),
-            shop_id=UUID(claims["shop_id"]) if claims.get("shop_id") else None,
-            via=claims.get("via", "rest"),
-        )
+def _inside_mcp_tool_call() -> bool:
+    """True when this request is fastmcp's in-process call made from within a tool call.
+
+    fastmcp keeps a request context for the duration of a tool call and the
+    in-process HTTP request runs inside it, so the context is present exactly
+    then and absent for a plain REST request. Gated on the setting so a
+    REST-only deployment never imports fastmcp.
+    """
+    if not app_settings.MCP_ENABLED:
+        return False
+    from fastmcp.server.dependencies import get_context
+
+    try:
+        get_context()
+    except RuntimeError:
+        return False
+    return True
 
 
-async def authenticate(connection: HTTPConnection, *, x_api_key: Optional[str] = None, via: Via = "rest") -> Principal:
-    """Resolve the credential on ``connection`` into a :class:`Principal`, or raise 401.
+async def current_principal(
+    request: Request,
+    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+    _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+) -> Principal:
+    """The caller, from whichever credential the request carries.
 
     1. ``X-API-Key``, or ``Authorization: Bearer sv_…`` — a per-shop API key.
     2. Otherwise ``Authorization: Bearer <jwt>`` — a Cognito user token, or an
        M2M token carrying the ``/api`` scope.
 
-    Shared by the REST dependency below and the MCP token verifier, so both
-    surfaces accept exactly the same credentials with exactly the same checks.
+    Authenticates only. Which routes a principal may reach is decided by the
+    guards below, mounted per tier in ``server/api/api.py``.
     """
     # Lazy import — avoids a CRUD<->security cycle.
     from server.crud.crud_api_key import KEY_PLAINTEXT_PREFIX, api_key_crud
 
+    via: Via = "mcp" if _inside_mcp_tool_call() else "rest"
+
     plaintext: Optional[str] = x_api_key
     if plaintext is None:
-        auth_header = connection.headers.get("authorization", "")
+        auth_header = request.headers.get("authorization", "")
         if auth_header.lower().startswith("bearer "):
             candidate = auth_header[7:].strip()
             if candidate.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
@@ -181,31 +185,8 @@ async def authenticate(connection: HTTPConnection, *, x_api_key: Optional[str] =
             raise HTTPException(status_code=401, detail="Invalid API key")
         return Principal.from_api_key(row, via=via)
 
-    token = await cognito_eu.auth_required(connection)
+    token = await cognito_eu.auth_required(request)
     return Principal.from_token(token, via=via)
-
-
-async def current_principal(
-    request: Request,
-    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
-    _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
-) -> Principal:
-    """The caller, for any route — see :func:`authenticate`.
-
-    Authenticates only. Which routes a principal may reach is decided by the
-    guards below, mounted per tier in ``server/api/api.py``.
-    """
-    # A tool call arrives here as fastmcp's in-process request; the MCP layer has
-    # already verified the caller (server/mcp/auth.py) and left the principal in
-    # the access-token context, so reuse it rather than re-authenticating. Gated
-    # on the setting so a REST-only deployment never imports fastmcp.
-    if app_settings.MCP_ENABLED:
-        from fastmcp.server.dependencies import get_access_token
-
-        mcp_token = get_access_token()
-        if mcp_token is not None:
-            return Principal.from_claims(mcp_token.claims)
-    return await authenticate(request, x_api_key=x_api_key)
 
 
 async def require_shop(shop_id: UUID, request: Request, principal: Principal = Depends(current_principal)) -> Principal:
@@ -217,8 +198,8 @@ async def require_shop(shop_id: UUID, request: Request, principal: Principal = D
     ``GET /shops/my-shops`` reports; here it is enforced rather than advised.
 
     A read-only principal calling through MCP may not write, whatever its other
-    groups say. The MCP server hides and refuses write tools for it already;
-    this is the floor underneath, so a tool that slipped past would still fail.
+    groups say. Every MCP tool call passes through this guard, so this is the
+    one place that rule needs to live.
     """
     if principal.is_readonly and principal.via == "mcp" and request.method != "GET":
         raise HTTPException(status_code=403, detail="This account is read-only through MCP")
