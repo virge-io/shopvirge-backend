@@ -26,7 +26,7 @@ import server.security
 from server.db import db
 from server.db.models import RevisionTable, TagTable
 from server.mcp.server import MCP_MOUNT_PATH, mount_mcp
-from server.security import READONLY_GROUP, Principal, current_principal
+from server.security import MCP_OPERATORS_GROUP, MCP_VIEWERS_GROUP, Principal, current_principal
 from server.settings import app_settings
 from tests.unit_tests.conftest import _cognito_token
 from tests.unit_tests.factories.api_key import make_api_key
@@ -155,7 +155,7 @@ def test_api_key_bearer_is_forwarded_and_bound_to_its_shop(mcp):
 
 def test_cognito_user_is_scoped_by_its_groups(mcp):
     own, other = make_shop(random_shop_name=True), make_shop(random_shop_name=True)
-    session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(own)]))
+    session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(own), MCP_OPERATORS_GROUP]))
 
     mine = session.call("list_my_shops")
     assert [shop["id"] for shop in mine["structuredContent"]["shops"]] == [str(own)]
@@ -185,29 +185,50 @@ def test_tool_call_is_recorded_with_source_mcp(mcp):
     assert revision.source == "mcp"
 
 
-# --- mcp-read-only ---------------------------------------------------------------
+# --- MCP roles -------------------------------------------------------------------
 #
-# Membership of READONLY_GROUP means: through MCP, reads only. The tool list is not
-# filtered (the list request carries no token on this fastmcp version); the write is
-# refused by require_shop, which every MCP tool call passes through. REST is
-# unaffected: the same person keeps writing through shop-editor.
+# Through MCP a Cognito user needs a role: shopvirge-mcp-viewers reads, shopvirge-
+# mcp-operators reads and writes, and a member of neither may do nothing at all —
+# admins included. API keys and M2M tokens are not people and are not subject to it. The tool list is not filtered (the list request carries no token on this
+# fastmcp version); the refusal comes from the tier guards every tool call passes
+# through. REST is unaffected: the same person keeps writing through shop-editor.
 
 
-def test_read_only_user_can_read_but_not_write_through_mcp(mcp):
+def test_user_without_an_mcp_role_can_do_nothing_through_mcp(mcp):
+    shop = make_shop(random_shop_name=True)
+    session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(shop)]))
+
+    for name, args in (("list_my_shops", {}), ("list_products", {"shop_id": str(shop)})):
+        denied = session.call(name, **args)
+        assert denied.get("isError") and "403" in _error_text(denied), name
+
+
+def test_viewer_can_read_but_not_write_through_mcp(mcp):
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
-    session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(shop), READONLY_GROUP]))
+    session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(shop), MCP_VIEWERS_GROUP]))
 
+    assert not session.call("list_my_shops").get("isError")
     assert not session.call("list_tags", shop_id=str(shop)).get("isError")
     denied = session.call("delete_tag", shop_id=str(shop), tag_id=str(tag))
     assert denied.get("isError") and "403" in _error_text(denied)
     assert TagTable.query.filter_by(id=tag).first() is not None
 
 
-def test_read_only_wins_over_admin_through_mcp(mcp):
+def test_operator_can_read_and_write_through_mcp(mcp):
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
-    session = mcp("a-cognito-jwt", cognito_token=_cognito_token(["admins", READONLY_GROUP]))
+    session = mcp("a-cognito-jwt", cognito_token=_cognito_token([str(shop), MCP_OPERATORS_GROUP]))
+
+    assert not session.call("list_tags", shop_id=str(shop)).get("isError")
+    assert not session.call("delete_tag", shop_id=str(shop), tag_id=str(tag)).get("isError")
+    assert TagTable.query.filter_by(id=tag).first() is None
+
+
+def test_admin_who_is_a_viewer_reads_any_shop_but_cannot_write(mcp):
+    shop = make_shop(random_shop_name=True)
+    tag = make_tag(shop)
+    session = mcp("a-cognito-jwt", cognito_token=_cognito_token(["admins", MCP_VIEWERS_GROUP]))
 
     assert not session.call("list_tags", shop_id=str(shop)).get("isError")  # admin: any shop, reads
     denied = session.call("delete_tag", shop_id=str(shop), tag_id=str(tag))
@@ -215,27 +236,45 @@ def test_read_only_wins_over_admin_through_mcp(mcp):
     assert TagTable.query.filter_by(id=tag).first() is not None
 
 
-def test_read_only_applies_only_through_mcp(as_cognito_user):
-    """The same group member writes through REST as before."""
+def test_admin_without_an_mcp_group_can_do_nothing_through_mcp(mcp):
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
-    client = as_cognito_user([str(shop), READONLY_GROUP])
+    session = mcp("a-cognito-jwt", cognito_token=_cognito_token(["admins"]))
 
-    assert client.delete(f"/shops/{shop}/tags/{tag}").status_code == 204
+    for name, args in (("list_my_shops", {}), ("list_tags", {"shop_id": str(shop)})):
+        denied = session.call(name, **args)
+        assert denied.get("isError") and "403" in _error_text(denied), name
+    assert session.call("delete_tag", shop_id=str(shop), tag_id=str(tag)).get("isError")
+    assert TagTable.query.filter_by(id=tag).first() is not None
 
 
-def test_require_shop_is_where_the_read_only_rule_lives(fastapi_app):
-    """Drive the guard directly with a read-only MCP principal: write refused, read allowed."""
+def test_mcp_roles_do_not_apply_to_rest(as_cognito_user):
+    """A viewer, and a user with no MCP role, both write through REST as before."""
+    shop = make_shop(random_shop_name=True)
+    for groups in ([str(shop), MCP_VIEWERS_GROUP], [str(shop)]):
+        tag = make_tag(shop)
+        client = as_cognito_user(groups)
+        assert client.delete(f"/shops/{shop}/tags/{tag}").status_code == 204, groups
+
+
+def test_the_tier_guards_are_where_the_mcp_role_rule_lives(fastapi_app):
+    """Drive the guards directly with MCP principals: viewer reads only, no-role gets nothing."""
     shop = make_shop(random_shop_name=True)
     tag = make_tag(shop)
     saved = fastapi_app.dependency_overrides.get(current_principal)
-    fastapi_app.dependency_overrides[current_principal] = lambda: Principal(
-        kind="user", subject="5678", groups=(str(shop), READONLY_GROUP), via="mcp"
-    )
+    client = TestClient(fastapi_app)
     try:
-        client = TestClient(fastapi_app)
+        fastapi_app.dependency_overrides[current_principal] = lambda: Principal(
+            kind="user", subject="5678", groups=(str(shop), MCP_VIEWERS_GROUP), via="mcp"
+        )
         assert client.delete(f"/shops/{shop}/tags/{tag}").status_code == 403
         assert client.get(f"/shops/{shop}/tags/").status_code == 200
+
+        fastapi_app.dependency_overrides[current_principal] = lambda: Principal(
+            kind="user", subject="5678", groups=(str(shop),), via="mcp"
+        )
+        assert client.get(f"/shops/{shop}/tags/").status_code == 403
+        assert client.get("/shops/my-shops").status_code == 403
     finally:
         if saved is not None:
             fastapi_app.dependency_overrides[current_principal] = saved

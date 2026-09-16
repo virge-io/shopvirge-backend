@@ -118,7 +118,7 @@ One resolver and three guards in `server/security.py`:
 - `require_cognito` — refuses API keys; for api-key management and other Cognito-only routes.
 - `require_admin` — `Principal.is_admin`: the Cognito `admins` group (or legacy `Admins`), or an M2M token.
 
-A member of the Cognito group `mcp-read-only` (`Principal.is_readonly`) may only read through MCP: `require_shop` refuses non-GET calls for such a principal when `via == "mcp"`. REST is unaffected, and read-only wins over admin there. `via` is derived from fastmcp's request context (present only inside a tool call), not from headers.
+Through MCP a user needs a role, given by Cognito group and nothing else: `shopvirge-mcp-viewers` reads, `shopvirge-mcp-operators` reads and writes, and a user in neither group — admins included — may do nothing through MCP (`Principal.mcp_access`). API keys and M2M tokens are not users and are not subject to it. `_enforce_mcp_role` runs from `require_shop` and `require_cognito`, the guards every MCP tool call passes through, and is a no-op for REST. `via` is derived from fastmcp's request context (present only inside a tool call), not from headers.
 
 Guards are mounted per tier in `server/api/api.py`, never per route. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
 

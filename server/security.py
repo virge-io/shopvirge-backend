@@ -26,8 +26,10 @@ if TYPE_CHECKING:
     from server.db.models import ApiKeyTable
 
 ADMIN_GROUPS = ("Admins", "admins")
-# Cognito group whose members may only *read* through the MCP server. REST is unaffected.
-READONLY_GROUP = "mcp-read-only"
+# Cognito groups that grant a *role through MCP*; neither affects REST. Only these
+# grant MCP access — a user in neither, admins included, may do nothing through MCP.
+MCP_VIEWERS_GROUP = "shopvirge-mcp-viewers"  # read
+MCP_OPERATORS_GROUP = "shopvirge-mcp-operators"  # read and write
 
 
 def has_admin_group(groups: Iterable[str]) -> bool:
@@ -71,6 +73,7 @@ def user_client_ids() -> set[str]:
 
 Kind = Literal["user", "m2m", "api_key"]
 Via = Literal["rest", "mcp"]
+McpAccess = Literal["none", "read", "write"]
 
 
 @dataclass(frozen=True)
@@ -102,9 +105,22 @@ class Principal:
         return self.kind == "m2m" or has_admin_group(self.groups)
 
     @property
-    def is_readonly(self) -> bool:
-        """Member of :data:`READONLY_GROUP`: reads only through MCP. Wins over ``is_admin`` there."""
-        return READONLY_GROUP in self.groups
+    def mcp_access(self) -> McpAccess:
+        """What this principal may do through MCP: ``write``, ``read`` or ``none``.
+
+        For a user this comes from the MCP groups alone: operators write,
+        viewers read, and membership of neither means nothing at all — being
+        an admin does not help. Keys and service tokens are not people and
+        carry no groups; they keep the access they have anyway (a key its one
+        shop, M2M everything).
+        """
+        if self.kind != "user":
+            return "write"
+        if MCP_OPERATORS_GROUP in self.groups:
+            return "write"
+        if MCP_VIEWERS_GROUP in self.groups:
+            return "read"
+        return "none"
 
     def may_touch(self, shop_id: UUID) -> bool:
         """The one shop-access rule: a key its own shop, a user its groups' shops, an admin any."""
@@ -189,6 +205,22 @@ async def current_principal(
     return Principal.from_token(token, via=via)
 
 
+def _enforce_mcp_role(principal: Principal, request: Request) -> None:
+    """Through MCP a user needs a role: viewers read, operators write, nobody else anything.
+
+    Called from every guard an MCP tool call can pass through (``require_shop``
+    for the shop tier, ``require_cognito`` for the authenticated tier), so the
+    rule lives in the guards and never in a handler. No-op for REST.
+    """
+    if principal.via != "mcp":
+        return
+    access = principal.mcp_access
+    if access == "none":
+        raise HTTPException(status_code=403, detail="This account has no access through MCP")
+    if access == "read" and request.method != "GET":
+        raise HTTPException(status_code=403, detail="This account is read-only through MCP")
+
+
 async def require_shop(shop_id: UUID, request: Request, principal: Principal = Depends(current_principal)) -> Principal:
     """Shop tiers: the ``shop_id`` in the path must be one the caller may touch, else 403.
 
@@ -196,13 +228,8 @@ async def require_shop(shop_id: UUID, request: Request, principal: Principal = D
     group membership — nothing else ties either to the path, so without this
     check swapping the path reaches another tenant's data. Same mapping
     ``GET /shops/my-shops`` reports; here it is enforced rather than advised.
-
-    A read-only principal calling through MCP may not write, whatever its other
-    groups say. Every MCP tool call passes through this guard, so this is the
-    one place that rule needs to live.
     """
-    if principal.is_readonly and principal.via == "mcp" and request.method != "GET":
-        raise HTTPException(status_code=403, detail="This account is read-only through MCP")
+    _enforce_mcp_role(principal, request)
     if principal.may_touch(shop_id):
         return principal
     if principal.kind == "api_key":
@@ -210,10 +237,11 @@ async def require_shop(shop_id: UUID, request: Request, principal: Principal = D
     raise HTTPException(status_code=403, detail="User has no access to this shop")
 
 
-async def require_cognito(principal: Principal = Depends(current_principal)) -> Principal:
+async def require_cognito(request: Request, principal: Principal = Depends(current_principal)) -> Principal:
     """Cognito-only tiers: an API key is refused — a key must not mint another key, for instance."""
     if principal.kind == "api_key":
         raise HTTPException(status_code=401, detail="API keys are not accepted on this route")
+    _enforce_mcp_role(principal, request)
     return principal
 
 
