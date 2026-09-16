@@ -126,7 +126,7 @@ API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id
 
 Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `GET /shops/my-shops` is the single resolution point; individual shop endpoints do not re-enforce this.
 
-Swagger UI Authorize button is wired via `HTTPBearer(auto_error=False)` in `security.py` — paste a Bearer token there to authenticate in `/docs`.
+Credentials are OpenAPI security schemes, never parameters: `HTTPBearer` on every authenticated operation (declared by `current_principal`) and `APIKeyHeader` (`X-API-Key`) only on the key-accepting tiers, via the documentation-only `accepts_api_key` dependency mounted in `api.py`. Swagger's Authorize dialog offers both; a key also works as `Bearer sv_…`.
 
 ## MCP
 

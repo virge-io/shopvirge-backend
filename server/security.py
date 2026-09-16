@@ -14,9 +14,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, List, Literal, Optional
 from uuid import UUID
 
-from fastapi import Header, HTTPException, Request, Security
+from fastapi import HTTPException, Request, Security
 from fastapi.param_functions import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_cognito import CognitoAuth, CognitoSettings
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -57,6 +57,7 @@ class CustomCognitoToken(BaseModel):
 cognito_eu = CognitoAuth(settings=CognitoSettings.from_global_settings(auth_settings), custom_model=CustomCognitoToken)
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+_api_key_scheme = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 def user_client_ids() -> set[str]:
@@ -170,7 +171,6 @@ def _inside_mcp_tool_call() -> bool:
 
 async def current_principal(
     request: Request,
-    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
     _: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
 ) -> Principal:
     """The caller, from whichever credential the request carries.
@@ -187,7 +187,7 @@ async def current_principal(
 
     via: Via = "mcp" if _inside_mcp_tool_call() else "rest"
 
-    plaintext: Optional[str] = x_api_key
+    plaintext: Optional[str] = request.headers.get("x-api-key")
     if plaintext is None:
         auth_header = request.headers.get("authorization", "")
         if auth_header.lower().startswith("bearer "):
@@ -203,6 +203,16 @@ async def current_principal(
 
     token = await cognito_eu.auth_required(request)
     return Principal.from_token(token, via=via)
+
+
+async def accepts_api_key(_: Optional[str] = Security(_api_key_scheme)) -> None:
+    """Documentation only: puts the ``X-API-Key`` security scheme on the operations of a tier.
+
+    ``current_principal`` reads the header itself on every route; mounting this
+    next to it on the tiers that accept keys (``shop``, per-shop orders) is what
+    makes the OpenAPI ``security`` of exactly those operations list the key scheme
+    beside the bearer one. It decides nothing.
+    """
 
 
 def _enforce_mcp_role(principal: Principal, request: Request) -> None:
@@ -232,9 +242,7 @@ async def require_shop(shop_id: UUID, request: Request, principal: Principal = D
     _enforce_mcp_role(principal, request)
     if principal.may_touch(shop_id):
         return principal
-    if principal.kind == "api_key":
-        raise HTTPException(status_code=403, detail="API key is not valid for this shop")
-    raise HTTPException(status_code=403, detail="User has no access to this shop")
+    raise HTTPException(status_code=403, detail="No access to this shop")
 
 
 async def require_cognito(request: Request, principal: Principal = Depends(current_principal)) -> Principal:
@@ -249,4 +257,4 @@ async def require_admin(principal: Principal = Depends(current_principal)) -> Pr
     """The admin tier — see :meth:`Principal.is_admin`."""
     if principal.is_admin:
         return principal
-    raise HTTPException(status_code=403, detail="User is not a member of the 'Admins' group")
+    raise HTTPException(status_code=403, detail="Admin access required")

@@ -52,6 +52,7 @@ from server.api.endpoints.shops import router as shops
 from server.api.endpoints.system import router as system
 from server.api.endpoints.tags import router as tags
 from server.security import (
+    accepts_api_key,
     require_admin,
     require_cognito,
     require_shop,
@@ -63,7 +64,7 @@ public = APIRouter()
 shop_public = APIRouter(prefix=SHOP)
 authenticated = APIRouter(dependencies=[Depends(require_cognito)])
 admin = APIRouter(dependencies=[Depends(require_cognito), Depends(require_admin)])
-shop = APIRouter(prefix=SHOP, dependencies=[Depends(require_shop)])
+shop = APIRouter(prefix=SHOP, dependencies=[Depends(require_shop), Depends(accepts_api_key)])
 shop_cognito = APIRouter(prefix=SHOP, dependencies=[Depends(require_cognito), Depends(require_shop)])
 
 authenticated.include_router(system.router)
@@ -104,7 +105,10 @@ api_router.include_router(
     shops.shop_router, prefix="/shops", tags=["shops"], dependencies=[Depends(require_cognito), Depends(require_shop)]
 )
 api_router.include_router(
-    orders.per_shop_router, prefix="/orders", tags=["orders"], dependencies=[Depends(require_shop)]
+    orders.per_shop_router,
+    prefix="/orders",
+    tags=["orders"],
+    dependencies=[Depends(require_shop), Depends(accepts_api_key)],
 )
 api_router.include_router(shop_public)
 api_router.include_router(public)

@@ -6294,6 +6294,11 @@
       }
     },
     "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      },
       "HTTPBearer": {
         "scheme": "bearer",
         "type": "http"
@@ -6396,22 +6401,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -6469,22 +6458,6 @@
               "title": "Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -6540,22 +6513,6 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -6623,22 +6580,6 @@
               "title": "Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -6702,22 +6643,6 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -6868,24 +6793,6 @@
     "/early-access/": {
       "post": {
         "operationId": "create_early_access__post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7015,24 +6922,6 @@
       "post": {
         "description": "Add a new FAQ question and answer. Requires authentication. Returns 409 if a FAQ with the same question already exists.",
         "operationId": "create_faq__post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7090,22 +6979,6 @@
               "title": "Faq Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -7145,22 +7018,6 @@
               "format": "uuid",
               "title": "Faq Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -7255,24 +7112,6 @@
       "get": {
         "description": "Retrieve all forms.\n\nArgs:\n    response: Response\n\nReturns:\n    Form titles",
         "operationId": "get_forms_forms_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -7287,16 +7126,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "security": [
@@ -7338,22 +7167,6 @@
                 }
               ],
               "title": "Shop Id"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -7625,22 +7438,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -7682,24 +7479,6 @@
       "post": {
         "description": "Create a new license. Recurring licenses must not have an `end_date`. Requires superuser privileges.",
         "operationId": "create_licenses_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7800,22 +7579,6 @@
               "title": "Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -7855,22 +7618,6 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -7918,22 +7665,6 @@
               "format": "uuid",
               "title": "Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -8031,22 +7762,6 @@
               },
               "title": "Sort",
               "type": "array"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -8278,22 +7993,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -8325,6 +8024,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List completed orders for a shop",
@@ -8397,22 +8099,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -8444,6 +8130,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List pending orders for a shop",
@@ -8557,22 +8246,6 @@
               "title": "Order Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -8664,22 +8337,6 @@
               "format": "uuid",
               "title": "Order Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -8859,22 +8516,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -8916,24 +8557,6 @@
       "post": {
         "description": "Create a new shop on the platform. Returns the created shop record.",
         "operationId": "create_shops__post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -8991,22 +8614,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -9057,22 +8664,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -9136,22 +8727,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -9302,22 +8877,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "requestBody": {
@@ -9455,24 +9014,6 @@
       "get": {
         "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Always call this first \u2014 before saying anything to the user.",
         "operationId": "list_my_shops",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -9483,16 +9024,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "security": [
@@ -9520,22 +9051,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -9618,22 +9133,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -9742,22 +9241,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -9809,22 +9292,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -9894,22 +9361,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -9960,22 +9411,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10045,22 +9480,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -10109,22 +9528,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10177,22 +9580,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10262,22 +9649,6 @@
               "format": "uuid",
               "title": "Key Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10370,22 +9741,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -10417,6 +9772,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List attribute options for a shop",
@@ -10439,22 +9797,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10493,6 +9835,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create attribute option",
@@ -10539,22 +9884,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -10575,6 +9904,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Delete attribute option",
@@ -10607,22 +9939,6 @@
               "title": "Option Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -10650,6 +9966,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get attribute option",
@@ -10681,22 +10000,6 @@
               "format": "uuid",
               "title": "Option Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10735,6 +10038,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Update attribute option",
@@ -10807,22 +10113,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -10854,6 +10144,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List shop attributes",
@@ -10876,22 +10169,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -10930,6 +10207,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create attribute",
@@ -10964,22 +10244,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11007,6 +10271,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get attribute by ID",
@@ -11041,22 +10308,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11084,6 +10335,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get attribute by ID with options",
@@ -11116,22 +10370,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11159,6 +10397,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get attribute by name",
@@ -11230,22 +10471,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11277,6 +10502,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List shop attributes with options",
@@ -11322,22 +10550,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11358,6 +10570,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Delete attribute (moves to trash)",
@@ -11389,22 +10604,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -11443,6 +10642,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Update attribute",
@@ -11526,22 +10728,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11604,22 +10790,6 @@
               "format": "uuid",
               "title": "Attribute Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -11716,22 +10886,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11794,22 +10948,6 @@
               "title": "Option Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11870,22 +11008,6 @@
               "title": "Attribute Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -11913,6 +11035,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore attribute from trash",
@@ -11968,22 +11093,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12011,6 +11120,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore attribute to a revision",
@@ -12045,22 +11157,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12088,6 +11184,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get attribute by ID with options",
@@ -12159,22 +11258,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12231,22 +11314,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -12315,22 +11382,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12385,22 +11436,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -12508,22 +11543,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12555,6 +11574,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List categories",
@@ -12576,22 +11598,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -12628,6 +11634,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create category",
@@ -12660,22 +11669,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12703,6 +11696,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get category by name",
@@ -12759,22 +11755,6 @@
               "title": "Detach",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12795,6 +11775,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Delete category (moves to trash)",
@@ -12826,22 +11809,6 @@
               "title": "Category Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -12869,6 +11836,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get category",
@@ -12899,22 +11869,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -12951,6 +11905,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Update category",
@@ -13231,22 +12188,6 @@
               "title": "Restore Products",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -13274,6 +12215,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore category from trash",
@@ -13308,22 +12252,6 @@
               "title": "Category Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -13355,6 +12283,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List category revisions",
@@ -13409,22 +12340,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -13452,6 +12367,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore category to a revision",
@@ -13495,22 +12413,6 @@
               "title": "Move Up",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -13536,6 +12438,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Reorder category",
@@ -13565,22 +12470,6 @@
             "schema": {
               "title": "Image Name",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -13798,22 +12687,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -13845,6 +12718,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List product attribute values",
@@ -13867,22 +12743,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -13919,6 +12779,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create product attribute values (deprecated)",
@@ -13953,22 +12816,6 @@
               "title": "Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -13989,6 +12836,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Delete product attribute value",
@@ -14022,22 +12872,6 @@
               "title": "Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -14065,6 +12899,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get product attribute value",
@@ -14098,22 +12935,6 @@
               "format": "uuid",
               "title": "Product Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -14150,6 +12971,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create product attribute values for product",
@@ -14183,22 +13007,6 @@
               "title": "Product Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "requestBody": {
@@ -14229,6 +13037,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Replace product attribute values for product",
@@ -14302,22 +13113,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -14349,6 +13144,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List product-tag associations",
@@ -14371,22 +13169,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -14418,6 +13200,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Add tag to product",
@@ -14462,22 +13247,6 @@
               "title": "Product Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -14503,6 +13272,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get product-tag relation ID",
@@ -14537,22 +13309,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -14580,6 +13336,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get product-tag association",
@@ -14614,22 +13373,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -14650,6 +13393,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Remove tag from product",
@@ -14682,22 +13428,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "requestBody": {
@@ -14728,6 +13458,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Update product-tag association",
@@ -14817,22 +13550,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -14864,6 +13581,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List products",
@@ -14886,22 +13606,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -14938,6 +13642,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create product",
@@ -15071,22 +13778,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15118,6 +13809,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List products with attributes",
@@ -15163,22 +13857,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15199,6 +13877,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Delete product (moves to trash)",
@@ -15285,22 +13966,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "requestBody": {
@@ -15336,6 +14001,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Update product",
@@ -15370,22 +14038,6 @@
               "title": "Product Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15413,6 +14065,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore product from trash",
@@ -15447,22 +14102,6 @@
               "title": "Product Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15494,6 +14133,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List product revisions",
@@ -15538,22 +14180,6 @@
               "title": "Revision No",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15581,6 +14207,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get product revision",
@@ -15636,22 +14265,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15679,6 +14292,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore product to a revision",
@@ -15722,22 +14338,6 @@
               "title": "Move Up",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -15763,6 +14363,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Reorder product",
@@ -15956,22 +14559,6 @@
               "title": "Limit",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16003,6 +14590,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List all revisions in a shop",
@@ -16038,22 +14628,6 @@
               "title": "Revision Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16081,6 +14655,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get one revision by id",
@@ -16315,22 +14892,6 @@
               "title": "Sort",
               "type": "array"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16362,6 +14923,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List tags",
@@ -16384,22 +14948,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -16436,6 +14984,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Create tag",
@@ -16469,22 +15020,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16512,6 +15047,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get tag by name",
@@ -16557,22 +15095,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16593,6 +15115,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Delete tag (moves to trash)",
@@ -16625,22 +15150,6 @@
               "title": "Shop Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16668,6 +15177,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Get tag",
@@ -16699,22 +15211,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -16751,6 +15247,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Update tag",
@@ -16785,22 +15284,6 @@
               "title": "Tag Id",
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16828,6 +15311,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore tag from trash",
@@ -16883,22 +15369,6 @@
               "title": "Force",
               "type": "boolean"
             }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -16926,6 +15396,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "Restore tag to a revision",
@@ -16949,22 +15422,6 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -16997,6 +15454,9 @@
         "security": [
           {
             "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
           }
         ],
         "summary": "List trashed products, categories, tags and attributes",
