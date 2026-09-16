@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from server.api.endpoints.products import attribute_values, prices, product_tags, products, public
 
-# shop_any tier: API key or Cognito
+# shop tier: API key or Cognito
 router = APIRouter()
 router.include_router(products.router, prefix="/products", tags=["shops", "products"])
 router.include_router(product_tags.router, prefix="/products-to-tags", tags=["shops", "products"])

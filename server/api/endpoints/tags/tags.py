@@ -4,7 +4,7 @@ from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Body, Depends
 from starlette.responses import Response
 
@@ -13,10 +13,9 @@ from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.crud_tag import tag_crud
 from server.db import db
-from server.db.models import ApiKeyTable
 from server.schemas.tag import TagCreate, TagSchema, TagUpdate
-from server.security import auth_required_any
-from server.services.revisions import actor, ensure_baseline_tag_revision, record_tag_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_tag_revision, record_tag_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -81,13 +80,10 @@ def get_by_name(name: str, shop_id: UUID) -> TagSchema:
     summary="Create tag",
     description="Create a new tag for a shop. Tags are attached to products via the `products-to-tags` resource.",
 )
-def create(
-    shop_id: UUID, request: Request, data: TagCreate = Body(...), principal: Any = Depends(auth_required_any)
-) -> None:
+def create(shop_id: UUID, data: TagCreate = Body(...), principal: Principal = Depends(current_principal)) -> None:
     logger.info("Saving tag", data=data)
-    created_by, source = actor(principal, request)
     tag = tag_crud.create_by_shop_id(shop_id=shop_id, obj_in=data, commit=False)
-    record_tag_revision(tag, action="create", created_by=created_by, source=source)
+    record_tag_revision(tag, action="create", created_by=principal.label, source=principal.via)
     db.session.commit()
     db.session.refresh(tag)
     return tag
@@ -103,21 +99,24 @@ def create(
     description="Update an existing tag's name or translations.",
 )
 def update(
-    *, tag_id: UUID, shop_id: UUID, item_in: TagUpdate, request: Request, principal: Any = Depends(auth_required_any)
+    *,
+    tag_id: UUID,
+    shop_id: UUID,
+    item_in: TagUpdate,
+    principal: Principal = Depends(current_principal),
 ) -> Any:
     tag = tag_crud.get_id_by_shop_id(shop_id, tag_id, for_update=True)
     logger.info("Updating tag", data=tag)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
-    created_by, source = actor(principal, request)
     ensure_baseline_tag_revision(tag)
     tag = tag_crud.update(
         db_obj=tag,
         obj_in=item_in,
         commit=False,
     )
-    record_tag_revision(tag, action="update", created_by=created_by, source=source)
+    record_tag_revision(tag, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
     return tag
 
@@ -139,16 +138,15 @@ def update(
 def delete(
     tag_id: UUID,
     shop_id: UUID,
-    request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     tag = tag_crud.get_id_by_shop_id(shop_id, tag_id, for_update=True, include_deleted=force)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
     if force:
-        if isinstance(principal, ApiKeyTable):
+        if principal.kind == "api_key":
             raise HTTPException(
                 status_code=403,
                 detail="Purging a tag is irreversible and requires user credentials; API keys may only trash.",
@@ -159,8 +157,7 @@ def delete(
             raise HTTPException(HTTPStatus.BAD_REQUEST, detail=f"{e.__cause__}")
         return
 
-    created_by, source = actor(principal, request)
-    record_tag_revision(tag, action="delete", created_by=created_by, source=source)
+    record_tag_revision(tag, action="delete", created_by=principal.label, source=principal.via)
     tag.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
     return

@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import Any, List
+from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.param_functions import Body, Depends
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -15,7 +15,7 @@ from server.api.error_handling import raise_status
 from server.crud.base import NotFound
 from server.crud.crud_attribute import attribute_crud
 from server.db import db
-from server.db.models import ApiKeyTable, AttributeOptionTable
+from server.db.models import AttributeOptionTable
 from server.schemas.attribute import (
     AttributeCreate,
     AttributeSchema,
@@ -23,8 +23,8 @@ from server.schemas.attribute import (
     AttributeUpdate,
     AttributeWithOptionsSchema,
 )
-from server.security import auth_required_any
-from server.services.revisions import actor, ensure_baseline_attribute_revision, record_attribute_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_attribute_revision, record_attribute_revision
 
 logger = structlog.get_logger(__name__)
 
@@ -166,7 +166,9 @@ def get_by_name(name: str, shop_id: UUID) -> AttributeSchema:
     operation_id="create_attribute",
 )
 def create(
-    shop_id: UUID, request: Request, data: AttributeCreate = Body(...), principal: Any = Depends(auth_required_any)
+    shop_id: UUID,
+    data: AttributeCreate = Body(...),
+    principal: Principal = Depends(current_principal),
 ) -> AttributeSchema:
     """Create a new attribute for the given shop.
 
@@ -177,10 +179,9 @@ def create(
     if data.translation is None or data.translation.main_name is None:
         data.translation = AttributeTranslationBase(main_name=data.name)
 
-    created_by, source = actor(principal, request)
     try:
         attr = attribute_crud.create_by_shop_id(shop_id=shop_id, obj_in=data, commit=False)
-        record_attribute_revision(attr, action="create", created_by=created_by, source=source)
+        record_attribute_revision(attr, action="create", created_by=principal.label, source=principal.via)
         db.session.commit()
         db.session.refresh(attr)
     except IntegrityError:
@@ -200,20 +201,18 @@ def create(
 def update(
     attribute_id: UUID,
     shop_id: UUID,
-    request: Request,
     data: AttributeUpdate = Body(...),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> AttributeSchema:
     """Update an attribute for a shop."""
     attribute = attribute_crud.get_id_by_shop_id(shop_id, attribute_id, for_update=True)
     if not attribute:
         raise_status(HTTPStatus.NOT_FOUND, f"Attribute with id {attribute_id} not found")
 
-    created_by, source = actor(principal, request)
     ensure_baseline_attribute_revision(attribute)
     try:
         attribute = attribute_crud.update(db_obj=attribute, obj_in=data, commit=False)
-        record_attribute_revision(attribute, action="update", created_by=created_by, source=source)
+        record_attribute_revision(attribute, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
         return attribute
     except IntegrityError:
@@ -238,9 +237,8 @@ def update(
 def delete(
     attribute_id: UUID,
     shop_id: UUID,
-    request: Request,
     force: bool = Query(False, description="Permanently purge instead of moving to trash. Irreversible."),
-    principal: Any = Depends(auth_required_any),
+    principal: Principal = Depends(current_principal),
 ) -> None:
     """Delete an attribute for a shop."""
     attribute = attribute_crud.get_id_by_shop_id(shop_id, attribute_id, for_update=True, include_deleted=force)
@@ -248,7 +246,7 @@ def delete(
         raise_status(HTTPStatus.NOT_FOUND, f"Attribute with id {attribute_id} not found")
 
     if force:
-        if isinstance(principal, ApiKeyTable):
+        if principal.kind == "api_key":
             raise HTTPException(
                 status_code=403,
                 detail="Purging an attribute is irreversible and requires user credentials; API keys may only trash.",
@@ -263,8 +261,7 @@ def delete(
                 detail={"message": "Attribute is in use and cannot be deleted"},
             )
 
-    created_by, source = actor(principal, request)
-    record_attribute_revision(attribute, action="delete", created_by=created_by, source=source)
+    record_attribute_revision(attribute, action="delete", created_by=principal.label, source=principal.via)
     attribute.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
     return None

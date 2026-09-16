@@ -7,11 +7,11 @@ from fastapi import APIRouter
 
 from server.api.endpoints.categories import categories, images, public
 
-# shop_any tier
+# shop tier
 router = APIRouter()
 router.include_router(categories.router, prefix="/categories", tags=["categories"])
 
-# shop tier: Cognito only
+# shop_cognito tier: Cognito only
 shop_router = APIRouter()
 shop_router.include_router(images.router, prefix="/categories-images", tags=["shops", "categories"])
 

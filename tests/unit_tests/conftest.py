@@ -36,6 +36,7 @@ class TestClient(_TestClient):
         return super().patch(*args, **self._inject_json_ct(kwargs))
 
 
+import server.security
 from server.api.api import api_router
 from server.api.error_handling import ProblemDetailException
 from server.db import db, init_database
@@ -48,7 +49,7 @@ from server.db.database import (
     SearchQuery,
 )
 from server.exception_handlers.generic_exception_handlers import problem_detail_handler
-from server.security import CustomCognitoToken, auth_required, auth_required_any
+from server.security import CustomCognitoToken, Principal, current_principal
 from server.settings import app_settings
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.attribute import make_attribute, make_attribute_with_translation, make_option, make_pav
@@ -206,27 +207,8 @@ def fastapi_app(database, db_uri):
 
     app.add_exception_handler(ProblemDetailException, problem_detail_handler)
 
-    def get_current_active_superuser_override() -> CustomCognitoToken:
-        # Return a token with the ``admins`` Cognito group so the
-        # ``admin_required`` dependency lets requests through in tests.
-        # Use the configured client id so it's treated as a user token,
-        # not M2M, by ``admin_required``.
-        return CustomCognitoToken(
-            client_id=app_settings.AWS_COGNITO_CLIENT_ID,
-            sub="5678",
-            token_use="access",
-            scope="openid profile email",
-            auth_time=1727169594,
-            iss="https://cognito-idp.eu-central-1.amazonaws.com/secret",
-            exp=9727169594,
-            iat=9727169594,
-            jti="jti",
-            username="5678",
-            **{"cognito:groups": ["admins"]},
-        )
-
-    app.dependency_overrides[auth_required] = get_current_active_superuser_override
-    app.dependency_overrides[auth_required_any] = get_current_active_superuser_override
+    # A Cognito user in the ``admins`` group, so every guard lets requests through.
+    app.dependency_overrides[current_principal] = lambda: _principal(["admins"])
 
     return app
 
@@ -262,8 +244,7 @@ def fastapi_app_not_authenticated(database, db_uri):
     def get_current_active_superuser_override():
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    app.dependency_overrides[auth_required] = get_current_active_superuser_override
-    app.dependency_overrides[auth_required_any] = get_current_active_superuser_override
+    app.dependency_overrides[current_principal] = get_current_active_superuser_override
 
     return app
 
@@ -273,8 +254,13 @@ def test_client(fastapi_app):
     return TestClient(fastapi_app)
 
 
+def _principal(groups: list) -> Principal:
+    """A Cognito *user* principal (sub ``5678``) carrying ``groups``."""
+    return Principal(kind="user", subject="5678", groups=tuple(groups))
+
+
 def _cognito_token(groups: list) -> CustomCognitoToken:
-    """A user (not M2M) Cognito token carrying ``groups``."""
+    """A user (not M2M) Cognito token carrying ``groups``, for stubbing Cognito itself."""
     return CustomCognitoToken(
         client_id=app_settings.AWS_COGNITO_CLIENT_ID,
         sub="5678",
@@ -298,39 +284,40 @@ def as_cognito_user(fastapi_app):
     Use this to test a plain tenant user — ``as_cognito_user([str(shop_id)])`` —
     or someone with no shop at all.
     """
-    saved = {dep: fastapi_app.dependency_overrides.get(dep) for dep in (auth_required, auth_required_any)}
+    saved = fastapi_app.dependency_overrides.get(current_principal)
     try:
 
         def _apply(groups: list) -> TestClient:
-            for dep in saved:
-                fastapi_app.dependency_overrides[dep] = lambda: _cognito_token(groups)
+            fastapi_app.dependency_overrides[current_principal] = lambda: _principal(groups)
             return TestClient(fastapi_app)
 
         yield _apply
     finally:
-        for dep, original in saved.items():
-            if original is None:
-                fastapi_app.dependency_overrides.pop(dep, None)
-            else:
-                fastapi_app.dependency_overrides[dep] = original
+        if saved is None:
+            fastapi_app.dependency_overrides.pop(current_principal, None)
+        else:
+            fastapi_app.dependency_overrides[current_principal] = saved
 
 
 @pytest.fixture
-def real_auth_client(fastapi_app):
-    """A TestClient whose ``auth_required_any`` override is removed so the real
-    dual-auth dep runs (validates X-API-Key / Bearer headers against the DB).
+def real_auth_client(fastapi_app, monkeypatch):
+    """A TestClient on which ``current_principal`` runs for real.
 
-    Other overrides — including the ``auth_required`` Cognito stub used by the
-    api-key management endpoints — stay intact so tests can still mint keys.
-    Lifting the stub is also what makes ``auth_required_any_for_shop``'s shop
-    binding observable: with a stubbed principal there is no key to bind.
+    API keys are validated against the database, which is what makes the shop
+    binding of ``require_shop`` observable. Only Cognito itself is stubbed, to an
+    admin user, so tests can still mint keys through the endpoint.
     """
-    override = fastapi_app.dependency_overrides.pop(auth_required_any, None)
+
+    async def _cognito_admin(request):
+        return _cognito_token(["admins"])
+
+    monkeypatch.setattr(server.security.cognito_eu, "auth_required", _cognito_admin)
+    override = fastapi_app.dependency_overrides.pop(current_principal, None)
     try:
         yield TestClient(fastapi_app)
     finally:
         if override is not None:
-            fastapi_app.dependency_overrides[auth_required_any] = override
+            fastapi_app.dependency_overrides[current_principal] = override
 
 
 @pytest.fixture()

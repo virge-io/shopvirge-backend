@@ -17,7 +17,7 @@ tool description.
 
 Auth: ``from_fastapi`` invokes routes via in-process ``httpx`` over
 ``ASGITransport``, which goes through the FastAPI middleware + dependency
-chain so the existing ``Depends(auth_required_any)`` on each route fires
+chain so the ``require_shop`` guard on each route fires
 normally when the LLM calls the corresponding MCP tool. fastmcp's
 ``OpenAPITool.run`` auto-forwards the incoming MCP request's headers into
 that inner httpx call, and as of 2.14.x its default exclude list does NOT

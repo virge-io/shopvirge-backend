@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from server.db import db
 from server.db.models import ProductAttributeValueTable, ProductTable, ProductToTagTable, TagTable
-from server.security import auth_required_any
+from server.security import Principal, current_principal
 from tests.unit_tests.factories.api_key import make_api_key
 from tests.unit_tests.factories.attribute import make_attribute, make_option, make_pav
 from tests.unit_tests.factories.tag import make_tag
@@ -13,16 +13,17 @@ from tests.unit_tests.factories.tag import make_tag
 
 @pytest.fixture
 def as_api_key(fastapi_app):
-    """Temporarily authenticate ``auth_required_any`` routes as an API-key principal."""
-    saved = fastapi_app.dependency_overrides[auth_required_any]
+    """Temporarily authenticate every route as an API-key principal."""
+    saved = fastapi_app.dependency_overrides[current_principal]
 
     def _activate(shop_id):
         row, _ = make_api_key(shop_id)
-        fastapi_app.dependency_overrides[auth_required_any] = lambda: row
+        principal = Principal.from_api_key(row)
+        fastapi_app.dependency_overrides[current_principal] = lambda: principal
         return row
 
     yield _activate
-    fastapi_app.dependency_overrides[auth_required_any] = saved
+    fastapi_app.dependency_overrides[current_principal] = saved
 
 
 def test_deleted_product_hidden_everywhere(shop_with_config, product, test_client):

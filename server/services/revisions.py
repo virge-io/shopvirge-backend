@@ -33,11 +33,10 @@ and must hold a ``FOR UPDATE`` row lock on the entity (via
 race-free under concurrent writers.
 """
 
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import Request
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func
 from sqlalchemy.inspection import inspect as sa_inspect
@@ -65,26 +64,6 @@ _MIN_RETENTION = 10
 
 def retention() -> int:
     return max(app_settings.REVISION_RETENTION, _MIN_RETENTION)
-
-
-def actor(principal: Any = None, request: Optional[Request] = None) -> Tuple[Optional[str], str]:
-    """Derive (created_by, source) from the auth principal and the incoming request.
-
-    ``principal`` is whatever ``auth_required_any`` returned: an ``ApiKeyTable`` row
-    for API-key clients or a ``CustomCognitoToken`` for Cognito users. MCP calls are
-    detected via the ``mcp-session-id`` header that fastmcp forwards into the
-    in-process request.
-    """
-    from server.db.models import ApiKeyTable
-
-    created_by = None
-    if isinstance(principal, ApiKeyTable):
-        created_by = f"api_key:{principal.id}"
-    elif principal is not None and getattr(principal, "cognito_id", None):
-        created_by = f"cognito:{principal.cognito_id}"
-
-    source = "mcp" if request is not None and request.headers.get("mcp-session-id") else "rest"
-    return created_by, source
 
 
 def _columns_snapshot(obj: Any, excluded: set[str]) -> dict:

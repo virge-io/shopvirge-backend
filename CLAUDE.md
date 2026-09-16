@@ -111,27 +111,34 @@ PYTHONPATH=. uv run alembic revision --message "Description"
 
 ## Authentication
 
-Three auth dependencies in `server/security.py`:
+One resolver and three guards in `server/security.py`:
 
-- `auth_required` — Cognito JWT only (user tokens or M2M tokens with `/api` scope). Used on management routes.
-- `auth_required_any` — API key **or** Cognito JWT. Used on MCP-exposed CRUD routes (products, categories, tags, attributes).
-- `admin_required` — wraps `auth_required`; additionally asserts membership in the Cognito `admins` group or its legacy `Admins` casing.
+- `current_principal` — authenticates whatever credential the request carries (an `sv_` API key via `X-API-Key` or `Authorization: Bearer sv_…`, a Cognito user token, or a Cognito M2M token with the `/api` scope) and returns a `Principal` (`kind` user/m2m/api_key, `subject`, `groups`, `shop_id`, `via` rest/mcp).
+- `require_shop` — the `shop_id` in the path must be one the principal may touch (`Principal.may_touch`): a key its own shop, a user the shops in its groups, an admin any.
+- `require_cognito` — refuses API keys; for api-key management and other Cognito-only routes.
+- `require_admin` — `Principal.is_admin`: the Cognito `admins` group (or legacy `Admins`), or an M2M token.
 
-API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach routes using `auth_required_any` — the full REST surface requires Cognito.
+Through MCP a user needs a role, given by Cognito group and nothing else: `shopvirge-mcp-viewers` reads, `shopvirge-mcp-operators` reads and writes, and a user in neither group — admins included — may do nothing through MCP (`Principal.mcp_access`). API keys and M2M tokens are not users and are not subject to it. `_enforce_mcp_role` runs from `require_shop` and `require_cognito`, the guards every MCP tool call passes through, and is a no-op for REST. `via` is derived from fastmcp's request context (present only inside a tool call), not from headers.
 
-Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `GET /shops/my-shops` is the single resolution point; individual shop endpoints do not re-enforce this.
+Guards are mounted per tier in `server/api/api.py`; a route adds one only when it is stricter than its tier. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
 
-Swagger UI Authorize button is wired via `HTTPBearer(auto_error=False)` in `security.py` — paste a Bearer token there to authenticate in `/docs`.
+API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach tiers that mount `require_shop` without `require_cognito` — the full REST surface requires Cognito.
+
+Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `require_shop` enforces this on every shop-scoped route; `GET /shops/my-shops` reports the same mapping.
+
+Credentials are OpenAPI security schemes, never parameters: `HTTPBearer` on every authenticated operation (declared by `current_principal`) and `APIKeyHeader` (`X-API-Key`) only on the key-accepting tiers, via the documentation-only `accepts_api_key` dependency mounted in `api.py`. Swagger's Authorize dialog offers both; a key also works as `Bearer sv_…`.
 
 ## MCP
 
 The MCP server is off by default. Enable with `MCP_ENABLED=true`. When enabled, `server/main.py` mounts it at `/mcp` via `mount_mcp(app)` after all routers are included.
 
+The MCP transport itself is not authenticated: a tool call is authenticated by the route it reaches, because fastmcp 2.14.x forwards the caller's `Authorization` header into its in-process request. **Upgrading fastmcp to 3.x breaks this** — 3.x strips that header — and then the MCP layer must verify tokens itself (a fastmcp `TokenVerifier`), which in turn requires MCP clients to send a token on the connection (OAuth in LibreChat). Keep the pin until that is decided.
+
 Tools are **auto-generated from the FastAPI route table** by `fastmcp`. A route is exposed as an MCP tool by:
 
 1. Adding `tags=[AgentTag.EXPOSED]` (plus `AgentTag.LARGE` for list endpoints) to the route decorator.
 2. Setting `operation_id="short_snake_case"` — this becomes the tool name (public API contract).
-3. Using `Depends(auth_required_any)` so API-key clients can reach it.
+3. Mounting it on the `shop` tier (`require_shop` only, no `require_cognito`) so API-key clients can reach it.
 4. Writing the docstring for an LLM: state intent, list required params, call out side effects.
 
 Any route not tagged `AgentTag.EXPOSED` is excluded from MCP by default.
@@ -144,6 +151,8 @@ When adding or removing MCP-exposed routes, also:
   uv run python bin/regenerate_openapi_snapshot.py
   ```
 - Update `EXPECTED_TOOL_NAMES` in `tests/unit_tests/mcp/test_mcp.py`.
+
+When a route's mounting changes (tier, guard, MCP exposure), regenerate the access matrix — `docs/api/access-matrix.md`, one row per route showing what each caller kind may do — with `uv run python bin/generate_access_matrix.py`; `tests/unit_tests/test_access_matrix.py` fails while it is stale.
 
 ## Testing
 

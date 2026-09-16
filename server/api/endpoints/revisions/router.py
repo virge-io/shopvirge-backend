@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from server.api.endpoints.revisions import revisions
 
-# shop_any tier
+# shop tier
 router = APIRouter()
 router.include_router(revisions.router, tags=["shops", "revisions"])
 

@@ -1,9 +1,8 @@
 from http import HTTPStatus
-from typing import Any
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from fastapi.param_functions import Depends
 from starlette.responses import Response
 
@@ -13,8 +12,8 @@ from server.api.helpers import name_file, upload_file
 from server.crud.crud_category import category_crud
 from server.db import db
 from server.schemas.category import CategoryImageDelete, CategoryUpdate
-from server.security import auth_required
-from server.services.revisions import actor, ensure_baseline_category_revision, record_category_revision
+from server.security import Principal, current_principal
+from server.services.revisions import ensure_baseline_category_revision, record_category_revision
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
@@ -44,7 +43,7 @@ def get_by_id(id: UUID):
 
 
 @router.put("/{id}", status_code=HTTPStatus.CREATED)
-def put(*, id: UUID, item_in: CategoryUpdate, request: Request, principal: Any = Depends(auth_required)):
+def put(*, id: UUID, item_in: CategoryUpdate, principal: Principal = Depends(current_principal)):
     # Locked fetch: image updates record a category revision
     item = category_crud.get(id=id, for_update=True)
     # todo: raise 404 o abort
@@ -67,15 +66,14 @@ def put(*, id: UUID, item_in: CategoryUpdate, request: Request, principal: Any =
             obj_in=item_in,
             commit=False,
         )
-        created_by, source = actor(principal, request)
-        record_category_revision(item, action="update", created_by=created_by, source=source)
+        record_category_revision(item, action="update", created_by=principal.label, source=principal.via)
         db.session.commit()
 
     return item
 
 
 @router.put("/delete/{id}", status_code=HTTPStatus.CREATED)
-def delete_image(*, id: UUID, col: CategoryImageDelete, request: Request, principal: Any = Depends(auth_required)):
+def delete_image(*, id: UUID, col: CategoryImageDelete, principal: Principal = Depends(current_principal)):
     # Locked fetch: image deletes record a category revision
     item = category_crud.get(id=id, for_update=True)
 
@@ -97,8 +95,7 @@ def delete_image(*, id: UUID, col: CategoryImageDelete, request: Request, princi
         obj_in=item_in,
         commit=False,
     )
-    created_by, source = actor(principal, request)
-    record_category_revision(item, action="update", created_by=created_by, source=source)
+    record_category_revision(item, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
 
     return item

@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from server.api.endpoints.tags import tags
 
-# shop_any tier
+# shop tier
 router = APIRouter()
 router.include_router(tags.router, prefix="/tags", tags=["shops", "products"])
 

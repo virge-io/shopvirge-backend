@@ -1,14 +1,13 @@
 """Routers exposed by the ``shops`` package, composed from its modules.
 
-``shop_router`` (``PUT/DELETE /shops/{shop_id}``) and ``legacy_id_router`` (the
-routes still spelling the shop id ``{id}``) cannot sit under the prefixed shop
-tier — their own path *is* the shop segment — so api.py includes them with
-their guard spelled out until the path-param rename re-homes them.
+``shop_router`` (``/shops/{shop_id}``, ``/shops/config/{shop_id}``,
+``/shops/allowed-ips/{shop_id}``) cannot sit under the prefixed shop tier — its
+own path *is* the shop segment — so api.py includes it with its guard spelled out.
 """
 
 from fastapi import APIRouter
 
-from server.api.endpoints.shops import allowed_ips, collection, config, public, shop
+from server.api.endpoints.shops import allowed_ips, collection, config, legacy, public, shop
 
 # authenticated tier
 router = APIRouter()
@@ -17,11 +16,15 @@ router.include_router(collection.router, prefix="/shops", tags=["shops"])
 # public tier
 public_router = APIRouter()
 public_router.include_router(public.router, prefix="/shops", tags=["shops"])
+# TODO(deprecated-id-routes): drop with legacy.py. Registered after the real routes, which serve the requests.
+public_router.include_router(legacy.public_router, prefix="/shops", tags=["shops"])
 
 # included directly by api.py, see module docstring
-shop_router = shop.router
-legacy_id_router = APIRouter()
-legacy_id_router.include_router(config.router)
-legacy_id_router.include_router(allowed_ips.router)
+shop_router = APIRouter()
+shop_router.include_router(shop.router)
+shop_router.include_router(config.router)
+shop_router.include_router(allowed_ips.router)
 
-__all__ = ["legacy_id_router", "public_router", "router", "shop_router"]
+legacy_shop_router = legacy.router  # TODO(deprecated-id-routes): drop with legacy.py
+
+__all__ = ["legacy_shop_router", "public_router", "router", "shop_router"]

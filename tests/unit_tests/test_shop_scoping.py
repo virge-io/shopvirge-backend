@@ -1,9 +1,8 @@
 """Every shop-scoped route must be guarded, or explicitly declared public.
 
-The per-shop guards (``auth_required_any_for_shop``, ``shop_access_required``,
-``shop_access_required_by_id``) are wired in ``server/api/api.py`` and, for the handful of
+The per-shop guard (``require_shop``) is wired in ``server/api/api.py`` and, for the handful of
 routers that mix postures, in the route decorator. Nothing stops someone adding
-a new ``/shops/{shop_id}/...`` router with a plain ``auth_required`` dependency,
+a new ``/shops/{shop_id}/...`` router with a plain ``require_cognito`` dependency,
 which authenticates but does not scope — and that mistake is invisible in review.
 
 So this test walks the route table and asserts the invariant directly. A route
@@ -25,6 +24,7 @@ from fastapi.exceptions import ResponseValidationError
 from fastapi.routing import APIRoute
 
 from server.db.models import ShopTable
+from server.security import require_shop
 from tests.unit_tests.factories.shop import make_shop
 
 # Routes under /shops that intentionally need no shop scoping, with the reason.
@@ -35,11 +35,11 @@ PUBLIC_SHOP_ROUTES = {
     ("POST", "/shops/"): "create a new shop",
     ("GET", "/shops/my-shops"): "the shop-access resolution point itself",
     # Public storefront reads — the shop front-end calls these unauthenticated.
-    ("GET", "/shops/{id}"): "public shop page",
-    ("GET", "/shops/config/{id}"): "public storefront config",
-    ("GET", "/shops/cache-status/{id}"): "public cache probe",
-    ("GET", "/shops/last-completed-order/{id}"): "public POS poll",
-    ("GET", "/shops/last-pending-order/{id}"): "public POS poll",
+    ("GET", "/shops/{shop_id}"): "public shop page",
+    ("GET", "/shops/config/{shop_id}"): "public storefront config",
+    ("GET", "/shops/cache-status/{shop_id}"): "public cache probe",
+    ("GET", "/shops/last-completed-order/{shop_id}"): "public POS poll",
+    ("GET", "/shops/last-pending-order/{shop_id}"): "public POS poll",
     ("GET", "/shops/{shop_id}/prices/"): "public price list",
     ("POST", "/shops/{shop_id}/prices/"): "public price lookup",
     ("GET", "/shops/{shop_id}/products/{product_id}"): "public product page",
@@ -53,7 +53,7 @@ PUBLIC_SHOP_ROUTES = {
 }
 
 # A path segment holding a shop id, however it is spelled.
-_SHOP_PATH = re.compile(r"^/shops/\{[a-z_]*id\}|^/shops/[a-z-]+/\{id\}")
+_SHOP_PATH = re.compile(r"^/shops/\{shop_id\}|^/shops/[a-z-]+/\{shop_id\}")
 
 
 def _guards_in_chain(dependant) -> bool:
@@ -63,7 +63,7 @@ def _guards_in_chain(dependant) -> bool:
         current = stack.pop()
         for sub in current.dependencies:
             call = sub.call
-            if getattr(call, "__shop_guard__", False):
+            if call is require_shop:
                 return True
             stack.append(sub)
     return False
@@ -90,7 +90,7 @@ def test_every_shop_scoped_route_is_guarded_or_declared_public(fastapi_app: Fast
     assert not unguarded, (
         "These routes reach shop-scoped data without a per-shop guard:\n  "
         + "\n  ".join(sorted(unguarded))
-        + "\n\nAdd auth_required_any_for_shop / shop_access_required / shop_access_required_by_id to the "
+        + "\n\nAdd require_shop to the "
         "router in server/api/api.py (or to the route decorator), or — if the route really is "
         "public — add it to PUBLIC_SHOP_ROUTES with a reason."
     )
@@ -108,9 +108,9 @@ def test_public_shop_route_allowlist_has_no_stale_entries(fastapi_app: FastAPI) 
     [
         ("PUT", "/shops/{shop_id}"),
         ("DELETE", "/shops/{shop_id}"),
-        ("PUT", "/shops/config/{id}"),
-        ("GET", "/shops/allowed-ips/{id}"),
-        ("POST", "/shops/allowed-ips/{id}"),
+        ("PUT", "/shops/config/{shop_id}"),
+        ("GET", "/shops/allowed-ips/{shop_id}"),
+        ("POST", "/shops/allowed-ips/{shop_id}"),
         ("GET", "/shops/{shop_id}/accounts/"),
         ("POST", "/shops/{shop_id}/api-keys/"),
     ],
@@ -122,12 +122,10 @@ def test_known_sensitive_routes_are_guarded(fastapi_app: FastAPI, method: str, p
     assert all(_guards_in_chain(r.dependant) for r in matching)
 
 
-# The tests above prove the guard is *wired*. These prove it actually runs — in
-# particular that shop_access_required_by_id resolves the shop on the routes whose
-# path param is spelled {id}.
+# The tests above prove the guard is *wired*. These prove it actually runs.
 
 
-def test_id_named_route_rejects_a_foreign_shop(as_cognito_user):
+def test_config_style_route_rejects_a_foreign_shop(as_cognito_user):
     own_shop = make_shop(random_shop_name=True)
     other_shop = make_shop(random_shop_name=True)
     client = as_cognito_user([str(own_shop)])
@@ -147,7 +145,7 @@ def test_shop_delete_rejects_a_foreign_shop(as_cognito_user):
 
 
 def test_public_shop_config_is_not_caught_by_the_guard(as_cognito_user):
-    """GET /shops/config/{id} is public — only the PUT on that path is guarded.
+    """GET /shops/config/{shop_id} is public — only the PUT on that path is guarded.
 
     Asserted as "not 403" rather than "200": the response model chokes on the
     factory's ``shop_type="{}"`` string, which is a pre-existing serialisation

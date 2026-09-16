@@ -6,7 +6,7 @@
 #    http://www.apache.org/licenses/LICENSE-2.0
 """Per-shop API key management.
 
-These endpoints are Cognito-only (``auth_required``) by design — an API key
+These endpoints are Cognito-only (``require_cognito`` on the ``shop_cognito`` tier) by design — an API key
 must not be able to mint another API key. Keys returned from ``POST`` carry
 a one-time ``plaintext`` field; subsequent ``GET`` listings expose only the
 prefix.
@@ -21,7 +21,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 from server.crud.crud_api_key import api_key_crud
 from server.schemas.api_key import ApiKeyCreate, ApiKeyCreated, ApiKeyRead
-from server.security import CustomCognitoToken, auth_required
+from server.security import Principal, current_principal
 
 logger = structlog.get_logger(__name__)
 
@@ -37,14 +37,14 @@ router = APIRouter()
 def mint(
     shop_id: UUID,
     data: ApiKeyCreate = Body(...),
-    token: CustomCognitoToken = Depends(auth_required),
+    principal: Principal = Depends(current_principal),
 ) -> ApiKeyCreated:
     """Mint a new API key. The plaintext is returned exactly once.
 
     Store it somewhere safe — it cannot be retrieved again. If lost, revoke
     and mint a new one.
     """
-    created_by_sub = getattr(token, "cognito_id", None)
+    created_by_sub = principal.subject or None
     row, plaintext = api_key_crud.mint(shop_id=shop_id, name=data.name, created_by_sub=created_by_sub)
     return ApiKeyCreated(
         id=row.id,

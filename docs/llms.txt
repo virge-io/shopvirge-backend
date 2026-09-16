@@ -28,6 +28,7 @@ Repository: https://github.com/virge-io/shopvirge-backend
 
 - API overview: https://shopvirge.readthedocs.io/en/latest/api/overview/
 - Authentication and authorization: https://shopvirge.readthedocs.io/en/latest/api/authentication/
+- Access matrix (who may call which route): https://shopvirge.readthedocs.io/en/latest/api/access-matrix/
 - Shop-scoped endpoints: https://shopvirge.readthedocs.io/en/latest/api/shop-scoped/
 - Stripe integration: https://shopvirge.readthedocs.io/en/latest/api/stripe/
 - Admin accounts and Stripe reconciliation: https://shopvirge.readthedocs.io/en/latest/api/admin-accounts/

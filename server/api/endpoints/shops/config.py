@@ -19,21 +19,21 @@ router = APIRouter()
 
 
 @router.put(
-    "/config/{id}",
+    "/config/{shop_id}",
     response_model=ShopConfigUpdate,
     status_code=HTTPStatus.CREATED,
     summary="Update shop configuration",
     description="Update the shop's configuration. Partial updates are supported — only provided fields are changed.",
 )
-def update_config(id: UUID, item_in: ShopConfigUpdate) -> ShopTable:
-    shop = shop_or_404(id)
+def update_config(shop_id: UUID, item_in: ShopConfigUpdate) -> ShopTable:
+    shop = shop_or_404(shop_id)
     logger.info("Updating shop", data=shop)
 
     if item_in.config.toggles.force_unique_product_names:
         duplicate = (
             db.session.query(ProductTranslationTable.main_name)
             .join(ProductTable, ProductTranslationTable.product_id == ProductTable.id)
-            .filter(ProductTable.shop_id == id)
+            .filter(ProductTable.shop_id == shop_id)
             .group_by(ProductTranslationTable.main_name)
             .having(func.count(ProductTranslationTable.main_name) > 1)
             .first()

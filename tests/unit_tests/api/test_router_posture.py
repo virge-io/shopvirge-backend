@@ -19,9 +19,8 @@ whatever is mounted on those two tiers. The sweep sends every route a request
 with no credentials and checks both directions.
 
 * Not on a public tier: must answer 401. Catches a tier or direct include that
-  lost its guard, a guard that bypasses ``auth_required`` / ``auth_required_any``
-  (the two the fixture overrides), and a protected route shadowed by an earlier
-  public one.
+  lost its guard, a guard that bypasses ``current_principal`` (the resolver the
+  fixture overrides), and a protected route shadowed by an earlier public one.
 * On a public tier: must answer anything but 401. Catches a public module that
   grew a per-route guard, and a public route shadowed by an earlier protected one.
 
@@ -95,6 +94,8 @@ def test_no_route_is_shadowed_by_an_earlier_one(fastapi_app_not_authenticated):
     routes = [r for r in fastapi_app_not_authenticated.routes if isinstance(r, APIRoute)]
     shadowed = []
     for index, route in enumerate(routes):
+        if route.deprecated:  # TODO(deprecated-id-routes): an alias is meant to be served by its replacement
+            continue
         concrete = re.sub(r"\{[^}]+\}", SAMPLE_ID, route.path)
         for earlier in routes[:index]:
             if (

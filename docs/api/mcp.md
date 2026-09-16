@@ -27,8 +27,8 @@ Plus `get_product_to_tag_relation_id` to resolve a (product, tag) pair to its as
 only order tools: creating, updating and deleting orders stays REST-only. Both return
 customer names and totals, so treat the results as personal data.
 
-**Revisions / trash** — `list_shop_revisions`, `get_revision`, `list_product_revisions`,
-`get_product_revision`, and the `restore_*` family.
+**Trash** — the `restore_*` family (`restore_product`, `restore_category`, `restore_tag`, `restore_attribute`).
+Revision history and restore-to-revision are REST only, not exposed as tools.
 
 **Shops** — `list_my_shops`, the single resolution point for which shops a Cognito user
 may touch.
@@ -55,11 +55,27 @@ Three methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are 
 2. **Cognito JWT (M2M / service-to-service)** — `Authorization: Bearer <jwt>` with scope ending in `/api`.
 3. **Cognito JWT (interactive user)** — `Authorization: Bearer <jwt>` from the Next.js app client or the MCP browser-login flow. Useful when a logged-in user drives the agent from a browser.
 
-The dual-auth dependency is `server.security.auth_required_any`. It either resolves the API key against the `api_keys` table (returning the matched row) or delegates to the existing Cognito flow (returning a `CustomCognitoToken`). Endpoints not tagged for MCP still use `auth_required` (Cognito only) — an API key cannot reach the full REST surface.
+The resolver is `server.security.current_principal`. It either resolves the API key against the `api_keys` table or delegates to the Cognito flow, and returns a `Principal` either way. Tiers that are not MCP-exposed also mount `require_cognito` — an API key cannot reach the full REST surface.
+
+### MCP roles
+
+Through MCP a Cognito user needs a role, given by group membership and nothing else:
+
+| Group | Through MCP |
+|---|---|
+| `shopvirge-mcp-viewers` | read (`GET` tools) |
+| `shopvirge-mcp-operators` | read and write |
+| neither | nothing — every tool call is refused with 403, admins included |
+
+Being in `admins` grants no MCP access by itself; an admin who is also a viewer reads, one who is also an operator writes. API keys and M2M tokens are not people and are not subject to the rule: a key keeps its one shop, M2M keeps everything. Which *shops* a user may touch is still decided by the shop-UUID groups (and `admins`); the MCP role only says what they may do there.
+
+The rule is enforced by `_enforce_mcp_role` from the two guards every MCP tool call passes through, `require_shop` (shop tier) and `require_cognito` (authenticated tier, e.g. `list_my_shops`); it is a no-op for REST, where the same person keeps full access in shop-editor. `via` comes from fastmcp's request context, which exists only inside a tool call.
+
+The tool *list* is not filtered per user (the list request carries no token on this fastmcp version), so a viewer agent in LibreChat should be given only the read tools; derive that list from `openapi.json` (every exposed `GET` operation) rather than by hand.
 
 ### API keys are bound to one shop
 
-A key is minted for exactly one shop, and `server.security.auth_required_any_for_shop`
+A key is minted for exactly one shop, and `server.security.require_shop`
 enforces that: if the key's `shop_id` does not match the `{shop_id}` in the request path,
 the request is rejected with **403**, before the handler runs. It is wired as a
 router-level dependency on every `/shops/{shop_id}/...` router in `server/api/api.py`,
@@ -165,9 +181,9 @@ You should see all 50 tool definitions in the response.
 
 ## How auth flows through `from_fastapi`
 
-`FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `auth_required_any`.
+`FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `current_principal` and `require_shop`.
 
-fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.)
+fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.) **This is version-bound:** fastmcp 3.x strips `authorization` from the forwarded headers on purpose, so an upgrade silently breaks tool-call authentication. Moving past 2.14.x means authenticating at the MCP layer instead (a fastmcp `TokenVerifier`), which requires clients to send a token on the connection — for LibreChat that means its MCP OAuth flow rather than the static header.
 
 ## OAuth discovery (Claude Code browser-login)
 
@@ -249,7 +265,7 @@ To rotate the client, run the same `create-user-pool-client` command again with 
 2. On the route decorator, add:
    - `tags=[AgentTag.EXPOSED]` (add `AgentTag.LARGE` too for list endpoints).
    - `operation_id="<short_snake_case>"`. **This becomes the MCP tool name** — treat it like a public API contract.
-3. Give the route `Depends(auth_required_any)` if you want API-key clients to reach it. (Cognito-only endpoints stay on `auth_required`.)
+3. Mount the route on the `shop` tier in `server/api/api.py` (`require_shop` only) so API-key clients can reach it; Cognito-only routes go on the `shop_cognito` tier, which adds `require_cognito`. If the handler needs the caller, declare `principal: Principal = Depends(current_principal)`.
 4. Bump `APP_VERSION` in `server/main.py`, then regenerate the OpenAPI snapshot:
 
     ```bash
@@ -283,7 +299,7 @@ API keys themselves are stored in the `api_keys` table (migration `c1a2b3d4e5f6`
 
 - `server/mcp/server.py` — `mount_mcp(app)`.
 - `server/agent_tags.py` — the `AgentTag` enum.
-- `server/security.py` — `auth_required` / `auth_required_any` dependencies.
+- `server/security.py` — `current_principal` and the `require_*` guards.
 - `server/crud/crud_api_key.py` — minting, lookup, revocation.
 - `server/api/endpoints/accounts/api_keys.py` — REST management endpoints.
 - `server/api/endpoints/system/oauth_discovery.py` — OAuth discovery + DCR shim for the browser-login flow.
