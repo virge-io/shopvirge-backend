@@ -27,8 +27,8 @@ Plus `get_product_to_tag_relation_id` to resolve a (product, tag) pair to its as
 only order tools: creating, updating and deleting orders stays REST-only. Both return
 customer names and totals, so treat the results as personal data.
 
-**Revisions / trash** — `list_shop_revisions`, `get_revision`, `list_product_revisions`,
-`get_product_revision`, and the `restore_*` family.
+**Trash** — the `restore_*` family (`restore_product`, `restore_category`, `restore_tag`, `restore_attribute`).
+Revision history and restore-to-revision are REST only, not exposed as tools.
 
 **Shops** — `list_my_shops`, the single resolution point for which shops a Cognito user
 may touch.

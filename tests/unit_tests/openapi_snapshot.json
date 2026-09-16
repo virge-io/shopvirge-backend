@@ -11591,8 +11591,7 @@
         "summary": "Restore attribute to a revision",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed"
+          "revisions"
         ]
       }
     },
@@ -12838,8 +12837,7 @@
         "summary": "Restore category to a revision",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed"
+          "revisions"
         ]
       }
     },
@@ -14604,9 +14602,7 @@
         "summary": "List product revisions",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed",
-          "agent-large"
+          "revisions"
         ]
       }
     },
@@ -14678,8 +14674,7 @@
         "summary": "Get product revision",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed"
+          "revisions"
         ]
       }
     },
@@ -14763,8 +14758,7 @@
         "summary": "Restore product to a revision",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed"
+          "revisions"
         ]
       }
     },
@@ -15061,9 +15055,7 @@
         "summary": "List all revisions in a shop",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed",
-          "agent-large"
+          "revisions"
         ]
       }
     },
@@ -15126,8 +15118,7 @@
         "summary": "Get one revision by id",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed"
+          "revisions"
         ]
       }
     },
@@ -15867,8 +15858,7 @@
         "summary": "Restore tag to a revision",
         "tags": [
           "shops",
-          "revisions",
-          "agent-exposed"
+          "revisions"
         ]
       }
     },

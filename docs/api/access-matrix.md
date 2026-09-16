@@ -68,7 +68,7 @@ The MCP surface: a key reaches its own shop, a member their shops, an admin any.
 | PUT | `/shops/{shop_id}/attributes/{attribute_id}` | update_attribute | – | W own | W own | W any | – | W own |
 | DELETE | `/shops/{shop_id}/attributes/{attribute_id}` | delete_attribute | – | W own | W own | W any | – | W own |
 | POST | `/shops/{shop_id}/attributes/{attribute_id}/restore` | restore_attribute | – | W own | W own | W any | – | W own |
-| POST | `/shops/{shop_id}/attributes/{attribute_id}/revisions/{revision_no}/restore` | restore_attribute_revision | – | W own | W own | W any | – | W own |
+| POST | `/shops/{shop_id}/attributes/{attribute_id}/revisions/{revision_no}/restore` |  | – | W own | W own | W any | · | · |
 | GET | `/shops/{shop_id}/attributes/{attribute_id}/with-options` |  | – | R own | R own | R any | · | · |
 | GET | `/shops/{shop_id}/categories/` | list_categories | – | R own | R own | R any | R own | R own |
 | POST | `/shops/{shop_id}/categories/` | create_category | – | W own | W own | W any | – | W own |
@@ -78,7 +78,7 @@ The MCP surface: a key reaches its own shop, a member their shops, an admin any.
 | DELETE | `/shops/{shop_id}/categories/{category_id}` | delete_category | – | W own | W own | W any | – | W own |
 | POST | `/shops/{shop_id}/categories/{category_id}/restore` | restore_category | – | W own | W own | W any | – | W own |
 | GET | `/shops/{shop_id}/categories/{category_id}/revisions` |  | – | R own | R own | R any | · | · |
-| POST | `/shops/{shop_id}/categories/{category_id}/revisions/{revision_no}/restore` | restore_category_revision | – | W own | W own | W any | – | W own |
+| POST | `/shops/{shop_id}/categories/{category_id}/revisions/{revision_no}/restore` |  | – | W own | W own | W any | · | · |
 | PUT | `/shops/{shop_id}/categories/{category_id}/swap` |  | – | W own | W own | W any | · | · |
 | GET | `/shops/{shop_id}/product-attribute-values/` |  | – | R own | R own | R any | · | · |
 | GET | `/shops/{shop_id}/product-attribute-values/{id}` |  | – | R own | R own | R any | · | · |
@@ -97,12 +97,12 @@ The MCP surface: a key reaches its own shop, a member their shops, an admin any.
 | PUT | `/shops/{shop_id}/products/{product_id}` | update_product | – | W own | W own | W any | – | W own |
 | DELETE | `/shops/{shop_id}/products/{product_id}` | delete_product | – | W own | W own | W any | – | W own |
 | POST | `/shops/{shop_id}/products/{product_id}/restore` | restore_product | – | W own | W own | W any | – | W own |
-| GET | `/shops/{shop_id}/products/{product_id}/revisions` | list_product_revisions | – | R own | R own | R any | R own | R own |
-| GET | `/shops/{shop_id}/products/{product_id}/revisions/{revision_no}` | get_product_revision | – | R own | R own | R any | R own | R own |
-| POST | `/shops/{shop_id}/products/{product_id}/revisions/{revision_no}/restore` | restore_product_revision | – | W own | W own | W any | – | W own |
+| GET | `/shops/{shop_id}/products/{product_id}/revisions` |  | – | R own | R own | R any | · | · |
+| GET | `/shops/{shop_id}/products/{product_id}/revisions/{revision_no}` |  | – | R own | R own | R any | · | · |
+| POST | `/shops/{shop_id}/products/{product_id}/revisions/{revision_no}/restore` |  | – | W own | W own | W any | · | · |
 | PUT | `/shops/{shop_id}/products/{product_id}/swap` |  | – | W own | W own | W any | · | · |
-| GET | `/shops/{shop_id}/revisions` | list_shop_revisions | – | R own | R own | R any | R own | R own |
-| GET | `/shops/{shop_id}/revisions/{revision_id}` | get_revision | – | R own | R own | R any | R own | R own |
+| GET | `/shops/{shop_id}/revisions` |  | – | R own | R own | R any | · | · |
+| GET | `/shops/{shop_id}/revisions/{revision_id}` |  | – | R own | R own | R any | · | · |
 | GET | `/shops/{shop_id}/tags/` | list_tags | – | R own | R own | R any | R own | R own |
 | POST | `/shops/{shop_id}/tags/` | create_tag | – | W own | W own | W any | – | W own |
 | GET | `/shops/{shop_id}/tags/name/{name}` |  | – | R own | R own | R any | · | · |
@@ -110,7 +110,7 @@ The MCP surface: a key reaches its own shop, a member their shops, an admin any.
 | PUT | `/shops/{shop_id}/tags/{tag_id}` | update_tag | – | W own | W own | W any | – | W own |
 | DELETE | `/shops/{shop_id}/tags/{tag_id}` | delete_tag | – | W own | W own | W any | – | W own |
 | POST | `/shops/{shop_id}/tags/{tag_id}/restore` | restore_tag | – | W own | W own | W any | – | W own |
-| POST | `/shops/{shop_id}/tags/{tag_id}/revisions/{revision_no}/restore` | restore_tag_revision | – | W own | W own | W any | – | W own |
+| POST | `/shops/{shop_id}/tags/{tag_id}/revisions/{revision_no}/restore` |  | – | W own | W own | W any | · | · |
 | GET | `/shops/{shop_id}/trash` |  | – | R own | R own | R any | · | · |
 
 ## Per shop — Cognito only

@@ -71,17 +71,9 @@ EXPECTED_TOOL_NAMES = {
     "product_attribute_values_replace_for_product",
     "product_attribute_values_delete",
     # revisions / trash
-    "list_shop_revisions",
-    "get_revision",
-    "list_product_revisions",
-    "get_product_revision",
-    "restore_product_revision",
     "restore_product",
     "restore_category",
-    "restore_category_revision",
-    "restore_tag_revision",
     "restore_tag",
-    "restore_attribute_revision",
     "restore_attribute",
     # shops
     "list_my_shops",

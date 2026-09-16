@@ -84,7 +84,6 @@ def _summaries(shop_id: UUID, entity_type: str, entity_id: UUID) -> List[Revisio
 @router.get(
     "/revisions",
     response_model=List[RevisionSummary],
-    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
     operation_id="list_shop_revisions",
     summary="List all revisions in a shop",
     description=(
@@ -141,7 +140,6 @@ def list_shop_revisions(
 @router.get(
     "/revisions/{revision_id}",
     response_model=RevisionDetail,
-    tags=[AgentTag.EXPOSED],
     operation_id="get_revision",
     summary="Get one revision by id",
     description=(
@@ -165,7 +163,6 @@ def get_revision(shop_id: UUID, revision_id: UUID) -> RevisionDetail:
 @router.get(
     "/products/{product_id}/revisions",
     response_model=List[RevisionSummary],
-    tags=[AgentTag.EXPOSED, AgentTag.LARGE],
     operation_id="list_product_revisions",
     summary="List product revisions",
     description=(
@@ -181,7 +178,6 @@ def list_product_revisions(shop_id: UUID, product_id: UUID) -> List[RevisionSumm
 @router.get(
     "/products/{product_id}/revisions/{revision_no}",
     response_model=RevisionDetail,
-    tags=[AgentTag.EXPOSED],
     operation_id="get_product_revision",
     summary="Get product revision",
     description="Returns one product revision including the full snapshot data (all fields, tags, attribute values and image references at that point in time).",
@@ -207,7 +203,6 @@ def get_product_revision(shop_id: UUID, product_id: UUID, revision_no: int) -> R
 @router.post(
     "/products/{product_id}/revisions/{revision_no}/restore",
     response_model=RestoreReport,
-    tags=[AgentTag.EXPOSED],
     operation_id="restore_product_revision",
     summary="Restore product to a revision",
     description=(
@@ -305,7 +300,6 @@ def restore_category_endpoint(
 @router.post(
     "/categories/{category_id}/revisions/{revision_no}/restore",
     response_model=RestoreReport,
-    tags=[AgentTag.EXPOSED],
     operation_id="restore_category_revision",
     summary="Restore category to a revision",
     description=(
@@ -346,7 +340,6 @@ def restore_category_revision_endpoint(
 @router.post(
     "/tags/{tag_id}/revisions/{revision_no}/restore",
     response_model=RestoreReport,
-    tags=[AgentTag.EXPOSED],
     operation_id="restore_tag_revision",
     summary="Restore tag to a revision",
     description=(
@@ -403,7 +396,6 @@ def restore_tag_endpoint(
 @router.post(
     "/attributes/{attribute_id}/revisions/{revision_no}/restore",
     response_model=RestoreReport,
-    tags=[AgentTag.EXPOSED],
     operation_id="restore_attribute_revision",
     summary="Restore attribute to a revision",
     description=(
