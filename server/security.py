@@ -26,6 +26,10 @@ if TYPE_CHECKING:
     from server.db.models import ApiKeyTable
 
 ADMIN_GROUPS = ("Admins", "admins")
+# Cognito groups that grant a *role through MCP*; neither affects REST. Only these
+# grant MCP access — a user in neither, admins included, may do nothing through MCP.
+MCP_VIEWERS_GROUP = "shopvirge-mcp-viewers"  # read
+MCP_OPERATORS_GROUP = "shopvirge-mcp-operators"  # read and write
 
 
 def has_admin_group(groups: Iterable[str]) -> bool:
@@ -69,6 +73,7 @@ def user_client_ids() -> set[str]:
 
 Kind = Literal["user", "m2m", "api_key"]
 Via = Literal["rest", "mcp"]
+McpAccess = Literal["none", "read", "write"]
 
 
 @dataclass(frozen=True)
@@ -99,6 +104,24 @@ class Principal:
         """M2M tokens are trusted across shops; users need an admin group."""
         return self.kind == "m2m" or has_admin_group(self.groups)
 
+    @property
+    def mcp_access(self) -> McpAccess:
+        """What this principal may do through MCP: ``write``, ``read`` or ``none``.
+
+        For a user this comes from the MCP groups alone: operators write,
+        viewers read, and membership of neither means nothing at all — being
+        an admin does not help. Keys and service tokens are not people and
+        carry no groups; they keep the access they have anyway (a key its one
+        shop, M2M everything).
+        """
+        if self.kind != "user":
+            return "write"
+        if MCP_OPERATORS_GROUP in self.groups:
+            return "write"
+        if MCP_VIEWERS_GROUP in self.groups:
+            return "read"
+        return "none"
+
     def may_touch(self, shop_id: UUID) -> bool:
         """The one shop-access rule: a key its own shop, a user its groups' shops, an admin any."""
         if self.kind == "api_key":
@@ -126,6 +149,25 @@ class Principal:
         return cls(kind="api_key", subject=str(row.id), shop_id=row.shop_id, via=via)
 
 
+def _inside_mcp_tool_call() -> bool:
+    """True when this request is fastmcp's in-process call made from within a tool call.
+
+    fastmcp keeps a request context for the duration of a tool call and the
+    in-process HTTP request runs inside it, so the context is present exactly
+    then and absent for a plain REST request. Gated on the setting so a
+    REST-only deployment never imports fastmcp.
+    """
+    if not app_settings.MCP_ENABLED:
+        return False
+    from fastmcp.server.dependencies import get_context
+
+    try:
+        get_context()
+    except RuntimeError:
+        return False
+    return True
+
+
 async def current_principal(
     request: Request,
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
@@ -143,8 +185,7 @@ async def current_principal(
     # Lazy import — avoids a CRUD<->security cycle.
     from server.crud.crud_api_key import KEY_PLAINTEXT_PREFIX, api_key_crud
 
-    # fastmcp forwards the MCP session header into the in-process request it makes.
-    via: Via = "mcp" if request.headers.get("mcp-session-id") else "rest"
+    via: Via = "mcp" if _inside_mcp_tool_call() else "rest"
 
     plaintext: Optional[str] = x_api_key
     if plaintext is None:
@@ -164,7 +205,23 @@ async def current_principal(
     return Principal.from_token(token, via=via)
 
 
-async def require_shop(shop_id: UUID, principal: Principal = Depends(current_principal)) -> Principal:
+def _enforce_mcp_role(principal: Principal, request: Request) -> None:
+    """Through MCP a user needs a role: viewers read, operators write, nobody else anything.
+
+    Called from every guard an MCP tool call can pass through (``require_shop``
+    for the shop tier, ``require_cognito`` for the authenticated tier), so the
+    rule lives in the guards and never in a handler. No-op for REST.
+    """
+    if principal.via != "mcp":
+        return
+    access = principal.mcp_access
+    if access == "none":
+        raise HTTPException(status_code=403, detail="This account has no access through MCP")
+    if access == "read" and request.method != "GET":
+        raise HTTPException(status_code=403, detail="This account is read-only through MCP")
+
+
+async def require_shop(shop_id: UUID, request: Request, principal: Principal = Depends(current_principal)) -> Principal:
     """Shop tiers: the ``shop_id`` in the path must be one the caller may touch, else 403.
 
     A key is minted for exactly one shop and a user is attached to shops via
@@ -172,6 +229,7 @@ async def require_shop(shop_id: UUID, principal: Principal = Depends(current_pri
     check swapping the path reaches another tenant's data. Same mapping
     ``GET /shops/my-shops`` reports; here it is enforced rather than advised.
     """
+    _enforce_mcp_role(principal, request)
     if principal.may_touch(shop_id):
         return principal
     if principal.kind == "api_key":
@@ -179,10 +237,11 @@ async def require_shop(shop_id: UUID, principal: Principal = Depends(current_pri
     raise HTTPException(status_code=403, detail="User has no access to this shop")
 
 
-async def require_cognito(principal: Principal = Depends(current_principal)) -> Principal:
+async def require_cognito(request: Request, principal: Principal = Depends(current_principal)) -> Principal:
     """Cognito-only tiers: an API key is refused — a key must not mint another key, for instance."""
     if principal.kind == "api_key":
         raise HTTPException(status_code=401, detail="API keys are not accepted on this route")
+    _enforce_mcp_role(principal, request)
     return principal
 
 

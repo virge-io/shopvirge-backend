@@ -57,6 +57,22 @@ Three methods are accepted on `/mcp` and on the tagged CRUD endpoints. They are 
 
 The resolver is `server.security.current_principal`. It either resolves the API key against the `api_keys` table or delegates to the Cognito flow, and returns a `Principal` either way. Tiers that are not MCP-exposed also mount `require_cognito` — an API key cannot reach the full REST surface.
 
+### MCP roles
+
+Through MCP a Cognito user needs a role, given by group membership and nothing else:
+
+| Group | Through MCP |
+|---|---|
+| `shopvirge-mcp-viewers` | read (`GET` tools) |
+| `shopvirge-mcp-operators` | read and write |
+| neither | nothing — every tool call is refused with 403, admins included |
+
+Being in `admins` grants no MCP access by itself; an admin who is also a viewer reads, one who is also an operator writes. API keys and M2M tokens are not people and are not subject to the rule: a key keeps its one shop, M2M keeps everything. Which *shops* a user may touch is still decided by the shop-UUID groups (and `admins`); the MCP role only says what they may do there.
+
+The rule is enforced by `_enforce_mcp_role` from the two guards every MCP tool call passes through, `require_shop` (shop tier) and `require_cognito` (authenticated tier, e.g. `list_my_shops`); it is a no-op for REST, where the same person keeps full access in shop-editor. `via` comes from fastmcp's request context, which exists only inside a tool call.
+
+The tool *list* is not filtered per user (the list request carries no token on this fastmcp version), so a viewer agent in LibreChat should be given only the read tools; derive that list from `openapi.json` (every exposed `GET` operation) rather than by hand.
+
 ### API keys are bound to one shop
 
 A key is minted for exactly one shop, and `server.security.require_shop`
@@ -167,7 +183,7 @@ You should see all 50 tool definitions in the response.
 
 `FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `current_principal` and `require_shop`.
 
-fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.)
+fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.) **This is version-bound:** fastmcp 3.x strips `authorization` from the forwarded headers on purpose, so an upgrade silently breaks tool-call authentication. Moving past 2.14.x means authenticating at the MCP layer instead (a fastmcp `TokenVerifier`), which requires clients to send a token on the connection — for LibreChat that means its MCP OAuth flow rather than the static header.
 
 ## OAuth discovery (Claude Code browser-login)
 

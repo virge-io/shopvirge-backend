@@ -118,6 +118,8 @@ One resolver and three guards in `server/security.py`:
 - `require_cognito` — refuses API keys; for api-key management and other Cognito-only routes.
 - `require_admin` — `Principal.is_admin`: the Cognito `admins` group (or legacy `Admins`), or an M2M token.
 
+Through MCP a user needs a role, given by Cognito group and nothing else: `shopvirge-mcp-viewers` reads, `shopvirge-mcp-operators` reads and writes, and a user in neither group — admins included — may do nothing through MCP (`Principal.mcp_access`). API keys and M2M tokens are not users and are not subject to it. `_enforce_mcp_role` runs from `require_shop` and `require_cognito`, the guards every MCP tool call passes through, and is a no-op for REST. `via` is derived from fastmcp's request context (present only inside a tool call), not from headers.
+
 Guards are mounted per tier in `server/api/api.py`, never per route. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
 
 API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach tiers that mount `require_shop` without `require_cognito` — the full REST surface requires Cognito.
@@ -129,6 +131,8 @@ Swagger UI Authorize button is wired via `HTTPBearer(auto_error=False)` in `secu
 ## MCP
 
 The MCP server is off by default. Enable with `MCP_ENABLED=true`. When enabled, `server/main.py` mounts it at `/mcp` via `mount_mcp(app)` after all routers are included.
+
+The MCP transport itself is not authenticated: a tool call is authenticated by the route it reaches, because fastmcp 2.14.x forwards the caller's `Authorization` header into its in-process request. **Upgrading fastmcp to 3.x breaks this** — 3.x strips that header — and then the MCP layer must verify tokens itself (a fastmcp `TokenVerifier`), which in turn requires MCP clients to send a token on the connection (OAuth in LibreChat). Keep the pin until that is decided.
 
 Tools are **auto-generated from the FastAPI route table** by `fastmcp`. A route is exposed as an MCP tool by:
 
@@ -147,6 +151,8 @@ When adding or removing MCP-exposed routes, also:
   uv run python bin/regenerate_openapi_snapshot.py
   ```
 - Update `EXPECTED_TOOL_NAMES` in `tests/unit_tests/mcp/test_mcp.py`.
+
+When a route's mounting changes (tier, guard, MCP exposure), regenerate the access matrix — `docs/api/access-matrix.md`, one row per route showing what each caller kind may do — with `uv run python bin/generate_access_matrix.py`; `tests/unit_tests/test_access_matrix.py` fails while it is stale.
 
 ## Testing
 

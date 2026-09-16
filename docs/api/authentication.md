@@ -10,6 +10,7 @@ Authentication lives in `server/security.py` and is built on [AWS Cognito](https
 ## Summary
 
 - `current_principal` is the single authentication dependency; `require_shop`, `require_cognito` and `require_admin` are the guards mounted per tier.
+- Through MCP a user needs a role: the Cognito group `shopvirge-mcp-viewers` (read) or `shopvirge-mcp-operators` (read and write); admins are not exempt. See [MCP](mcp.md#mcp-roles).
 - Three credential shapes are accepted: user tokens, M2M client-credentials tokens, and per-shop API keys.
 - **Both** the web app client and the MCP app client issue *user* tokens. Only a token from neither is treated as M2M.
 - Authentication and shop authorization are separate checks.
