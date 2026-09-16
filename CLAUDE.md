@@ -120,11 +120,11 @@ One resolver and three guards in `server/security.py`:
 
 Through MCP a user needs a role, given by Cognito group and nothing else: `shopvirge-mcp-viewers` reads, `shopvirge-mcp-operators` reads and writes, and a user in neither group — admins included — may do nothing through MCP (`Principal.mcp_access`). API keys and M2M tokens are not users and are not subject to it. `_enforce_mcp_role` runs from `require_shop` and `require_cognito`, the guards every MCP tool call passes through, and is a no-op for REST. `via` is derived from fastmcp's request context (present only inside a tool call), not from headers.
 
-Guards are mounted per tier in `server/api/api.py`, never per route. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
+Guards are mounted per tier in `server/api/api.py`; a route adds one only when it is stricter than its tier. A handler that needs the caller declares `principal: Principal = Depends(current_principal)` — never the raw token or key row.
 
 API keys have the prefix `sv_` and are issued per shop via `POST /shops/{shop_id}/api-keys/` (Cognito-only). They only reach tiers that mount `require_shop` without `require_cognito` — the full REST surface requires Cognito.
 
-Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `GET /shops/my-shops` is the single resolution point; individual shop endpoints do not re-enforce this.
+Shop access is determined by Cognito group membership: a user can touch shops whose UUID matches one of their group names. `require_shop` enforces this on every shop-scoped route; `GET /shops/my-shops` reports the same mapping.
 
 Credentials are OpenAPI security schemes, never parameters: `HTTPBearer` on every authenticated operation (declared by `current_principal`) and `APIKeyHeader` (`X-API-Key`) only on the key-accepting tiers, via the documentation-only `accepts_api_key` dependency mounted in `api.py`. Swagger's Authorize dialog offers both; a key also works as `Bearer sv_…`.
 

@@ -60,6 +60,8 @@ Two routers are included outside the tiers with their guard spelled out,
 because their own path is the shop segment: `shops.shop_router` (`/shops/{shop_id}`,
 `/shops/config/{shop_id}`, `/shops/allowed-ips/{shop_id}`) and `orders.per_shop_router`
 (orders mount at `/orders`, not under the shop); the orders merge removes the latter.
+The former `{id}` spellings of the shop routes remain as deprecated aliases
+(`shops/legacy.py`) so clients generated from the previous spec keep working.
 
 Inside a package one module holds one posture — `shops/public.py`,
 `shops/collection.py`, `orders/management.py`, `orders/per_shop.py`,
