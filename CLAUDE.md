@@ -152,6 +152,8 @@ When adding or removing MCP-exposed routes, also:
   ```
 - Update `EXPECTED_TOOL_NAMES` in `tests/unit_tests/mcp/test_mcp.py`.
 
+When a route's mounting changes (tier, guard, MCP exposure), regenerate the access matrix — `docs/api/access-matrix.md`, one row per route showing what each caller kind may do — with `uv run python bin/generate_access_matrix.py`; `tests/unit_tests/test_access_matrix.py` fails while it is stale.
+
 ## Testing
 
 - Tests in `tests/unit_tests/` — shared fixtures in `conftest.py`, test data factories in `tests/unit_tests/factories/`
