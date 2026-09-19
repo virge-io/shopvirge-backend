@@ -58,6 +58,8 @@ class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
         elif stock_status == "out_of_stock":
             query = query.filter(ProductTable.stock == 0)
 
+        handled_keys = {"attribute_id", "option_id", "option_value_key", "attribute_name"}
+        remaining_filter_parameters = None
         if filter_parameters:
             for filter_parameter in filter_parameters:
                 key, *value = filter_parameter.split(":", 1)
@@ -104,11 +106,12 @@ class CRUDProduct(CRUDBase[ProductTable, ProductCreate, ProductUpdate]):
                             )
                         case _:
                             pass
+            remaining_filter_parameters = [fp for fp in filter_parameters if fp.split(":", 1)[0] not in handled_keys]
 
         return self.get_multi(
             skip=skip,
             limit=limit,
-            filter_parameters=filter_parameters,
+            filter_parameters=remaining_filter_parameters,
             sort_parameters=sort_parameters,
             query_parameter=query,
         )
