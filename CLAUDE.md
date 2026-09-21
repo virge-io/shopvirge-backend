@@ -132,7 +132,7 @@ Credentials are OpenAPI security schemes, never parameters: `HTTPBearer` on ever
 
 The MCP server is off by default. Enable with `MCP_ENABLED=true`. When enabled, `server/main.py` mounts it at `/mcp` via `mount_mcp(app)` after all routers are included.
 
-The MCP transport itself is not authenticated: a tool call is authenticated by the route it reaches, because fastmcp 2.14.x forwards the caller's `Authorization` header into its in-process request. **Upgrading fastmcp to 3.x breaks this** — 3.x strips that header — and then the MCP layer must verify tokens itself (a fastmcp `TokenVerifier`), which in turn requires MCP clients to send a token on the connection (OAuth in LibreChat). Keep the pin until that is decided.
+The MCP transport itself is not authenticated: a tool call is authenticated by the route it reaches. fastmcp strips the caller's `Authorization` header from its in-process request, so `_forward_auth_header` in `server/mcp/server.py` re-injects it — without that hook every bearer-token tool call answers 401. The hook needs fastmcp >=3.0.2; the pin is `<4` because fastmcp 4 needs FastAPI >=0.133.
 
 Tools are **auto-generated from the FastAPI route table** by `fastmcp`. A route is exposed as an MCP tool by:
 

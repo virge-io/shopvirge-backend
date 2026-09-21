@@ -183,7 +183,7 @@ You should see all 50 tool definitions in the response.
 
 `FastMCP.from_fastapi(app=…)` invokes the underlying routes via in-process `httpx` over an `ASGITransport`. That means every MCP tool call **goes through the FastAPI middleware and dependency chain** — including `current_principal` and `require_shop`.
 
-fastmcp 2.14.x's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, and its default exclude list does NOT strip `authorization` or `x-api-key` — so either credential reaches the underlying route's auth dependency without extra plumbing. (Earlier revisions of this module ran a custom forwarding hook for this; it was removed when it turned out to crash the call in 2.14.x — see commit history of `server/mcp/server.py`.) **This is version-bound:** fastmcp 3.x strips `authorization` from the forwarded headers on purpose, so an upgrade silently breaks tool-call authentication. Moving past 2.14.x means authenticating at the MCP layer instead (a fastmcp `TokenVerifier`), which requires clients to send a token on the connection — for LibreChat that means its MCP OAuth flow rather than the static header.
+fastmcp's `OpenAPITool.run` auto-forwards the incoming MCP request's headers into the inner httpx call, but strips `authorization` on purpose ([PrefectHQ/fastmcp#3262](https://github.com/PrefectHQ/fastmcp/pull/3262)). `server/mcp/server.py` therefore registers an httpx request hook, `_forward_auth_header`, that re-injects it; without it every bearer-token tool call answers `401`. `x-api-key` is forwarded by fastmcp itself.
 
 ## OAuth discovery (Claude Code browser-login)
 
