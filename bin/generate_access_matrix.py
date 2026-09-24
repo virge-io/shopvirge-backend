@@ -34,7 +34,7 @@ from tests.unit_tests.test_access_matrix import DOC_PATH, render, routes  # noqa
 
 def main() -> int:
     found = routes()
-    DOC_PATH.write_text(render(found))
+    DOC_PATH.write_text(render(found), encoding="utf-8")
     print(f"Wrote {DOC_PATH.relative_to(REPO_ROOT)} ({len(found)} routes)")
     return 0
 

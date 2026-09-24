@@ -32,7 +32,7 @@ def resolve_vat_rate(product: Any, shop: Any) -> Decimal:
 
 
 def build_rate_subtotals(order_info: list, shop: Any) -> dict[Decimal, Decimal]:
-    """Sum cart inc-VAT line totals grouped by VAT rate.
+    """Sum cart inc-VAT line totals grouped by VAT rate for shippable products only.
 
     `order_info` may contain dicts or Pydantic items; both are accepted.
     """
@@ -42,6 +42,8 @@ def build_rate_subtotals(order_info: list, shop: Any) -> dict[Decimal, Decimal]:
     for raw in order_info:
         item = raw.model_dump() if hasattr(raw, "model_dump") else dict(raw)
         product = product_crud.get_id_by_shop_id(shop.id, item["product_id"])
+        if product is not None and not getattr(product, "shippable", True):
+            continue
         rate = resolve_vat_rate(product, shop)
         quantity = item.get("quantity", 1)
         price = item["price"] if isinstance(item["price"], Decimal) else Decimal(str(item["price"]))
@@ -117,6 +119,9 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
     free_above_amount = Decimal(str(shipping_cfg.get("free_shipping_above_amount", "0") or "0"))
 
     rate_subtotals = build_rate_subtotals(order_info, shop)
+    if not rate_subtotals:
+        return None
+
     cart_total_inc = quantize_money(sum(rate_subtotals.values(), Decimal("0")))
 
     if free_above_enabled and free_above_amount > 0 and cart_total_inc >= free_above_amount:
