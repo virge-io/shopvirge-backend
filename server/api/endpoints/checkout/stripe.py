@@ -88,9 +88,16 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             customer_id = replace_missing_customer(order.account_id, shop_id)
             logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
             intent = stripe.PaymentIntent.create(**(intent_args | {"customer": customer_id}))
+        logger.info(
+            "PaymentIntent created successfully",
+            order_id=str(order_id),
+            shop_id=str(shop_id),
+            customer_id=customer_id,
+            amount=intent_args["amount"],
+        )
         return {"clientSecret": str(intent["client_secret"])}
     except Exception as exc:
-        logger.exception("Failed to create payment intent", order_id=str(order_id))
+        logger.exception("Failed to create payment intent", order_id=str(order_id), shop_id=str(shop_id))
         raise HTTPException(HTTPStatus.BAD_GATEWAY, "Unable to create payment intent") from exc
 
 
@@ -139,12 +146,19 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             customer_id = replace_missing_customer(order.account_id, shop_id)
             logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
             subscription = stripe.Subscription.create(**(subscription_args | {"customer": customer_id}))
+        logger.info(
+            "Subscription created successfully",
+            order_id=str(order_id),
+            shop_id=str(shop_id),
+            subscription_id=str(subscription.id),
+            customer_id=customer_id,
+        )
         return {
             "clientSecret": str(subscription.latest_invoice.payment_intent.client_secret),
             "subscriptionId": str(subscription.id),
         }
     except Exception as exc:
-        logger.exception("Failed to create subscription", order_id=str(order_id))
+        logger.exception("Failed to create subscription", order_id=str(order_id), shop_id=str(shop_id))
         raise HTTPException(HTTPStatus.BAD_GATEWAY, "Unable to create subscription") from exc
 
 
@@ -160,7 +174,8 @@ def cancel_subscription(shop_id: UUID, subscription_id: str):
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
         stripe.Subscription.cancel(subscription_id)
-
+        logger.info("Subscription cancelled successfully", subscription_id=subscription_id, shop_id=str(shop_id))
         return 204
     except Exception as e:
+        logger.exception("Failed to cancel subscription", subscription_id=subscription_id, shop_id=str(shop_id))
         return e

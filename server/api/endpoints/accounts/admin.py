@@ -238,6 +238,12 @@ def sync_stripe(
     db.session.commit()
     db.session.refresh(account)
 
+    logger.info(
+        "Stripe customer snapshot synced",
+        account_id=str(account.id),
+        stripe_customer_id=customer_id,
+        synced_at=synced_at.isoformat(),
+    )
     return SyncStripeResponse(
         id=account.id,
         stripe_customer_id=customer_id,
@@ -275,4 +281,7 @@ def link_stripe(
     db.session.commit()
     db.session.refresh(account)
 
+    logger.info(
+        "Linked Stripe customer ID to account", account_id=str(account.id), stripe_customer_id=body.stripe_customer_id
+    )
     return build_admin_account(account)
