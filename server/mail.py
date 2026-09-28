@@ -1,3 +1,5 @@
+import base64
+import json
 import os
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -18,7 +20,7 @@ import structlog
 
 from server.schemas.base import quantize_money
 from server.schemas.product import ProductBase
-from server.settings import mail_settings, template_environment
+from server.settings import app_settings, mail_settings, template_environment
 from server.utils.date_utils import nowtz
 from server.utils.types import ConfirmationMail, InlineImage, MailAddress, MailAttachment, MailType
 
@@ -348,8 +350,19 @@ def _map_language(language_name: str) -> str:
     return mapping.get(language_name.lower().strip(), "NL")
 
 
+def _build_product_image_url(image_key: str | None) -> str | None:
+    if not image_key:
+        return None
+    if image_key.startswith(("http://", "https://")):
+        return image_key
+
+    request_data = {"bucket": app_settings.S3_UPLOAD_IMAGES_BUCKET, "key": image_key}
+    encoded = base64.b64encode(json.dumps(request_data).encode("utf-8")).decode("utf-8")
+    return f"{app_settings.CLOUDFRONT_BASE.rstrip('/')}/{encoded}"
+
+
 def _compute_order_lines_for_email(order_info: list[dict], shop: Any) -> list[dict]:
-    """Build enriched order line dicts with VAT and attribute info for email templates."""
+    """Build enriched order line dicts with VAT, attribute, image, and SKU info for email templates."""
     from server.crud.crud_product import product_crud
     from server.services.shipping import resolve_vat_rate
 
@@ -382,10 +395,26 @@ def _compute_order_lines_for_email(order_info: list[dict], shop: Any) -> list[di
                 attr_unit = av.attribute.unit or ""
                 attributes.append({"name": attr_name, "value": attr_value, "unit": attr_unit})
 
+        sku = getattr(product, "sku", None) if product else None
+        description_short = None
+        if product and hasattr(product, "translation") and product.translation:
+            description_short = (
+                product.translation.main_description_short
+                or product.translation.alt1_description_short
+                or product.translation.alt2_description_short
+            )
+        if not description_short:
+            description_short = item.get("description")
+
+        image_url = _build_product_image_url(getattr(product, "image_1", None) if product else None)
+
         lines.append(
             {
                 "product_name": item.get("product_name", "Unknown product"),
                 "description": item.get("description"),
+                "description_short": description_short,
+                "sku": sku,
+                "image_url": image_url,
                 "attributes": attributes,
                 "quantity": quantity,
                 "price_ex_btw": price_ex,
@@ -484,6 +513,8 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
                 completed_at_dt = completed_at_dt.astimezone(ZoneInfo("Europe/Amsterdam"))
             completed_at_str = completed_at_dt.strftime("%d-%m-%Y %H:%M")
 
+        is_consumer = bool(config.get("toggles", {}).get("is_consumer", False))
+
         # Common template variables
         template_vars = {
             "customer_order_id": order.customer_order_id,
@@ -491,6 +522,8 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
             "order_lines": order_lines,
             "shipping_lines": shipping_lines,
             "shipping_fee_inc_btw": shipping_fee_inc_btw,
+            "items_total_inc_btw": items_total_inc_btw,
+            "items_total_ex_btw": items_total_ex_btw,
             "total_ex_btw": total_ex_btw,
             "total_inc_btw": total_inc_btw,
             "total_btw": total_btw,
@@ -506,13 +539,19 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
             "customer_company_name": customer_company_name,
             "customer_btw_number": customer_btw_number,
             "completed_at": completed_at_str,
+            "is_consumer": is_consumer,
         }
 
         env = template_environment(loader)
         lang_folder = language.lower()
 
         # Send customer email
-        customer_template = env.get_template(f"{lang_folder}/mail_order_confirmation_customer.html.j2")
+        customer_template_name = (
+            f"{lang_folder}/mail_order_confirmation_customer_consumer.html.j2"
+            if is_consumer
+            else f"{lang_folder}/mail_order_confirmation_customer.html.j2"
+        )
+        customer_template = env.get_template(customer_template_name)
         customer_body = customer_template.render(**template_vars)
 
         subject_prefix_customer = {
@@ -542,7 +581,12 @@ def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
 
         # Active owner notification — goes to owner_notification_email (or contact.email as fallback).
         if owner_notification_enabled and owner_notification_email:
-            owner_template = env.get_template(f"{lang_folder}/mail_order_confirmation_owner.html.j2")
+            owner_template_name = (
+                f"{lang_folder}/mail_order_confirmation_owner_consumer.html.j2"
+                if is_consumer
+                else f"{lang_folder}/mail_order_confirmation_owner.html.j2"
+            )
+            owner_template = env.get_template(owner_template_name)
             owner_body = owner_template.render(**template_vars)
 
             subject_prefix_owner = {

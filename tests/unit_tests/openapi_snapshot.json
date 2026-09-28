@@ -6092,6 +6092,11 @@
             "title": "Force Unique Product Names",
             "type": "boolean"
           },
+          "is_consumer": {
+            "default": false,
+            "title": "Is Consumer",
+            "type": "boolean"
+          },
           "language_alt1_enabled": {
             "default": false,
             "title": "Language Alt1 Enabled",

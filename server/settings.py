@@ -170,6 +170,9 @@ class AppSettings(BaseSettings):
     S3_BUCKET_UPLOAD_IMAGES_NAME: str = "CHANGE_THIS_FOR_IMAGE_UPLOAD"  # used to store images
     S3_BUCKET_UPLOAD_DOWNLOADS_NAME: str = "CHANGE_THIS_FOR_ASSET_UPLOAD"  # used to store downloads
 
+    CLOUDFRONT_BASE: str = "https://d3q387lgpyraxl.cloudfront.net"
+    S3_UPLOAD_IMAGES_BUCKET: str = "shop-upload-images-bucket-production"
+
     class Config:
         env_file = ".env"
         extra = "ignore"
