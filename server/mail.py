@@ -110,6 +110,9 @@ def send_mail(
             mailer.login(user=mail_settings.MAIL_SMTP_USERNAME, password=mail_settings.MAIL_SMTP_PASSWORD)
         mailer.send_message(message)
         mailer.quit()
+        logger.info("Email dispatched successfully", subject=confirmation_mail["subject"])
+    else:
+        logger.info("Mail sending disabled in settings; skipping dispatch", subject=confirmation_mail["subject"])
     return message
 
 

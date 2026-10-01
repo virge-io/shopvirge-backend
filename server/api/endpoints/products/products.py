@@ -259,6 +259,13 @@ def create(
         record_product_revision(product, action="create", created_by=principal.label, source=principal.via)
         db.session.commit()
         db.session.refresh(product)
+        logger.info(
+            "Product created successfully",
+            product_id=str(product.id),
+            shop_id=str(shop_id),
+            sku=product.sku,
+            name=data.translation.main_name,
+        )
     except IntegrityError as e:
         db.session.rollback()
         if "uq_products_shop_sku" in str(e.orig):
@@ -315,6 +322,7 @@ def update(
     db.session.flush()
     record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
     db.session.commit()
+    logger.info("Product updated successfully", product_id=str(product_id), shop_id=str(shop_id))
     return product
 
 
@@ -403,9 +411,13 @@ def delete(
             )
         # Hard purge: removes the row (+ translation, tag links, attribute values via
         # cascades). Revision rows are intentionally kept.
+        logger.info(
+            "Product purged permanently", product_id=str(product_id), shop_id=str(shop_id), principal=principal.label
+        )
         return product_crud.delete_by_shop_id(shop_id=shop_id, id=product_id, include_deleted=True)
 
     record_product_revision(product, action="delete", created_by=principal.label, source=principal.via)
     product.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
+    logger.info("Product moved to trash", product_id=str(product_id), shop_id=str(shop_id), principal=principal.label)
     return None

@@ -202,6 +202,14 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         account_name=order.account.name,
         shipping_fee_inc_btw=order.shipping_fee_inc_btw,
     )
+    logger.info(
+        "Order created successfully",
+        order_id=str(order.id),
+        customer_order_id=order.customer_order_id,
+        shop_id=str(shop_id),
+        total=float(order.total) if order.total else 0.0,
+        status=order.status,
+    )
     if str(data.account_id) == "0999fbcd-a72b-4cc2-abbe-41ccd466cdaf":
         # Test table -> invalidate completed orders
         invalidateCompletedOrdersCache(created_order.id)
@@ -243,6 +251,7 @@ def patch(
         db_obj=order,
         obj_in=item_in,
     )
+    logger.info("Order status updated", order_id=str(order_id), shop_id=str(shop_id), new_status=item_in.status)
 
     updated_order = order_updated(order)
 

@@ -1,8 +1,11 @@
 from uuid import UUID
 
 import httpx
+import structlog
 
 from server.schemas.order import OrderUpdated
+
+logger = structlog.get_logger(__name__)
 
 
 def post_discord_info_request(
@@ -22,6 +25,7 @@ def post_discord_info_request(
 
     result = httpx.post(webhook, json=data)
     result.raise_for_status()
+    logger.info("Posted info request to Discord", botname=botname, product_id=str(product_id))
 
 
 def post_discord_order_complete(content: str, botname: str, webhook: str, order: OrderUpdated, email: str):
@@ -39,6 +43,9 @@ def post_discord_order_complete(content: str, botname: str, webhook: str, order:
 
     result = httpx.post(webhook, json=data)
     result.raise_for_status()
+    logger.info(
+        "Posted order complete notification to Discord", botname=botname, customer_order_id=order.customer_order_id
+    )
 
 
 if __name__ == "__main__":

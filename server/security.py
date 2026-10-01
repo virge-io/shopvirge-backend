@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, List, Literal, Optional
 from uuid import UUID
 
+import structlog
 from fastapi import HTTPException, Request, Security
 from fastapi.param_functions import Depends
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -21,6 +22,8 @@ from fastapi_cognito import CognitoAuth, CognitoSettings
 from pydantic import BaseModel, Field, HttpUrl
 
 from server.settings import app_settings, auth_settings
+
+logger = structlog.get_logger(__name__)
 
 if TYPE_CHECKING:
     from server.db.models import ApiKeyTable
@@ -141,6 +144,7 @@ class Principal:
         elif token.scope.endswith("/api"):
             kind = "m2m"
         else:
+            logger.warning("Invalid OAuth2 scope on token", client_id=token.client_id, scope=token.scope)
             raise HTTPException(status_code=401, detail="Invalid OAuth2 scope")
         return cls(kind=kind, subject=token.cognito_id, groups=tuple(token.cognito_groups), via=via)
 
@@ -198,7 +202,9 @@ async def current_principal(
     if plaintext is not None and plaintext.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
         row = api_key_crud.lookup_by_plaintext(plaintext)
         if row is None:
+            logger.warning("API key lookup failed", via=via, path=request.url.path)
             raise HTTPException(status_code=401, detail="Invalid API key")
+        logger.debug("Authenticated via API key", key_id=str(row.id), shop_id=str(row.shop_id), via=via)
         return Principal.from_api_key(row, via=via)
 
     token = await cognito_eu.auth_required(request)
@@ -226,8 +232,12 @@ def _enforce_mcp_role(principal: Principal, request: Request) -> None:
         return
     access = principal.mcp_access
     if access == "none":
+        logger.warning("MCP access denied: no role assigned", principal=principal.label)
         raise HTTPException(status_code=403, detail="This account has no access through MCP")
     if access == "read" and request.method != "GET":
+        logger.warning(
+            "MCP access denied: read-only user attempted write", principal=principal.label, method=request.method
+        )
         raise HTTPException(status_code=403, detail="This account is read-only through MCP")
 
 
@@ -242,6 +252,7 @@ async def require_shop(shop_id: UUID, request: Request, principal: Principal = D
     _enforce_mcp_role(principal, request)
     if principal.may_touch(shop_id):
         return principal
+    logger.warning("Access denied to shop", shop_id=str(shop_id), principal=principal.label, kind=principal.kind)
     raise HTTPException(status_code=403, detail="No access to this shop")
 
 
@@ -256,6 +267,7 @@ async def require_shop_by_id(
 async def require_cognito(request: Request, principal: Principal = Depends(current_principal)) -> Principal:
     """Cognito-only tiers: an API key is refused — a key must not mint another key, for instance."""
     if principal.kind == "api_key":
+        logger.warning("API key rejected on cognito-only route", path=request.url.path, principal=principal.label)
         raise HTTPException(status_code=401, detail="API keys are not accepted on this route")
     _enforce_mcp_role(principal, request)
     return principal
@@ -265,4 +277,5 @@ async def require_admin(principal: Principal = Depends(current_principal)) -> Pr
     """The admin tier — see :meth:`Principal.is_admin`."""
     if principal.is_admin:
         return principal
+    logger.warning("Admin access denied", principal=principal.label, kind=principal.kind)
     raise HTTPException(status_code=403, detail="Admin access required")
