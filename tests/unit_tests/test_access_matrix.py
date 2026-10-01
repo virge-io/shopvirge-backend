@@ -180,7 +180,7 @@ def render(found: list[Route] | None = None) -> str:
 
 
 def test_access_matrix_page_is_in_sync():
-    assert DOC_PATH.read_text() == render(), (
+    assert DOC_PATH.read_text(encoding="utf-8") == render(), (
         "docs/api/access-matrix.md is stale: uv run python bin/generate_access_matrix.py"
     )
 

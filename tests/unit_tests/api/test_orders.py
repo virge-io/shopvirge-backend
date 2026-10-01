@@ -175,6 +175,30 @@ def test_quote_order_calculates_gross_price_from_net_product_price(shop_no_shipp
     assert order_response.json()["total"] == 121.0
 
 
+def test_quote_order_skips_shipping_for_non_shippable_product(shop_shipping_fixed_with_products, test_client):
+    ids = shop_shipping_fixed_with_products
+    category = make_category(shop_id=ids["shop_id"])
+    product_id = make_product(
+        shop_id=ids["shop_id"],
+        category_id=category,
+        main_name="Digital product",
+        price=10.0,
+        shippable=False,
+    )
+
+    response = test_client.post(
+        "/orders/quote",
+        json={
+            "shop_id": str(ids["shop_id"]),
+            "order_info": [{"product_id": str(product_id), "product_name": "Digital product", "quantity": 1}],
+        },
+    )
+
+    assert response.status_code == 200, response.json()
+    assert response.json()["shipping_fee_inc_btw"] is None
+    assert response.json()["total"] == response.json()["subtotal"]
+
+
 def test_quote_and_create_order_check_stock_when_enabled(shop_no_shipping_with_products, test_client):
     ids = shop_no_shipping_with_products
     shop = db.session.get(ShopTable, ids["shop_id"])
