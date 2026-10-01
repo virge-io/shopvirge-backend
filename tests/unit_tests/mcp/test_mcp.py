@@ -108,7 +108,7 @@ def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
     """``FastMCP.from_fastapi`` produces exactly the expected tools from the tagged routes."""
     pytest.importorskip("fastmcp")
     from fastmcp import FastMCP
-    from fastmcp.server.openapi import MCPType, RouteMap
+    from fastmcp.server.providers.openapi import MCPType, RouteMap
 
     from server.mcp.server import mount_mcp  # noqa: F401 — sanity import
 
@@ -121,8 +121,7 @@ def test_fastmcp_introspects_all_expected_tools(fastapi_app: FastAPI) -> None:
         ],
     )
 
-    tools = asyncio.run(mcp.get_tools())
-    tool_names = set(tools.keys())
+    tool_names = {tool.name for tool in asyncio.run(mcp.list_tools())}
     assert tool_names == EXPECTED_TOOL_NAMES, (
         f"missing: {EXPECTED_TOOL_NAMES - tool_names}, extra: {tool_names - EXPECTED_TOOL_NAMES}"
     )
@@ -137,7 +136,7 @@ def test_update_product_tool_has_no_required_body_fields(fastapi_app: FastAPI) -
     """
     pytest.importorskip("fastmcp")
     from fastmcp import FastMCP
-    from fastmcp.server.openapi import MCPType, RouteMap
+    from fastmcp.server.providers.openapi import MCPType, RouteMap
 
     mcp = FastMCP.from_fastapi(
         app=fastapi_app,
@@ -148,7 +147,7 @@ def test_update_product_tool_has_no_required_body_fields(fastapi_app: FastAPI) -
         ],
     )
 
-    tools = asyncio.run(mcp.get_tools())
+    tools = {tool.name: tool for tool in asyncio.run(mcp.list_tools())}
     schema = tools["update_product"].parameters
     required = set(schema.get("required", []))
     assert not any(r.startswith("image_") for r in required), f"image fields still required: {required}"
@@ -165,7 +164,7 @@ def test_update_category_tool_has_no_required_body_fields(fastapi_app: FastAPI) 
     """
     pytest.importorskip("fastmcp")
     from fastmcp import FastMCP
-    from fastmcp.server.openapi import MCPType, RouteMap
+    from fastmcp.server.providers.openapi import MCPType, RouteMap
 
     mcp = FastMCP.from_fastapi(
         app=fastapi_app,
@@ -176,7 +175,7 @@ def test_update_category_tool_has_no_required_body_fields(fastapi_app: FastAPI) 
         ],
     )
 
-    tools = asyncio.run(mcp.get_tools())
+    tools = {tool.name: tool for tool in asyncio.run(mcp.list_tools())}
     schema = tools["update_category"].parameters
     required = set(schema.get("required", []))
     assert not any(r.endswith("_image") for r in required), f"image fields still required: {required}"

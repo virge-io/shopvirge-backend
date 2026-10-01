@@ -7,8 +7,8 @@
 """How a tool call is authenticated and authorised through the mounted MCP server.
 
 The MCP transport is open: ``initialize`` and ``tools/list`` need no credential.
-A tool call is authenticated by the route it reaches, because fastmcp 2.14.x
-forwards the caller's ``Authorization`` header into its in-process request; the
+A tool call is authenticated by the route it reaches, because ``server/mcp/server.py``
+forwards the caller's ``Authorization`` header into fastmcp's in-process request; the
 tier guards then apply exactly as for REST. These tests run over real HTTP
 through the mounted server with the real ``current_principal`` (the conftest
 stub is lifted) and Cognito stubbed the way ``real_auth_client`` stubs it.

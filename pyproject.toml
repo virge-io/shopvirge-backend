@@ -17,8 +17,8 @@ dependencies = [
     "emails~=0.6",
     "fastapi~=0.115.0",
     "fastapi-cognito",
-    # >=2.14 fixes transitive $defs pruning that broke the list_* MCP tools
-    "fastmcp~=2.14.7",
+    # >=3.0.2: server/mcp/server.py needs get_http_headers(include=...). <4: needs FastAPI >=0.133
+    "fastmcp>=3.0.2,<4",
     "gunicorn~=20.0.4",
     "html2text==2024.2.26",
     "httpx>=0.28.1",
