@@ -6125,6 +6125,11 @@
             "title": "Force Unique Product Names",
             "type": "boolean"
           },
+          "is_consumer": {
+            "default": false,
+            "title": "Is Consumer",
+            "type": "boolean"
+          },
           "language_alt1_enabled": {
             "default": false,
             "title": "Language Alt1 Enabled",
@@ -6308,7 +6313,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "openapi": "3.1.0",
   "paths": {

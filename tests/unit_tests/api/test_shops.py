@@ -165,6 +165,7 @@ def test_shop_create_config(test_client, shop):
                 "enable_stock_on_products": True,
                 "enable_attributes_for_categories": False,
                 "force_unique_product_names": False,
+                "is_consumer": False,
             },
             "legal": {
                 "kvk_number": "string",
@@ -292,6 +293,7 @@ def test_shop_update_config(test_client, shop_with_config):
                 "enable_stock_on_products": True,
                 "enable_attributes_for_categories": False,
                 "force_unique_product_names": False,
+                "is_consumer": False,
             },
             "legal": {
                 "kvk_number": "string",
