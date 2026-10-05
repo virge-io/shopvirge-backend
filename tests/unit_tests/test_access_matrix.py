@@ -24,7 +24,7 @@ from fastapi.routing import APIRoute
 
 from server.agent_tags import AgentTag
 from server.api.api import api_router
-from server.security import require_admin, require_cognito, require_shop, require_shop_by_id
+from server.security import require_admin, require_cognito, require_shop
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOC_PATH = REPO_ROOT / "docs" / "api" / "access-matrix.md"
@@ -100,7 +100,7 @@ def _guards(dependant) -> frozenset[str]:
         for sub in stack.pop().dependencies:
             if sub.call is require_cognito:
                 found.add("cognito")
-            elif sub.call is require_shop or sub.call is require_shop_by_id:  # TODO(deprecated-id-routes)
+            elif sub.call is require_shop:
                 found.add("shop")
             elif sub.call is require_admin:
                 found.add("admin")
