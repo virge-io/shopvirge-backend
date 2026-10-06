@@ -15,8 +15,6 @@ from starlette.responses import Response
 from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
-from server.crud.crud_attribute import attribute_crud
-from server.crud.crud_attribute_option import attribute_option_crud
 from server.crud.crud_product import product_crud
 from server.crud.crud_product_attribute_value import product_attribute_value_crud
 from server.db import db
@@ -24,10 +22,9 @@ from server.db.models import AttributeOptionTable, AttributeTable, ProductAttrib
 from server.schemas.product_attribute_value import (
     ProductAttributeOptionSelectionAdd,
     ProductAttributeOptionSelectionReplace,
-    ProductAttributeValueBase,
     ProductAttributeValueSchema,
 )
-from server.security import Principal, current_principal, require_cognito
+from server.security import Principal, current_principal
 from server.services.revisions import ensure_baseline_product_revision, record_product_revision
 
 logger = structlog.get_logger(__name__)
@@ -78,68 +75,6 @@ def get_product_attribute_value(shop_id: UUID, id: UUID) -> ProductAttributeValu
     if not pav.product or pav.product.shop_id != shop_id:
         raise_status(HTTPStatus.NOT_FOUND, f"ProductAttributeValue with id {id} not found for this shop")
     return pav
-
-
-@router.post(
-    "/",
-    response_model=None,
-    status_code=HTTPStatus.CREATED,
-    deprecated=True,
-    summary="Create product attribute values (deprecated)",
-    dependencies=[Depends(require_cognito)],  # stricter than its router: Cognito only, as before
-    operation_id="product_attribute_values_create_deprecated",
-)
-def create_product_attribute_values(
-    shop_id: UUID,
-    data: ProductAttributeValueBase = Body(...),
-    principal: Principal = Depends(current_principal),
-) -> None:
-    """DEPRECATED: Create a new product attribute value for a product within a shop.
-
-    Notes:
-    - This endpoint is deprecated; prefer using the selected options endpoint when possible.
-
-    Validations:
-    - Product exists and belongs to the shop
-    """
-    # Validate product belongs to shop; lock it so parallel attribute-value
-    # writes (the shop UI saves them concurrently) serialize on revision numbering
-    product = product_crud.get_id_by_shop_id(shop_id=shop_id, id=data.product_id, for_update=True)
-    if not product:
-        raise_status(HTTPStatus.NOT_FOUND, f"Product {data.product_id} not found for this shop")
-
-    # Validate attribute belongs to shop
-    attribute = attribute_crud.get_id_by_shop_id(shop_id=shop_id, id=data.attribute_id)
-    if not attribute:
-        raise_status(HTTPStatus.NOT_FOUND, f"Attribute {data.attribute_id} not found for this shop")
-
-    # Validate option (if provided) belongs to attribute
-    if data.option_id is not None:
-        option = attribute_option_crud.get(id=data.option_id)
-        if not option or option.attribute_id != data.attribute_id:
-            raise_status(HTTPStatus.BAD_REQUEST, "Provided option_id does not belong to the given attribute")
-
-    logger.info(
-        "Saving product attribute value",
-        product_id=str(data.product_id),
-        attribute_id=str(data.attribute_id),
-        option_id=str(data.option_id) if data.option_id else None,
-    )
-
-    # Prevent duplicates for the same product + attribute + option
-    existing = product_attribute_value_crud.get_existing(
-        product_id=data.product_id,
-        attribute_id=data.attribute_id,
-        option_id=data.option_id,
-    )
-    if existing:
-        raise_status(HTTPStatus.CONFLICT, "Product attribute value already exists for this product/attribute/option")
-
-    # Create + record a product revision in the same transaction
-    ensure_baseline_product_revision(product)
-    db.session.add(ProductAttributeValueTable(**data.model_dump()))
-    record_product_revision(product, action="update", created_by=principal.label, source=principal.via)
-    db.session.commit()
 
 
 def get_attribute_options_by_ids(option_ids: list[UUID], shop_id: UUID) -> list[AttributeOptionTable]:

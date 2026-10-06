@@ -56,7 +56,6 @@ from server.security import (
     require_admin,
     require_cognito,
     require_shop,
-    require_shop_by_id,
 )
 
 SHOP = "/shops/{shop_id}"
@@ -78,7 +77,6 @@ admin.include_router(accounts.admin_router)
 shop_cognito.include_router(categories.shop_router)
 shop_cognito.include_router(images.shop_router)
 shop_cognito.include_router(accounts.shop_router)
-shop_cognito.include_router(attributes.shop_router)
 
 shop.include_router(categories.router)
 shop.include_router(products.router)
@@ -104,14 +102,6 @@ api_router.include_router(shop_cognito)
 api_router.include_router(shop)
 api_router.include_router(
     shops.shop_router, prefix="/shops", tags=["shops"], dependencies=[Depends(require_cognito), Depends(require_shop)]
-)
-# TODO(deprecated-id-routes): drop with server/api/endpoints/shops/legacy.py. Same posture as
-# shops.shop_router above; registered after it so the {shop_id} routes serve the requests.
-api_router.include_router(
-    shops.legacy_shop_router,
-    prefix="/shops",
-    tags=["shops"],
-    dependencies=[Depends(require_cognito), Depends(require_shop_by_id)],
 )
 api_router.include_router(
     orders.per_shop_router,

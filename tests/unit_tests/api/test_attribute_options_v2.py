@@ -89,10 +89,12 @@ def test_delete_attribute_option_v2(test_client, shop_with_products_and_attribut
     assert option is None
 
 
-def test_deprecated_list_options(test_client, shop_with_products_and_attributes):
+def test_create_attribute_option_v2_duplicate(test_client, shop_with_products_and_attributes):
     ids = shop_with_products_and_attributes
     shop_id = ids["shop_id"]
     attr_id = ids["attr1_id"]
+    existing_option = db.session.query(AttributeOptionTable).filter_by(attribute_id=attr_id).first()
 
-    resp = test_client.get(f"/shops/{shop_id}/attributes/{attr_id}/options/")
-    assert resp.status_code == HTTPStatus.OK
+    new_option = {"attribute_id": str(attr_id), "value_key": existing_option.value_key}
+    resp = test_client.post(f"/shops/{shop_id}/attribute-options/", json=new_option)
+    assert resp.status_code == HTTPStatus.CONFLICT
