@@ -1,0 +1,113 @@
+{% set title = 'Nieuwe bestelling #' ~ customer_order_id %}
+{% set welcome_text = 'Nieuwe bestelling #' ~ customer_order_id %}
+
+{% import 'macros.html.j2' as m %}
+{% extends "default_layout.html.j2" %}
+
+{% block content %}
+<div>
+    <p>Beste {{ shop_company }},</p>
+
+    <p>Er is een nieuwe bestelling geplaatst in je shop <strong>{{ shop_name }}</strong>.</p>
+
+    <table style="width: 100%; min-width: 100%; margin-bottom: 20px; background-color: #f9f9f9; padding: 10px;">
+        <tr>
+            <td style="width: 40%; font-weight: bold; padding: 5px;">Klant e-mail:</td>
+            <td style="padding: 5px;">{{ customer_email }}</td>
+        </tr>
+        <tr>
+            <td style="width: 40%; font-weight: bold; padding: 5px;">Bestelnummer:</td>
+            <td style="padding: 5px;">#{{ customer_order_id }}</td>
+        </tr>
+        {% if customer_company_name %}
+        <tr>
+            <td style="width: 40%; font-weight: bold; padding: 5px;">Bedrijfsnaam:</td>
+            <td style="padding: 5px;">{{ customer_company_name }}</td>
+        </tr>
+        {% endif %}
+        {% if customer_btw_number %}
+        <tr>
+            <td style="width: 40%; font-weight: bold; padding: 5px;">BTW-nummer klant:</td>
+            <td style="padding: 5px;">{{ customer_btw_number }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <table style="width: 100%; min-width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
+        <thead>
+            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                <th style="text-align: center; padding: 10px; width: 12%;">Afbeelding</th>
+                <th style="text-align: left; padding: 10px; width: 53%;">Product</th>
+                <th style="text-align: right; padding: 10px; width: 15%;">Aantal</th>
+                <th style="text-align: right; padding: 10px; width: 20%;">Prijs</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in order_lines %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="text-align: center; padding: 10px; vertical-align: middle; width: 12%;">
+                    {% if line.image_url %}
+                    <img src="{{ line.image_url }}" alt="{{ line.product_name }}" style="max-width: 60px; max-height: 60px; object-fit: cover; border-radius: 4px;" />
+                    {% endif %}
+                </td>
+                <td style="padding: 10px; vertical-align: middle; width: 53%;">
+                    <strong>{{ line.product_name }}</strong>
+                    {% if line.sku %}
+                    <br><span style="display: inline-block; margin-top: 3px; font-size: 14px; font-weight: bold; color: #111;">SKU: {{ line.sku }}</span>
+                    {% elif line.description_short %}
+                    <br><small style="color: #666;">{{ line.description_short }}</small>
+                    {% endif %}
+                    {% if line.attributes %}
+                    <br>
+                    {% for attr in line.attributes %}
+                    <small style="color: #666;">{{ attr.name }}: {{ attr.value }}{% if attr.unit %} {{ attr.unit }}{% endif %}{% if not loop.last %}, {% endif %}</small>
+                    {% endfor %}
+                    {% endif %}
+                </td>
+                <td style="text-align: right; padding: 10px; vertical-align: middle; width: 15%;">{{ line.quantity }}</td>
+                <td style="text-align: right; padding: 10px; vertical-align: middle; width: 20%;">&euro;&nbsp;{{ "%.2f"|format(line.line_total_inc_btw) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="border-top: 2px solid #ddd;">
+                <td colspan="3" style="text-align: right; padding: 10px; font-weight: bold;">Subtotaal:</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(items_total_inc_btw) }}</td>
+            </tr>
+            {% if shipping_fee_inc_btw is not none and shipping_fee_inc_btw > 0 %}
+            <tr>
+                <td colspan="3" style="text-align: right; padding: 10px; font-weight: bold;">Verzendkosten:</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(shipping_fee_inc_btw) }}</td>
+            </tr>
+            {% elif shipping_fee_inc_btw is not none and shipping_fee_inc_btw == 0 %}
+            <tr>
+                <td colspan="3" style="text-align: right; padding: 10px; font-weight: bold;">Verzendkosten:</td>
+                <td style="text-align: right; padding: 10px;">Gratis</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td colspan="3" style="text-align: right; padding: 10px; font-weight: bold;">BTW:</td>
+                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(total_btw) }}</td>
+            </tr>
+            <tr style="border-top: 1px solid #ddd;">
+                <td colspan="3" style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">Totaal inc. BTW:</td>
+                <td style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">&euro;&nbsp;{{ "%.2f"|format(total_inc_btw) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <p style="margin-top: 30px;">Besteldatum: {{ completed_at }}</p>
+
+    <hr style="margin-top: 30px; border: none; border-top: 1px solid #ccc;">
+
+    <p style="font-size: 12px; color: #888; margin-top: 20px;">
+        <strong>{{ shop_company }}</strong><br>
+        {{ shop_address }}<br>
+        {{ shop_zip_code }} {{ shop_city }}<br>
+        {% if shop_phone %}Tel: {{ shop_phone }}<br>{% endif %}
+        {% if shop_email %}E-mail: {{ shop_email }}<br>{% endif %}
+        {% if kvk_number %}KVK: {{ kvk_number }}<br>{% endif %}
+        {% if btw_number %}BTW: {{ btw_number }}{% endif %}
+    </p>
+</div>
+{% endblock %}
