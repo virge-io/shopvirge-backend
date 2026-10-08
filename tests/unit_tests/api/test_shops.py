@@ -402,9 +402,95 @@ def test_shop_delete_not_found(test_client):
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_shop_delete_conflict_with_related_records(test_client, shop_with_tags):
-    response = test_client.delete(f"/shops/{shop_with_tags}")
-    assert response.status_code == HTTPStatus.CONFLICT
-    data = response.json()
-    assert data["status"] == 409
-    assert "related data still exists" in data["detail"]
+def test_shop_delete_cascades_owned_data(test_client):
+    from server.db import db
+    from server.db.models import (
+        Account,
+        AttributeTable,
+        CategoryTable,
+        FaqTable,
+        OrderTable,
+        ProductTable,
+        ShopTable,
+        TagTable,
+    )
+    from tests.unit_tests.factories.categories import make_category
+    from tests.unit_tests.factories.product import make_product
+    from tests.unit_tests.factories.shop import make_shop
+    from tests.unit_tests.factories.tag import make_tag
+
+    # Create Shop A with related entities
+    shop_a_id = make_shop(random_shop_name=True)
+
+    account_a = Account(shop_id=shop_a_id, name="Customer A")
+    db.session.add(account_a)
+    db.session.flush()
+
+    order_a = OrderTable(shop_id=shop_a_id, account_id=account_a.id, total=100.00)
+    db.session.add(order_a)
+
+    attr_a = AttributeTable(shop_id=shop_a_id, name="Color")
+    db.session.add(attr_a)
+
+    # Create Shop B with related entities
+    shop_b_id = make_shop(random_shop_name=True)
+    cat_b = make_category(shop_b_id)
+    tag_b = make_tag(shop_b_id)
+    prod_b = make_product(shop_b_id, cat_b)
+
+    # Create shared/global data
+    faq = FaqTable(question="What is this?", answer="A platform.", category="General")
+    db.session.add(faq)
+
+    db.session.commit()
+
+    # Delete Shop A
+    response = test_client.delete(f"/shops/{shop_a_id}")
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    # Verify Shop A and its owned data are deleted
+    assert ShopTable.query.filter_by(id=shop_a_id).first() is None
+    assert CategoryTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert TagTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert ProductTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert Account.query.filter_by(shop_id=shop_a_id).first() is None
+    assert OrderTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert AttributeTable.query.filter_by(shop_id=shop_a_id).first() is None
+
+    # Verify Shop B data remains untouched
+    assert ShopTable.query.filter_by(id=shop_b_id).first() is not None
+    assert CategoryTable.query.filter_by(id=cat_b).first() is not None
+    assert TagTable.query.filter_by(id=tag_b).first() is not None
+    assert ProductTable.query.filter_by(id=prod_b).first() is not None
+
+    # Verify global data remains untouched
+    assert FaqTable.query.filter_by(id=faq.id).first() is not None
+
+
+def test_shop_delete_non_fk_integrity_error_reraised(test_client, monkeypatch):
+    from unittest.mock import MagicMock
+
+    from sqlalchemy.exc import IntegrityError
+
+    from server.crud.crud_shop import shop_crud
+
+    # Simulate a non-FK IntegrityError (e.g. check violation pgcode 23514)
+    orig_mock = MagicMock()
+    orig_mock.pgcode = "23514"
+    exc = IntegrityError("CHECK VIOLATION", params=None, orig=orig_mock)
+
+    def mock_delete(*args, **kwargs):
+        raise exc
+
+    monkeypatch.setattr(shop_crud, "delete", mock_delete)
+
+    from tests.unit_tests.factories.shop import make_shop
+
+    shop_id = make_shop(random_shop_name=True)
+
+    try:
+        response = test_client.delete(f"/shops/{shop_id}")
+        assert response.status_code == 500
+    except IntegrityError:
+        # Re-raised as expected when unhandled by FastAPI exception handlers in test mode
+        pass
