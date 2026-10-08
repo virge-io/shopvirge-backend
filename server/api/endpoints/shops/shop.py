@@ -46,12 +46,16 @@ def delete(shop_id: UUID) -> None:
     except NotFound:
         raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {shop_id} not found")
     except IntegrityError as e:
-        logger.warning(
-            "Cannot delete shop because related data still exists",
-            shop_id=str(shop_id),
-            error=str(e.orig if hasattr(e, "orig") and e.orig else e),
-        )
-        raise_status(
-            HTTPStatus.CONFLICT,
-            detail="Cannot delete shop because related data still exists.",
-        )
+        orig = getattr(e, "orig", None)
+        pgcode = getattr(orig, "pgcode", None) or getattr(orig, "sqlstate", None)
+        if pgcode == "23503" or (orig and "ForeignKeyViolation" in type(orig).__name__):
+            logger.warning(
+                "Cannot delete shop because related data still exists",
+                shop_id=str(shop_id),
+                error=str(orig if orig else e),
+            )
+            raise_status(
+                HTTPStatus.CONFLICT,
+                detail="Cannot delete shop because related data still exists.",
+            )
+        raise
