@@ -383,3 +383,28 @@ def test_shop_update_config_with_shipping(test_client, shop_with_config):
     assert config["config"]["shipping"]["method"] == "fixed"
     assert config["config"]["shipping"]["fixed_fee"] == 4.95
     assert config["config"]["shipping"]["free_shipping_above_amount"] == 50.0
+
+
+def test_shop_delete_success(test_client):
+    from tests.unit_tests.factories.shop import make_shop
+
+    shop_id = make_shop(random_shop_name=True)
+    response = test_client.delete(f"/shops/{shop_id}")
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    assert ShopTable.query.filter_by(id=shop_id).first() is None
+
+
+def test_shop_delete_not_found(test_client):
+    from uuid import uuid4
+
+    random_id = uuid4()
+    response = test_client.delete(f"/shops/{random_id}")
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_shop_delete_conflict_with_related_records(test_client, shop_with_tags):
+    response = test_client.delete(f"/shops/{shop_with_tags}")
+    assert response.status_code == HTTPStatus.CONFLICT
+    data = response.json()
+    assert data["status"] == 409
+    assert "related data still exists" in data["detail"]
