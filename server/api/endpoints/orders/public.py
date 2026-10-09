@@ -17,6 +17,7 @@ from server.crud.crud_account import account_crud
 from server.crud.crud_order import order_crud
 from server.crud.crud_product import product_crud
 from server.crud.crud_shop import shop_crud
+from server.db import db
 from server.db.models import Account, OrderTable
 from server.mail import send_order_confirmation_emails
 from server.schemas import ProductUpdate
@@ -218,6 +219,26 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     return created_order
 
 
+def _deduct_stock(order: OrderTable) -> None:
+    """Deduct the order's quantities from product stock inside the caller's transaction.
+
+    Product rows are locked in a fixed order so two orders sharing products can't
+    deadlock, and each deduction starts from the locked (current) stock so
+    concurrent completions can't overwrite each other's deduction.
+    """
+    for order_product in sorted(order.order_info, key=lambda item: str(item["product_id"])):
+        product = get_or_404(
+            product_crud.get_id_by_shop_id(order.shop_id, order_product["product_id"], for_update=True),
+            f"Product {order_product['product_id']} not found for this shop",
+        )
+        new_stock = product.stock - order_product["quantity"]
+        logger.info(
+            "Updating stock for product", product_id=str(product.id), old_stock=product.stock, new_stock=new_stock
+        )
+        # PATCH semantics: only the field we actually change (see ProductUpdate).
+        product_crud.update(db_obj=product, obj_in=ProductUpdate(stock=new_stock), commit=False)
+
+
 @router.patch(
     "/{order_id}",
     response_model=OrderUpdated,
@@ -234,7 +255,10 @@ def patch(
     order_id: UUID,
     item_in: OrderStatusUpdate,
 ) -> OrderUpdated:
-    order = get_or_404(order_crud.get(order_id), "Order not found")
+    # Row lock: a second update for the same order (double submit, retry, Stripe
+    # redirect) blocks here until the first one commits, then re-reads the committed
+    # status and takes the early exit below instead of repeating the side effects.
+    order = get_or_404(order_crud.get(order_id, for_update=True), "Order not found")
 
     # Early exit if status of request is the same as in db, as or right now there is you cant cancel or complete an order again
     if item_in.status and order.status == item_in.status:
@@ -247,31 +271,20 @@ def patch(
     if item_in.status in {"complete", "cancelled"} and not order.completed_at:
         mark_completed(order)
 
-    order = order_crud.update(
-        db_obj=order,
-        obj_in=item_in,
-    )
+    # The status change and the stock deduction are one transaction: nothing is
+    # committed until every product is found and deducted, so a failure halfway
+    # leaves the order pending with its stock untouched.
+    order = order_crud.update(db_obj=order, obj_in=item_in, commit=False)
+
+    if item_in.status == "complete" and shop.config["toggles"]["enable_stock_on_products"]:
+        _deduct_stock(order)
+
+    db.session.commit()
     logger.info("Order status updated", order_id=str(order_id), shop_id=str(shop_id), new_status=item_in.status)
 
     updated_order = order_updated(order)
 
-    # The following is fixed by the early exit from before `order.status == item_in.status`:
-    # `item_in.status == "complete"` is not enough because it doesn't account for the order's current status, this means that the stock gets updated even though the order might not have been changed
-    if shop.config["toggles"]["enable_stock_on_products"] and item_in.status == "complete":
-        for order_product in order.order_info:
-            product = get_or_404(
-                product_crud.get_id_by_shop_id(shop_id, order_product["product_id"]),
-                f"Product {order_product['product_id']} not found for this shop",
-            )
-
-            logger.info(
-                f"Updating stock for order {product.id} , old stock: {product.stock}, new stock: {product.stock - order_product['quantity']}"
-            )
-
-            # PATCH semantics: only the field we actually change (see ProductUpdate).
-            new_product = ProductUpdate(stock=product.stock - order_product["quantity"])
-            product_crud.update(db_obj=product, obj_in=new_product)
-
+    # Notifications only after the commit, so they can never fire for a write that rolled back.
     # Fetch account once for Discord and email notifications
     account = account_crud.get(updated_order.account_id) if updated_order.account_id else None
 
