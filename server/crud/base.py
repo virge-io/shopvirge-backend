@@ -184,7 +184,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         # Todo: remove translate from base? We should handle this in a more generic way, for now a UGLY hack:
         translation_data = obj_in_data.pop("translation", None)
 
-        db_obj = self.model(**obj_in_data)
+        db_obj = self.model(**{**obj_in_data, **self._extra_create_fields()})
         db.session.add(db_obj)
         db.session.commit()
         db.session.refresh(db_obj)

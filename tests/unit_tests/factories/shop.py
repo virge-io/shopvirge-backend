@@ -11,6 +11,7 @@ from server.schemas.shop import (
     ConfigurationLanguages,
     ConfigurationShipping,
     ConfigurationV1,
+    ShopType,
     Toggles,
 )
 
@@ -88,7 +89,7 @@ def make_shop(with_config=False, random_shop_name=False):
             name=f"Test Shop with config{name}",
             description=f"Test Shop Description with config{name}",
             config=config.model_dump(),
-            shop_type="{}",
+            shop_type=ShopType.trial().model_dump(mode="json"),
             vat_standard=21,
             vat_lower_1=15,
             vat_lower_2=10,
@@ -109,7 +110,7 @@ def make_shop(with_config=False, random_shop_name=False):
             vat_special=2,
             vat_zero=0,
             config="{}",
-            shop_type="{}",
+            shop_type=ShopType.trial().model_dump(mode="json"),
         )
     db.session.add(shop)
     db.session.commit()
@@ -177,7 +178,7 @@ def make_shop_with_shipping(
         name=f"Test Shop with shipping - {uuid4()}",
         description=f"Test Shop Description with shipping - {uuid4()}",
         config=config.model_dump(),
-        shop_type="{}",
+        shop_type=ShopType.trial().model_dump(mode="json"),
         vat_standard=21,
         vat_lower_1=9,
         vat_lower_2=10,

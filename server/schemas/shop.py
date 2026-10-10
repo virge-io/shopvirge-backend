@@ -221,6 +221,15 @@ class ShopType(BoilerplateBaseModel):
     trial_started: datetime | None = None
     name: ShopTypeName
 
+    @classmethod
+    def trial(cls) -> "ShopType":
+        """What a new shop runs on until an admin provisions its plan: a one-language trial."""
+        return cls(name=ShopTypeName.SMALL, max_languages=1, max_products=0, stripe_access=True, trial_mode=True)
+
+
+class ShopTypeUpdate(ShopType):
+    """Body of the admin shop-type route; its own name keeps ``ShopType`` an output-only schema."""
+
 
 class ShopConfig(BoilerplateBaseModel):
     config: ConfigurationV1

@@ -5713,6 +5713,51 @@
         "title": "ShopTypeName",
         "type": "string"
       },
+      "ShopTypeUpdate": {
+        "description": "Body of the admin shop-type route; its own name keeps ``ShopType`` an output-only schema.",
+        "properties": {
+          "max_languages": {
+            "title": "Max Languages",
+            "type": "number"
+          },
+          "max_products": {
+            "title": "Max Products",
+            "type": "number"
+          },
+          "name": {
+            "$ref": "#/components/schemas/ShopTypeName"
+          },
+          "stripe_access": {
+            "title": "Stripe Access",
+            "type": "boolean"
+          },
+          "trial_mode": {
+            "title": "Trial Mode",
+            "type": "boolean"
+          },
+          "trial_started": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Started"
+          }
+        },
+        "required": [
+          "max_languages",
+          "max_products",
+          "stripe_access",
+          "trial_mode",
+          "name"
+        ],
+        "title": "ShopTypeUpdate",
+        "type": "object"
+      },
       "ShopUpdate": {
         "properties": {
           "allowed_ips": {
@@ -6275,7 +6320,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.6.1"
+    "version": "0.7.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -14233,6 +14278,66 @@
         "tags": [
           "shops",
           "revisions"
+        ]
+      }
+    },
+    "/shops/{shop_id}/shop-type": {
+      "put": {
+        "description": "Replace the shop's type: the plan name, trial mode, language and product limits and Stripe access. A new shop starts as a one-language trial until this route provisions its plan.",
+        "operationId": "update_shop_type",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShopTypeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopType"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set shop type",
+        "tags": [
+          "shops",
+          "admin"
         ]
       }
     },

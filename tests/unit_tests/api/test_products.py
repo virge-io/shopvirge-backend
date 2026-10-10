@@ -1,6 +1,7 @@
 from http import HTTPStatus
 
 from server.db.models import ProductTable
+from server.schemas.shop import ShopType
 from server.utils.json import json_dumps
 from tests.unit_tests.factories.product import make_product
 
@@ -231,7 +232,7 @@ def test_get_products_config_robustness(test_client):
         shop = ShopTable(
             name=f"Config Test Shop {uuid4()}",
             config=config_val,
-            shop_type="{}",
+            shop_type=ShopType.trial().model_dump(mode="json"),
         )
         db.session.add(shop)
         db.session.commit()

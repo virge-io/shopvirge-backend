@@ -38,6 +38,7 @@ All routers are composed in `server/api/api.py` into a single `api_router`, whic
     - `faq`, `early_access`, `info_request` — marketing/content, including the public info-request form endpoint
     - `shops` — shop CRUD (not nested under another shop)
     - `admin_accounts` — superuser cross-shop view of accounts and Stripe linkage (`server/api/endpoints/accounts/admin.py`); see [Admin accounts](admin-accounts.md)
+    - `shops/admin.py` — superuser route that provisions a shop's type (`PUT /shops/{shop_id}/shop-type`): plan name, trial mode, language and product limits, Stripe access. A new shop starts as a one-language trial
 
 === "Shop-scoped"
 
