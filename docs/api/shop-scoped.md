@@ -52,7 +52,7 @@ posture, so a guard is never repeated per include or per route:
 |------|-------|-------|
 | `public` | none | storefront reads, checkout, system probes |
 | `authenticated` | `require_cognito` | collection management: `shops`, `orders`, `faq`, `forms`, `early-access` |
-| `admin` | `require_cognito`, `require_admin` | the cross-shop accounts view |
+| `admin` | `require_cognito`, `require_admin` | the cross-shop accounts view and the shop-type route (`PUT /shops/{shop_id}/shop-type`, also `require_shop`) |
 | `shop` | `require_shop` | per-shop, API key or Cognito — the MCP-exposed CRUD surface |
 | `shop_cognito` | `require_cognito`, `require_shop` | per-shop, keys refused: accounts, API keys, image uploads |
 
