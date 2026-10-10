@@ -383,3 +383,113 @@ def test_shop_update_config_with_shipping(test_client, shop_with_config):
     assert config["config"]["shipping"]["method"] == "fixed"
     assert config["config"]["shipping"]["fixed_fee"] == 4.95
     assert config["config"]["shipping"]["free_shipping_above_amount"] == 50.0
+
+
+def test_shop_delete_success(test_client):
+    from tests.unit_tests.factories.shop import make_shop
+
+    shop_id = make_shop(random_shop_name=True)
+    response = test_client.delete(f"/shops/{shop_id}")
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    assert ShopTable.query.filter_by(id=shop_id).first() is None
+
+
+def test_shop_delete_not_found(test_client):
+    from uuid import uuid4
+
+    random_id = uuid4()
+    response = test_client.delete(f"/shops/{random_id}")
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_shop_delete_cascades_owned_data(test_client):
+    from server.db import db
+    from server.db.models import (
+        Account,
+        AttributeTable,
+        CategoryTable,
+        FaqTable,
+        OrderTable,
+        ProductTable,
+        ShopTable,
+        TagTable,
+    )
+    from tests.unit_tests.factories.categories import make_category
+    from tests.unit_tests.factories.product import make_product
+    from tests.unit_tests.factories.shop import make_shop
+    from tests.unit_tests.factories.tag import make_tag
+
+    # Create Shop A with related entities
+    shop_a_id = make_shop(random_shop_name=True)
+
+    account_a = Account(shop_id=shop_a_id, name="Customer A")
+    db.session.add(account_a)
+    db.session.flush()
+
+    order_a = OrderTable(shop_id=shop_a_id, account_id=account_a.id, total=100.00)
+    db.session.add(order_a)
+
+    attr_a = AttributeTable(shop_id=shop_a_id, name="Color")
+    db.session.add(attr_a)
+
+    # Create Shop B with related entities
+    shop_b_id = make_shop(random_shop_name=True)
+    cat_b = make_category(shop_b_id)
+    tag_b = make_tag(shop_b_id)
+    prod_b = make_product(shop_b_id, cat_b)
+
+    # Create shared/global data
+    faq = FaqTable(question="What is this?", answer="A platform.", category="General")
+    db.session.add(faq)
+
+    db.session.commit()
+
+    # 1. Unforced delete (force=False) should fail with 409 CONFLICT because related data exists
+    response_unforced = test_client.delete(f"/shops/{shop_a_id}")
+    assert response_unforced.status_code == HTTPStatus.CONFLICT
+    assert "related data still exists" in response_unforced.json()["detail"]
+
+    # 2. Forced delete (force=True) should succeed with 204 NO CONTENT and cascade delete related data
+    response_forced = test_client.delete(f"/shops/{shop_a_id}?force=true")
+    assert response_forced.status_code == HTTPStatus.NO_CONTENT
+
+    # Verify Shop A and its owned data are deleted
+    assert ShopTable.query.filter_by(id=shop_a_id).first() is None
+    assert CategoryTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert TagTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert ProductTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert Account.query.filter_by(shop_id=shop_a_id).first() is None
+    assert OrderTable.query.filter_by(shop_id=shop_a_id).first() is None
+    assert AttributeTable.query.filter_by(shop_id=shop_a_id).first() is None
+
+    # Verify Shop B data remains untouched
+    assert ShopTable.query.filter_by(id=shop_b_id).first() is not None
+    assert CategoryTable.query.filter_by(id=cat_b).first() is not None
+    assert TagTable.query.filter_by(id=tag_b).first() is not None
+    assert ProductTable.query.filter_by(id=prod_b).first() is not None
+
+    # Verify global data remains untouched
+    assert FaqTable.query.filter_by(id=faq.id).first() is not None
+
+
+def test_shop_delete_requires_admin(test_client):
+    from server.security import Principal, current_principal
+    from tests.unit_tests.factories.shop import make_shop
+
+    shop_id = make_shop(random_shop_name=True)
+
+    saved_principal = test_client.app.dependency_overrides.get(current_principal)
+    try:
+        # A shop user (tenant of this shop) who is NOT an admin
+        non_admin_principal = Principal(kind="user", subject="1234", groups=(str(shop_id),))
+        test_client.app.dependency_overrides[current_principal] = lambda: non_admin_principal
+
+        # Tenant user attempting delete must be rejected with 403 Forbidden (Admin access required)
+        response_non_admin = test_client.delete(f"/shops/{shop_id}")
+        assert response_non_admin.status_code == HTTPStatus.FORBIDDEN
+        assert "Admin access required" in response_non_admin.json()["detail"]
+    finally:
+        if saved_principal is not None:
+            test_client.app.dependency_overrides[current_principal] = saved_principal
+        else:
+            test_client.app.dependency_overrides.pop(current_principal, None)

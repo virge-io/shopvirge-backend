@@ -124,7 +124,6 @@ As above, but API keys are refused (key management, accounts, uploads).
 | POST | `/shops/allowed-ips/{shop_id}/remove` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/config/{shop_id}` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/{shop_id}` |  | – | – | W own | W any | · | · |
-| DELETE | `/shops/{shop_id}` |  | – | – | W own | W any | · | · |
 | GET | `/shops/{shop_id}/accounts/` |  | – | – | R own | R any | · | · |
 | POST | `/shops/{shop_id}/accounts/` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/{shop_id}/accounts/{account_id}` |  | – | – | W own | W any | · | · |
@@ -151,6 +150,7 @@ Cross-shop management; the `admins` group or a service token.
 | GET | `/admin/accounts/{id}/stripe-customer` |  | – | – | – | R | · | · |
 | POST | `/admin/accounts/{id}/sync-stripe` |  | – | – | – | W | · | · |
 | DELETE | `/orders/{order_id}` |  | – | – | – | W | · | · |
+| DELETE | `/shops/{shop_id}` |  | – | – | – | W any | · | · |
 
 ## Public
 
