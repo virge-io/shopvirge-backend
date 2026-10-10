@@ -2,18 +2,17 @@ from http import HTTPStatus
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, Query
 
 from server.api.endpoints.shops.common import shop_or_404
 from server.api.error_handling import raise_status
-from server.crud.base import NotFound
 from server.crud.crud_shop import shop_crud
 from server.db.models import ShopTable
 from server.schemas.shop import (
     ShopSchema,
     ShopUpdate,
 )
+from server.security import require_admin
 
 logger = structlog.get_logger(__name__)
 
@@ -38,24 +37,27 @@ def update(*, shop_id: UUID, item_in: ShopUpdate) -> ShopTable:
     response_model=None,
     status_code=HTTPStatus.NO_CONTENT,
     summary="Delete shop",
-    description="Permanently remove a shop from the platform.",
+    description="Permanently remove a shop from the platform. Requires Admins group membership.",
+    dependencies=[Depends(require_admin)],
 )
-def delete(shop_id: UUID) -> None:
-    try:
-        shop_crud.delete(id=shop_id)
-    except NotFound:
-        raise_status(HTTPStatus.NOT_FOUND, f"Shop with id {shop_id} not found")
-    except IntegrityError as e:
-        orig = getattr(e, "orig", None)
-        pgcode = getattr(orig, "pgcode", None) or getattr(orig, "sqlstate", None)
-        if pgcode == "23503" or (orig and "ForeignKeyViolation" in type(orig).__name__):
-            logger.warning(
-                "Cannot delete shop because related data still exists",
-                shop_id=str(shop_id),
-                error=str(orig if orig else e),
-            )
-            raise_status(
-                HTTPStatus.CONFLICT,
-                detail="Cannot delete shop because related data still exists.",
-            )
-        raise
+def delete(
+    shop_id: UUID,
+    force: bool = Query(False, description="Force delete shop and all related data via cascade."),
+) -> None:
+    """Delete a shop permanently (Admin only)."""
+    # 1. First check if the shop exists
+    shop_or_404(shop_id)
+
+    # 2. If force is False, check if related data exists before attempting deletion
+    if not force and shop_crud.has_related_data(shop_id):
+        logger.warning(
+            "Cannot delete shop because related data still exists",
+            shop_id=str(shop_id),
+        )
+        raise_status(
+            HTTPStatus.CONFLICT,
+            detail="Cannot delete shop because related data still exists.",
+        )
+
+    # 3. Perform shop deletion
+    shop_crud.delete(id=shop_id)
