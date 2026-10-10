@@ -44,7 +44,8 @@ def get_multi(response: Response, page: PageParams = Depends(order_page_params))
     description="Update an order's status or notes. Prices, line items, and totals are immutable after creation.",
 )
 def update(*, order_id: UUID, item_in: OrderStatusUpdate) -> OrderUpdated:
-    order = get_or_404(order_crud.get(order_id), "Order not found")
+    # Row lock: serializes with concurrent status updates (see orders/public.py).
+    order = get_or_404(order_crud.get(order_id, for_update=True), "Order not found")
 
     if item_in.status and (item_in.status == "complete" or item_in.status == "cancelled") and not order.completed_at:
         mark_completed(order)
