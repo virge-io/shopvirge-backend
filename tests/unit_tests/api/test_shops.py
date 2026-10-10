@@ -444,9 +444,14 @@ def test_shop_delete_cascades_owned_data(test_client):
 
     db.session.commit()
 
-    # Delete Shop A
-    response = test_client.delete(f"/shops/{shop_a_id}")
-    assert response.status_code == HTTPStatus.NO_CONTENT
+    # 1. Unforced delete (force=False) should fail with 409 CONFLICT because related data exists
+    response_unforced = test_client.delete(f"/shops/{shop_a_id}")
+    assert response_unforced.status_code == HTTPStatus.CONFLICT
+    assert "related data still exists" in response_unforced.json()["detail"]
+
+    # 2. Forced delete (force=True) should succeed with 204 NO CONTENT and cascade delete related data
+    response_forced = test_client.delete(f"/shops/{shop_a_id}?force=true")
+    assert response_forced.status_code == HTTPStatus.NO_CONTENT
 
     # Verify Shop A and its owned data are deleted
     assert ShopTable.query.filter_by(id=shop_a_id).first() is None
@@ -467,30 +472,24 @@ def test_shop_delete_cascades_owned_data(test_client):
     assert FaqTable.query.filter_by(id=faq.id).first() is not None
 
 
-def test_shop_delete_non_fk_integrity_error_reraised(test_client, monkeypatch):
-    from unittest.mock import MagicMock
-
-    from sqlalchemy.exc import IntegrityError
-
-    from server.crud.crud_shop import shop_crud
-
-    # Simulate a non-FK IntegrityError (e.g. check violation pgcode 23514)
-    orig_mock = MagicMock()
-    orig_mock.pgcode = "23514"
-    exc = IntegrityError("CHECK VIOLATION", params=None, orig=orig_mock)
-
-    def mock_delete(*args, **kwargs):
-        raise exc
-
-    monkeypatch.setattr(shop_crud, "delete", mock_delete)
-
+def test_shop_delete_requires_admin(test_client):
+    from server.security import Principal, current_principal
     from tests.unit_tests.factories.shop import make_shop
 
     shop_id = make_shop(random_shop_name=True)
 
+    saved_principal = test_client.app.dependency_overrides.get(current_principal)
     try:
-        response = test_client.delete(f"/shops/{shop_id}")
-        assert response.status_code == 500
-    except IntegrityError:
-        # Re-raised as expected when unhandled by FastAPI exception handlers in test mode
-        pass
+        # A shop user (tenant of this shop) who is NOT an admin
+        non_admin_principal = Principal(kind="user", subject="1234", groups=(str(shop_id),))
+        test_client.app.dependency_overrides[current_principal] = lambda: non_admin_principal
+
+        # Tenant user attempting delete must be rejected with 403 Forbidden (Admin access required)
+        response_non_admin = test_client.delete(f"/shops/{shop_id}")
+        assert response_non_admin.status_code == HTTPStatus.FORBIDDEN
+        assert "Admin access required" in response_non_admin.json()["detail"]
+    finally:
+        if saved_principal is not None:
+            test_client.app.dependency_overrides[current_principal] = saved_principal
+        else:
+            test_client.app.dependency_overrides.pop(current_principal, None)

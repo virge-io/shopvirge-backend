@@ -6275,7 +6275,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.6.1"
+    "version": "0.6.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -9007,7 +9007,7 @@
     },
     "/shops/{shop_id}": {
       "delete": {
-        "description": "Permanently remove a shop from the platform.",
+        "description": "Permanently remove a shop from the platform. Requires Admins group membership.",
         "operationId": "delete_shops__shop_id__delete",
         "parameters": [
           {
@@ -9018,6 +9018,18 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Force delete shop and all related data via cascade.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Force delete shop and all related data via cascade.",
+              "title": "Force",
+              "type": "boolean"
             }
           }
         ],

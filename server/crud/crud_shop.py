@@ -10,13 +10,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from uuid import UUID
+
+from sqlalchemy import select
+
 from server.crud.base import CRUDBase
 from server.db.models import ShopTable
 from server.schemas.shop import ShopCreate, ShopUpdate
 
 
 class CRUDShop(CRUDBase[ShopTable, ShopCreate, ShopUpdate]):
-    pass
+    def has_related_data(self, shop_id: UUID) -> bool:
+        """Check dynamically if the shop has related records in any model table containing a shop_id column."""
+        from server.db import db
+        from server.db.models import BaseModel
+
+        for table in BaseModel.metadata.tables.values():
+            if "shop_id" in table.c:
+                stmt = select(1).select_from(table).where(table.c.shop_id == shop_id).limit(1)
+                if db.session.scalar(stmt) is not None:
+                    return True
+
+        return False
 
 
 shop_crud = CRUDShop(ShopTable)
