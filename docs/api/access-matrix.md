@@ -151,6 +151,7 @@ Cross-shop management; the `admins` group or a service token.
 | GET | `/admin/accounts/{id}/stripe-customer` |  | – | – | – | R | · | · |
 | POST | `/admin/accounts/{id}/sync-stripe` |  | – | – | – | W | · | · |
 | DELETE | `/orders/{order_id}` |  | – | – | – | W | · | · |
+| PUT | `/shops/{shop_id}/shop-type` |  | – | – | – | W any | · | · |
 
 ## Public
 

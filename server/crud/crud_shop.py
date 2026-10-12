@@ -12,11 +12,13 @@
 # limitations under the License.
 from server.crud.base import CRUDBase
 from server.db.models import ShopTable
-from server.schemas.shop import ShopCreate, ShopUpdate
+from server.schemas.shop import ShopCreate, ShopType, ShopUpdate
 
 
 class CRUDShop(CRUDBase[ShopTable, ShopCreate, ShopUpdate]):
-    pass
+    def _extra_create_fields(self) -> dict:
+        # The public config route serialises ``shop_type``, so a shop is never created without a valid one.
+        return {"shop_type": ShopType.trial().model_dump(mode="json")}
 
 
 shop_crud = CRUDShop(ShopTable)

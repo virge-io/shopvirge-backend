@@ -2,6 +2,7 @@ import json
 from http import HTTPStatus
 
 from server.db import ShopTable
+from server.schemas.shop import ShopType
 from server.utils.json import json_dumps
 
 
@@ -53,6 +54,8 @@ def test_shop_create(test_client):
     item = ShopTable.query.filter_by(id=response.json()["id"]).first()
     assert item.name == "Test Shop"
     assert item.description == "Test Shop Description"
+    # a shop is never without a valid shop type: the public config route serialises it
+    assert item.shop_type == ShopType.trial().model_dump(mode="json")
 
 
 def test_shop_create_config(test_client, shop):
