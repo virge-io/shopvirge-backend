@@ -23,7 +23,7 @@ class CRUDShop(CRUDBase[ShopTable, ShopCreate, ShopUpdate]):
     def _extra_create_fields(self) -> dict:
         # The public config route serialises ``shop_type``, so a shop is never created without a valid one.
         return {"shop_type": ShopType.trial().model_dump(mode="json")}
-    
+
     def has_related_data(self, shop_id: UUID) -> bool:
         """Check dynamically if the shop has related records in any model table containing a shop_id column."""
         from server.db import db

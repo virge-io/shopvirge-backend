@@ -1,8 +1,8 @@
 """Add ON DELETE CASCADE to shop and shop-owned foreign keys.
 
 Revision ID: d6e7f8a9b0c1
-Revises: b4e6d8f0a2c3
-Create Date: 2026-10-08 00:00:00.000000
+Revises: 05b6de2cba27
+Create Date: 2026-10-12 10:00:00.000000
 
 """
 
@@ -10,7 +10,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "d6e7f8a9b0c1"
-down_revision = "b4e6d8f0a2c3"
+down_revision = "05b6de2cba27"
 branch_labels = None
 depends_on = None
 
