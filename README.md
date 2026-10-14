@@ -81,6 +81,33 @@ export TESTING=False
 
 > Note: FastAPI will detect and automatically load an existing `.env` file.
 
+### Database connection pool
+
+Configure the SQLAlchemy pool through environment variables before starting the server:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DB_POOL_SIZE` | `10` | Maximum connections retained in each pool; must be at least 1. |
+| `DB_MAX_OVERFLOW` | `5` | Additional temporary connections allowed when the pool is busy; must be at least 0. |
+| `DB_POOL_TIMEOUT` | `30` | Finite, positive seconds to wait for a connection when the pool is exhausted. |
+
+Connections are opened on demand. Each engine/pool can use up to
+`DB_POOL_SIZE + DB_MAX_OVERFLOW` connections. Account for all worker processes,
+tasks, deployment overlap and other applications when sizing against a shared database.
+
+The defaults are configured as follows: at most 15 connections per pool,
+pre-ping enabled, and connections older than 300 seconds recycled on checkout.
+Recycling does not close idle connections on a timer or increase the database's
+capacity.
+
+For example, to cap each pool at five connections with a ten-second checkout timeout:
+
+```bash
+export DB_POOL_SIZE=5
+export DB_MAX_OVERFLOW=0
+export DB_POOL_TIMEOUT=10
+```
+
 ## DB Migrations
 
 The database schema is maintained by migrations (see `/migrations` for the
