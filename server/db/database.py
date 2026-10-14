@@ -26,6 +26,7 @@ from sqlalchemy.sql.schema import MetaData
 from starlette.types import ASGIApp, Receive, Scope, Send
 from structlog.stdlib import BoundLogger
 
+from server.settings import app_settings
 from server.utils.json import json_dumps, json_loads
 
 logger = structlog.get_logger(__name__)
@@ -162,7 +163,10 @@ class WrappedSession(Session):
 ENGINE_ARGUMENTS = {
     "connect_args": {"connect_timeout": 10, "options": "-c timezone=UTC"},
     "pool_pre_ping": True,
-    "pool_size": 60,
+    "pool_size": app_settings.DB_POOL_SIZE,
+    "max_overflow": app_settings.DB_MAX_OVERFLOW,
+    "pool_timeout": app_settings.DB_POOL_TIMEOUT,
+    "pool_recycle": 300,
     "json_serializer": json_dumps,
     "json_deserializer": json_loads,
 }

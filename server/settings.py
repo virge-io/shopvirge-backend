@@ -14,7 +14,7 @@
 from typing import Any, List, Optional
 
 import jinja2
-from pydantic import ValidationInfo, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic.networks import EmailStr
 from pydantic_settings import BaseSettings
 
@@ -105,6 +105,9 @@ class AppSettings(BaseSettings):
     GUI_URI: str = "http://localhost:3000"
     # DB (probably only postgres for now; we use UUID postgres dialect for the ID's)
     DATABASE_URI: str = "postgresql://shop:shop@localhost/shop"
+    DB_POOL_SIZE: int = Field(default=10, ge=1)
+    DB_MAX_OVERFLOW: int = Field(default=5, ge=0)
+    DB_POOL_TIMEOUT: float = Field(default=30.0, gt=0, allow_inf_nan=False)
 
     MAX_WORKERS: int = 5
     CACHE_HOST: str = "127.0.0.1"
