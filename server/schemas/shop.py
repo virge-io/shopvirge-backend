@@ -123,6 +123,36 @@ class ShopLanguages(BoilerplateBaseModel):
         )
 
 
+class ShopAboutSlot(BoilerplateBaseModel):
+    language_name: str | None = None
+    about: str | None = None
+
+
+class ShopAbout(BoilerplateBaseModel):
+    """What a shop says about itself, per translation slot: the markdown of its storefront "About" page."""
+
+    name: str
+    main: ShopAboutSlot
+    alt1: ShopAboutSlot
+    alt2: ShopAboutSlot
+
+    @classmethod
+    def from_shop(cls, name: str, config: dict | None) -> "ShopAbout":
+        """Read the about texts out of a shop's raw config JSON; a missing or partial config yields empty slots."""
+
+        def as_dict(value: object) -> dict:
+            return value if isinstance(value, dict) else {}
+
+        languages = as_dict(as_dict(config).get("languages"))
+
+        def slot(key: str) -> ShopAboutSlot:
+            language = as_dict(languages.get(key))
+            about = as_dict(language.get("static_texts")).get("about")
+            return ShopAboutSlot(language_name=language.get("language_name") or None, about=about or None)
+
+        return cls(name=name, main=slot("main"), alt1=slot("alt1"), alt2=slot("alt2"))
+
+
 class MyShopSchema(ShopSchema):
     languages: ShopLanguages
 

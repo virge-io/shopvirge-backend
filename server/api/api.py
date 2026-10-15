@@ -82,6 +82,7 @@ shop_cognito.include_router(accounts.shop_router)
 shop.include_router(categories.router)
 shop.include_router(products.router)
 shop.include_router(revisions.router)
+shop.include_router(shops.shop_tier_router)
 shop.include_router(tags.router)
 shop.include_router(attributes.router)
 
