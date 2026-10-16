@@ -27,12 +27,14 @@ Usage:
     --check       validate the config against ConfigurationV1 and exit (no database needed)
     --config FILE use the JSON in FILE as the shop config instead of the built-in one (it is still
                   validated); handy to clone the config of an existing demo shop
+    --about TEXT  markdown for the About page (default: $DEMO_SHOP_ABOUT, else empty)
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from uuid import UUID
 
 from server.schemas.shop import ConfigurationV1, ShopType
@@ -41,18 +43,12 @@ DEMO_SHOP_ID = UUID("51799a20-6a7c-4867-9545-fed56051a203")
 DEMO_SHOP_NAME = "Demo Shop"
 
 # The About text is what get_shop_about hands the agent, so it is the place to give the demo
-# agent context about the shop. Keep it short and concrete.
-ABOUT_MAIN = """\
-# About Demo Shop
-
-Demo Shop is a small second-hand electronics store. We refurbish and resell computer
-peripherals, laptops and media players, and every item comes with a 6-month warranty.
-
-Our customers are students and home-office workers who want reliable hardware at a fair price.
-"""
+# agent context about the shop. Empty by default; recorded scenarios pass their own via --about or
+# DEMO_SHOP_ABOUT (start.sh demo forwards it).
+DEFAULT_ABOUT = ""
 
 
-def build_config() -> dict:
+def build_config(about: str = DEFAULT_ABOUT) -> dict:
     """Built-in demo config, validated through ConfigurationV1 so a bad value fails here, not in the storefront."""
     raw = {
         "short_shop_name": "Demo Shop",
@@ -77,7 +73,7 @@ def build_config() -> dict:
                     "address": "Address",
                 },
                 "static_texts": {
-                    "about": ABOUT_MAIN,
+                    "about": about,
                     "terms": "Terms of the demo shop.",
                     "privacy_policy": "Privacy policy of the demo shop.",
                     "return_policy": "Return policy of the demo shop.",
@@ -102,11 +98,15 @@ def build_config() -> dict:
     return ConfigurationV1.model_validate(raw).model_dump(mode="json", exclude_none=True)
 
 
-def load_config(path: str | None) -> dict:
+def load_config(path: str | None, about: str = DEFAULT_ABOUT) -> dict:
     if path is None:
-        return build_config()
+        return build_config(about)
     with open(path) as fh:
-        return ConfigurationV1.model_validate(json.load(fh)).model_dump(mode="json", exclude_none=True)
+        raw = json.load(fh)
+    # A config file keeps its own About text unless one is given explicitly.
+    if about:
+        raw["languages"]["main"]["static_texts"]["about"] = about
+    return ConfigurationV1.model_validate(raw).model_dump(mode="json", exclude_none=True)
 
 
 def _default_shop_ids(db, models) -> list[UUID]:
@@ -183,9 +183,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="validate the config and exit")
     parser.add_argument("--config", help="JSON file with the shop config to use instead of the built-in one")
+    parser.add_argument(
+        "--about",
+        default=os.environ.get("DEMO_SHOP_ABOUT", DEFAULT_ABOUT),
+        help="markdown for the shop's About page (default: $DEMO_SHOP_ABOUT, else empty)",
+    )
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = load_config(args.config, args.about)
     if args.check:
         print("Config is valid.")
         return

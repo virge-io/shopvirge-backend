@@ -23,7 +23,9 @@ if [ "$1" = "dev" ]; then
 elif [ "$1" = "demo" ]; then
     # Same port as dev, but on the dedicated demo DB. An exported DATABASE_URI wins over .env.
     # The demo shop is reset (no products, no categories) on every start; stop the dev server first.
+    # Optional second argument: the shop's About text (else $DEMO_SHOP_ABOUT, else empty).
     export DATABASE_URI="${DEMO_DATABASE_URI:-postgresql://shop:shop@localhost/shop_demo}"
+    export DEMO_SHOP_ABOUT="${2:-${DEMO_SHOP_ABOUT:-}}"
     echo "Demo mode: resetting the demo shop in ${DATABASE_URI}"
     PYTHONPATH=. alembic upgrade heads && PYTHONPATH=. python scripts/seed_demo_shop.py || exit 1
     echo "Starting webserver (no reload) on the demo database"
