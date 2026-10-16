@@ -89,8 +89,76 @@ class ShopCacheStatus(ShopEmptyBase):
     modified_at: Optional[datetime]
 
 
+class ShopLanguageSlot(BoilerplateBaseModel):
+    language_name: str | None = None
+    enabled: bool = True
+
+
+class ShopLanguages(BoilerplateBaseModel):
+    """Which real language each translation slot (`main_*`, `alt1_*`, `alt2_*`) holds in one shop."""
+
+    main: ShopLanguageSlot = ShopLanguageSlot()
+    alt1: ShopLanguageSlot = ShopLanguageSlot(enabled=False)
+    alt2: ShopLanguageSlot = ShopLanguageSlot(enabled=False)
+
+    @classmethod
+    def from_config(cls, config: dict | None) -> "ShopLanguages":
+        """Read the mapping out of a shop's raw config JSON; a missing or partial config yields unset slots."""
+
+        def as_dict(value: object) -> dict:
+            return value if isinstance(value, dict) else {}
+
+        config = as_dict(config)
+        languages = as_dict(config.get("languages"))
+        toggles = as_dict(config.get("toggles"))
+
+        def slot(key: str, enabled: bool) -> ShopLanguageSlot:
+            name = as_dict(languages.get(key)).get("language_name")
+            return ShopLanguageSlot(language_name=name or None, enabled=enabled and bool(name))
+
+        return cls(
+            main=slot("main", True),
+            alt1=slot("alt1", bool(toggles.get("language_alt1_enabled"))),
+            alt2=slot("alt2", bool(toggles.get("language_alt2_enabled"))),
+        )
+
+
+class ShopAboutSlot(BoilerplateBaseModel):
+    language_name: str | None = None
+    about: str | None = None
+
+
+class ShopAbout(BoilerplateBaseModel):
+    """What a shop says about itself, per translation slot: the markdown of its storefront "About" page."""
+
+    name: str
+    main: ShopAboutSlot
+    alt1: ShopAboutSlot
+    alt2: ShopAboutSlot
+
+    @classmethod
+    def from_shop(cls, name: str, config: dict | None) -> "ShopAbout":
+        """Read the about texts out of a shop's raw config JSON; a missing or partial config yields empty slots."""
+
+        def as_dict(value: object) -> dict:
+            return value if isinstance(value, dict) else {}
+
+        languages = as_dict(as_dict(config).get("languages"))
+
+        def slot(key: str) -> ShopAboutSlot:
+            language = as_dict(languages.get(key))
+            about = as_dict(language.get("static_texts")).get("about")
+            return ShopAboutSlot(language_name=language.get("language_name") or None, about=about or None)
+
+        return cls(name=name, main=slot("main"), alt1=slot("alt1"), alt2=slot("alt2"))
+
+
+class MyShopSchema(ShopSchema):
+    languages: ShopLanguages
+
+
 class MyShopsResponse(BoilerplateBaseModel):
-    shops: List[ShopSchema]
+    shops: List[MyShopSchema]
     is_admin: bool
     can_write: bool
 

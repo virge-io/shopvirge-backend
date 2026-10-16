@@ -96,15 +96,28 @@ For subscriptions: Stripe price lookup keys derived from product IDs:
     sequenceDiagram
         autonumber
         actor Customer
-        participant FE as Front-end cart / checkout
+        participant Cart as FE cart page
+        participant Checkout as FE checkout page
+        participant Pay as FE Payment Element
+        participant Done as FE complete page
         participant Orders as Orders API
         participant Prices as Prices API
         participant StripeAPI as Stripe API
         participant DB as PostgreSQL
         participant Stripe as Stripe
 
-        Customer->>FE: Enter email and start checkout
-        FE->>Orders: Create order
+        Note over Cart: Cart lives in local storage
+        Cart->>Prices: Load price data for cart products
+        Prices-->>Cart: Return prices, tax and stock
+        Cart->>Orders: Get order quote
+        Orders-->>Cart: Return totals and shipping fee
+
+        Customer->>Cart: Enter email, accept terms, click Checkout
+        Cart->>Cart: Validate terms, stock, single payment interval
+        opt JVJ shop
+            Cart->>Cart: Validate referral code and quantity limits
+        end
+        Cart->>Orders: Create order
         Orders->>DB: Find or create account
         opt First checkout with Stripe enabled
             Orders->>Stripe: Create customer
@@ -112,21 +125,44 @@ For subscriptions: Stripe price lookup keys derived from product IDs:
             Orders->>DB: Store customer link
         end
         Orders->>DB: Store pending order
-        Orders-->>FE: Return order and account
+        Orders-->>Cart: Return order and account
+        Cart->>Checkout: Navigate to /lang/checkout/order id
 
-        FE->>Orders: Load order
-        FE->>Prices: Load price data
-        Prices-->>FE: Return shippable and tax data
-        FE->>StripeAPI: Create payment intent
+        Checkout->>Orders: Load order
+        Orders-->>Checkout: Return order
+        Checkout->>Prices: Load price data
+        Prices-->>Checkout: Return shippable flag
+        Checkout->>StripeAPI: Create payment intent
         StripeAPI->>Stripe: Create payment intent
         Stripe-->>StripeAPI: Return client secret
-        StripeAPI-->>FE: Return client secret
+        StripeAPI-->>Checkout: Return client secret
+        Checkout->>Pay: Mount Stripe Elements with client secret
 
-        FE->>Stripe: Confirm payment
-        Stripe-->>Customer: Redirect to completion page
-        FE->>Orders: Update order status
-        alt completed and stock enabled
-            Orders->>DB: Decrement stock once
+        Pay->>Orders: Check stock
+        Orders-->>Pay: Return in stock or not
+        Customer->>Pay: Pick payment method, fill address if shippable
+        Customer->>Pay: Click Pay
+
+        alt Customer clicks Cancel
+            Pay->>Orders: Update order status to cancelled
+            Pay->>Cart: Navigate back to cart
+        else Customer clicks Pay
+            Pay->>Orders: Check stock again
+            Pay->>Pay: Validate shipping address (JVJ: Limburg only)
+            Pay->>Stripe: Confirm payment with return url
+            Stripe-->>Customer: Redirect to completion page
+        end
+
+        Customer->>Done: Land on complete page with redirect status
+        Done->>Orders: Load order
+        alt redirect status succeeded
+            Done->>Done: Clear cart in local storage
+            Done->>Orders: Update order status to complete
+            opt stock enabled
+                Orders->>DB: Decrement stock once
+            end
+        else redirect status failed
+            Done->>Orders: Update order status to cancelled
         end
     ```
 

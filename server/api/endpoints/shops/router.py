@@ -7,7 +7,7 @@ own path *is* the shop segment — so api.py includes it with its guard spelled 
 
 from fastapi import APIRouter, Depends
 
-from server.api.endpoints.shops import admin, allowed_ips, collection, config, public, shop
+from server.api.endpoints.shops import admin, allowed_ips, collection, config, public, shop, shop_about
 from server.security import require_shop
 
 # authenticated tier
@@ -19,6 +19,10 @@ router.include_router(collection.router, prefix="/shops", tags=["shops"])
 admin_router = APIRouter(dependencies=[Depends(require_shop)])
 admin_router.include_router(admin.router, prefix="/shops", tags=["shops", "admin"])
 
+# shop tier (per-shop, API key or Cognito), under the ``/shops/{shop_id}`` prefix
+shop_tier_router = APIRouter()
+shop_tier_router.include_router(shop_about.router, tags=["shops"])
+
 # public tier
 public_router = APIRouter()
 public_router.include_router(public.router, prefix="/shops", tags=["shops"])
@@ -29,4 +33,4 @@ shop_router.include_router(shop.router)
 shop_router.include_router(config.router)
 shop_router.include_router(allowed_ips.router)
 
-__all__ = ["admin_router", "public_router", "router", "shop_router"]
+__all__ = ["admin_router", "public_router", "router", "shop_router", "shop_tier_router"]
