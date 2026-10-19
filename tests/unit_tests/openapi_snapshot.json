@@ -3317,34 +3317,24 @@
         "title": "ProductCreate",
         "type": "object"
       },
-      "ProductImageUpload": {
+      "ProductImageUploadRequest": {
         "properties": {
-          "image_base64": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "content_type": {
+            "description": "MIME type of the file you are going to upload.",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/gif",
+              "image/webp"
             ],
-            "description": "Image bytes as base64, raw or as a data URL (`data:image/png;base64,...`). Max 10 MB decoded.",
-            "title": "Image Base64"
-          },
-          "image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Public http(s) URL of the image. The server downloads it. Max 10 MB.",
-            "title": "Image Url"
+            "title": "Content Type",
+            "type": "string"
           }
         },
-        "title": "ProductImageUpload",
+        "required": [
+          "content_type"
+        ],
+        "title": "ProductImageUploadRequest",
         "type": "object"
       },
       "ProductResponse": {
@@ -13594,7 +13584,7 @@
         ]
       },
       "put": {
-        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object keys - to add or replace a picture use `upload_product_image`, to remove one use `delete_product_image`; do not set them here unless explicitly given a key.",
+        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object keys: to add or replace a picture call `create_product_image_upload`, upload the file to the returned URL, then set the returned `key` here; send null or an empty string to clear a slot.",
         "operationId": "update_product",
         "parameters": [
           {
@@ -13664,84 +13654,10 @@
         ]
       }
     },
-    "/shops/{shop_id}/products/{product_id}/images/{slot}": {
-      "delete": {
-        "description": "Clear one product image slot (1-6). Only the product's reference is removed; the file is kept so the image can be brought back by restoring an earlier product revision.",
-        "operationId": "delete_product_image",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "shop_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Shop Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "product_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Product Id",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Image slot 1-6",
-            "in": "path",
-            "name": "slot",
-            "required": true,
-            "schema": {
-              "description": "Image slot 1-6",
-              "maximum": 6,
-              "minimum": 1,
-              "title": "Slot",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          },
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Remove product image",
-        "tags": [
-          "shops",
-          "products",
-          "images",
-          "agent-exposed"
-        ]
-      },
+    "/shops/{shop_id}/products/{product_id}/images/{slot}/upload-url": {
       "post": {
-        "description": "Upload a picture and attach it to a product image slot (1-6; slot 1 is the main image). Give EITHER `image_url` (a public http(s) URL the server downloads) OR `image_base64` (raw base64 or a data URL), never both. PNG, JPEG, GIF and WebP up to 10 MB are accepted. Replaces whatever image is in that slot; the previous image stays restorable through the product's revisions. Returns the stored S3 key and a temporary `preview_url` to check the result.",
-        "operationId": "upload_product_image",
+        "description": "Step 1 of adding a product picture (slot 1-6; slot 1 is the main image). Returns `url`, `fields` and the S3 object `key`. Then (2) send the file with `POST url` as multipart/form-data: every entry of `fields` first, the file last in a field named `file`; the `Content-Type` field is already in `fields`, so the file must really be that type. Max 10 MB, valid for 10 minutes. Then (3) call `update_product` with `image_{slot}` set to `key`. Nothing is attached to the product until step 3.",
+        "operationId": "create_product_image_upload",
         "parameters": [
           {
             "in": "path",
@@ -13781,7 +13697,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProductImageUpload"
+                "$ref": "#/components/schemas/ProductImageUploadRequest"
               }
             }
           },
@@ -13815,7 +13731,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Upload product image",
+        "summary": "Get a signed product image upload",
         "tags": [
           "shops",
           "products",

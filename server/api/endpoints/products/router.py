@@ -5,12 +5,12 @@ Paths here are relative to the ``/shops/{shop_id}`` tier prefix in api.py.
 
 from fastapi import APIRouter
 
-from server.api.endpoints.products import attribute_values, images, prices, product_tags, products, public
+from server.api.endpoints.products import attribute_values, image_uploads, prices, product_tags, products, public
 
 # shop tier: API key or Cognito
 router = APIRouter()
 router.include_router(products.router, prefix="/products", tags=["shops", "products"])
-router.include_router(images.router, prefix="/products", tags=["shops", "products", "images"])
+router.include_router(image_uploads.router, prefix="/products", tags=["shops", "products", "images"])
 router.include_router(product_tags.router, prefix="/products-to-tags", tags=["shops", "products"])
 router.include_router(
     attribute_values.router, prefix="/product-attribute-values", tags=["shops", "products", "attributes"]

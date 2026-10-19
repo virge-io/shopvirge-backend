@@ -34,8 +34,7 @@ EXPECTED_TOOL_NAMES = {
     "create_product",
     "update_product",
     "delete_product",
-    "upload_product_image",
-    "delete_product_image",
+    "create_product_image_upload",
     # categories
     "list_categories",
     "get_category",
