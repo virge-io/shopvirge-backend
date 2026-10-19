@@ -13654,9 +13654,9 @@
         ]
       }
     },
-    "/shops/{shop_id}/products/{product_id}/images/{slot}/upload-url": {
+    "/shops/{shop_id}/products/{product_id}/images/upload-url": {
       "post": {
-        "description": "Step 1 of adding a product picture (slot 1-6; slot 1 is the main image). Returns `url`, `fields` and the S3 object `key`. Then (2) send the file with `POST url` as multipart/form-data: every entry of `fields` first, the file last in a field named `file`; the `Content-Type` field is already in `fields`, so the file must really be that type. Max 10 MB, valid for 10 minutes. Then (3) call `update_product` with `image_{slot}` set to `key`. Nothing is attached to the product until step 3.",
+        "description": "Step 1 of adding a product picture. Returns `url`, `fields` and the S3 object `key`. Then (2) send the file with `POST url` as multipart/form-data: every entry of `fields` first, the file last in a field named `file`; the `Content-Type` field is already in `fields`, so the file must really be that type. Max 10 MB, valid for 10 minutes. Then (3) call `update_product` with the slot you want (`image_1`-`image_6`; `image_1` is the main image) set to `key`. Nothing is attached to the product until step 3.",
         "operationId": "create_product_image_upload",
         "parameters": [
           {
@@ -13677,19 +13677,6 @@
               "format": "uuid",
               "title": "Product Id",
               "type": "string"
-            }
-          },
-          {
-            "description": "Image slot 1-6",
-            "in": "path",
-            "name": "slot",
-            "required": true,
-            "schema": {
-              "description": "Image slot 1-6",
-              "maximum": 6,
-              "minimum": 1,
-              "title": "Slot",
-              "type": "integer"
             }
           }
         ],

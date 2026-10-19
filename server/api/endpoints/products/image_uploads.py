@@ -9,7 +9,7 @@ from http import HTTPStatus
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from server.agent_tags import AgentTag
@@ -31,31 +31,31 @@ class ProductImageUploadRequest(BaseModel):
 
 
 @router.post(
-    "/{product_id}/images/{slot}/upload-url",
+    "/{product_id}/images/upload-url",
     response_model=None,
     status_code=HTTPStatus.CREATED,
     tags=[AgentTag.EXPOSED],
     operation_id="create_product_image_upload",
     summary="Get a signed product image upload",
     description=(
-        "Step 1 of adding a product picture (slot 1-6; slot 1 is the main image). Returns `url`, `fields` and "
-        "the S3 object `key`. Then (2) send the file with `POST url` as multipart/form-data: every entry of "
-        "`fields` first, the file last in a field named `file`; the `Content-Type` field is already in "
-        "`fields`, so the file must really be that type. Max 10 MB, valid for 10 minutes. Then (3) call "
-        "`update_product` with `image_{slot}` set to `key`. Nothing is attached to the product until step 3."
+        "Step 1 of adding a product picture. Returns `url`, `fields` and the S3 object `key`. Then (2) send "
+        "the file with `POST url` as multipart/form-data: every entry of `fields` first, the file last in a "
+        "field named `file`; the `Content-Type` field is already in `fields`, so the file must really be "
+        "that type. Max 10 MB, valid for 10 minutes. Then (3) call "
+        "`update_product` with the slot you want (`image_1`-`image_6`; `image_1` is the main image) set to `key`. "
+        "Nothing is attached to the product until step 3."
     ),
 )
 def create_upload(
     shop_id: UUID,
     product_id: UUID,
     data: ProductImageUploadRequest,
-    slot: int = Path(..., ge=1, le=6, description="Image slot 1-6"),
 ) -> dict:
     if not product_crud.get_id_by_shop_id(shop_id, product_id):
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Product not found")
 
     # A fresh name per upload: overwriting an object would break restoring older revisions
-    object_name = f"{product_id}-{slot}-{uuid4().hex[:12]}.{_EXTENSIONS[data.content_type]}"
+    object_name = f"{product_id}-{uuid4().hex[:12]}.{_EXTENSIONS[data.content_type]}"
     post = create_presigned_post_url(
         shop_id,
         object_name,
@@ -68,7 +68,6 @@ def create_upload(
 
     return {
         "product_id": str(product_id),
-        "slot": slot,
         "key": f"{shop_id}/{object_name}",
         "url": post["url"],
         "fields": post["fields"],

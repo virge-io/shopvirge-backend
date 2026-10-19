@@ -12,15 +12,15 @@ def test_create_upload_signs_fresh_key_per_call(shop_with_config, product, test_
         "server.api.endpoints.products.image_uploads.create_presigned_post_url", return_value=SIGNED
     ) as sign:
         first = test_client.post(
-            f"/shops/{shop_with_config}/products/{product}/images/2/upload-url", json={"content_type": "image/png"}
+            f"/shops/{shop_with_config}/products/{product}/images/upload-url", json={"content_type": "image/png"}
         )
         second = test_client.post(
-            f"/shops/{shop_with_config}/products/{product}/images/2/upload-url", json={"content_type": "image/png"}
+            f"/shops/{shop_with_config}/products/{product}/images/upload-url", json={"content_type": "image/png"}
         )
     assert first.status_code == 201, first.json()
     body = first.json()
     assert body["url"] == SIGNED["url"] and body["fields"] == SIGNED["fields"]
-    assert body["key"].startswith(f"{shop_with_config}/{product}-2-") and body["key"].endswith(".png")
+    assert body["key"].startswith(f"{shop_with_config}/{product}-") and body["key"].endswith(".png")
     assert second.json()["key"] != body["key"]
 
     args, kwargs = sign.call_args
@@ -29,15 +29,14 @@ def test_create_upload_signs_fresh_key_per_call(shop_with_config, product, test_
     assert ["content-length-range", 1, 10 * 1024 * 1024] in kwargs["conditions"]
 
 
-def test_create_upload_rejects_unsupported_type_and_slot(shop_with_config, product, test_client):
+def test_create_upload_rejects_unsupported_type(shop_with_config, product, test_client):
     url = f"/shops/{shop_with_config}/products/{product}/images"
-    assert test_client.post(f"{url}/1/upload-url", json={"content_type": "image/svg+xml"}).status_code == 422
-    assert test_client.post(f"{url}/7/upload-url", json={"content_type": "image/png"}).status_code == 422
+    assert test_client.post(f"{url}/upload-url", json={"content_type": "image/svg+xml"}).status_code == 422
 
 
 def test_create_upload_unknown_product(shop_with_config, test_client):
     resp = test_client.post(
-        f"/shops/{shop_with_config}/products/{uuid4()}/images/1/upload-url", json={"content_type": "image/png"}
+        f"/shops/{shop_with_config}/products/{uuid4()}/images/upload-url", json={"content_type": "image/png"}
     )
     assert resp.status_code == 404
 
@@ -45,7 +44,7 @@ def test_create_upload_unknown_product(shop_with_config, test_client):
 def test_create_upload_signing_failure(shop_with_config, product, test_client):
     with mock.patch("server.api.endpoints.products.image_uploads.create_presigned_post_url", return_value=None):
         resp = test_client.post(
-            f"/shops/{shop_with_config}/products/{product}/images/1/upload-url", json={"content_type": "image/png"}
+            f"/shops/{shop_with_config}/products/{product}/images/upload-url", json={"content_type": "image/png"}
         )
     assert resp.status_code == 502
 
