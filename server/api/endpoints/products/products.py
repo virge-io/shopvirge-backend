@@ -285,8 +285,8 @@ def create(
     description=(
         "Partially update a product. Send ONLY the fields you want to change; omitted fields are left "
         "untouched. Names and descriptions live in the nested `translation` object and can also be sent "
-        "partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not "
-        "set them unless explicitly given a filename."
+        "partially. `image_1`-`image_6` are S3 object keys - to add or replace a picture use `upload_product_image`, "
+        "to remove one use `delete_product_image`; do not set them here unless explicitly given a key."
     ),
 )
 def update(

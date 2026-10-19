@@ -3317,6 +3317,36 @@
         "title": "ProductCreate",
         "type": "object"
       },
+      "ProductImageUpload": {
+        "properties": {
+          "image_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Image bytes as base64, raw or as a data URL (`data:image/png;base64,...`). Max 10 MB decoded.",
+            "title": "Image Base64"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Public http(s) URL of the image. The server downloads it. Max 10 MB.",
+            "title": "Image Url"
+          }
+        },
+        "title": "ProductImageUpload",
+        "type": "object"
+      },
       "ProductResponse": {
         "properties": {
           "attributes": {
@@ -6320,7 +6350,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.7.0"
+    "version": "0.7.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -13564,7 +13594,7 @@
         ]
       },
       "put": {
-        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not set them unless explicitly given a filename.",
+        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object keys - to add or replace a picture use `upload_product_image`, to remove one use `delete_product_image`; do not set them here unless explicitly given a key.",
         "operationId": "update_product",
         "parameters": [
           {
@@ -13630,6 +13660,166 @@
         "tags": [
           "shops",
           "products",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/products/{product_id}/images/{slot}": {
+      "delete": {
+        "description": "Clear one product image slot (1-6). Only the product's reference is removed; the file is kept so the image can be brought back by restoring an earlier product revision.",
+        "operationId": "delete_product_image",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image slot 1-6",
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "description": "Image slot 1-6",
+              "maximum": 6,
+              "minimum": 1,
+              "title": "Slot",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Remove product image",
+        "tags": [
+          "shops",
+          "products",
+          "images",
+          "agent-exposed"
+        ]
+      },
+      "post": {
+        "description": "Upload a picture and attach it to a product image slot (1-6; slot 1 is the main image). Give EITHER `image_url` (a public http(s) URL the server downloads) OR `image_base64` (raw base64 or a data URL), never both. PNG, JPEG, GIF and WebP up to 10 MB are accepted. Replaces whatever image is in that slot; the previous image stays restorable through the product's revisions. Returns the stored S3 key and a temporary `preview_url` to check the result.",
+        "operationId": "upload_product_image",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image slot 1-6",
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "description": "Image slot 1-6",
+              "maximum": 6,
+              "minimum": 1,
+              "title": "Slot",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductImageUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Upload product image",
+        "tags": [
+          "shops",
+          "products",
+          "images",
           "agent-exposed"
         ]
       }
