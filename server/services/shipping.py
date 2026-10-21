@@ -12,6 +12,7 @@
 # limitations under the License.
 from decimal import Decimal
 from typing import Any, Optional
+from uuid import UUID
 
 from server.schemas.base import quantize_money
 from server.schemas.shipping import ShippingCalculation, ShippingLine
@@ -31,17 +32,23 @@ def resolve_vat_rate(product: Any, shop: Any) -> Decimal:
     return rate if isinstance(rate, Decimal) else Decimal(str(rate))
 
 
-def build_rate_subtotals(order_info: list, shop: Any) -> dict[Decimal, Decimal]:
+def build_rate_subtotals(
+    order_info: list, shop: Any, products_by_id: Optional[dict[UUID, Any]] = None
+) -> dict[Decimal, Decimal]:
     """Sum cart inc-VAT line totals grouped by VAT rate for shippable products only.
 
-    `order_info` may contain dicts or Pydantic items; both are accepted.
+    `order_info` may contain dicts or Pydantic items; both are accepted. ``products_by_id`` lets a caller that
+    already loaded the line products pass them in; otherwise they are fetched in one query.
     """
-    from server.crud.crud_product import product_crud
+    from server.crud.crud_product import as_uuid, product_crud
+
+    items = [raw.model_dump() if hasattr(raw, "model_dump") else dict(raw) for raw in order_info]
+    if products_by_id is None:
+        products_by_id = product_crud.get_many_by_shop_id(shop.id, (item["product_id"] for item in items))
 
     subtotals: dict[Decimal, Decimal] = {}
-    for raw in order_info:
-        item = raw.model_dump() if hasattr(raw, "model_dump") else dict(raw)
-        product = product_crud.get_id_by_shop_id(shop.id, item["product_id"])
+    for item in items:
+        product = products_by_id.get(as_uuid(item["product_id"]))
         if product is not None and not getattr(product, "shippable", True):
             continue
         rate = resolve_vat_rate(product, shop)
@@ -92,7 +99,9 @@ def allocate_shipping_lines(fee_ex_btw: Decimal, rate_subtotals: dict[Decimal, D
     return lines
 
 
-def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingCalculation]:
+def compute_shipping_for_cart(
+    order_info: list, shop: Any, products_by_id: Optional[dict[UUID, Any]] = None
+) -> Optional[ShippingCalculation]:
     """Compute the shipping fee and per-VAT-rate breakdown for a cart.
 
     The configured ``fixed_fee`` is interpreted as ex-VAT; VAT is added on top
@@ -118,7 +127,7 @@ def compute_shipping_for_cart(order_info: list, shop: Any) -> Optional[ShippingC
     free_above_enabled = bool(shipping_cfg.get("free_shipping_above_enabled", False))
     free_above_amount = Decimal(str(shipping_cfg.get("free_shipping_above_amount", "0") or "0"))
 
-    rate_subtotals = build_rate_subtotals(order_info, shop)
+    rate_subtotals = build_rate_subtotals(order_info, shop, products_by_id)
     if not rate_subtotals:
         return None
 

@@ -10,7 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Generic, List, Optional, Sequence, Tuple, Type, TypeVar
 from uuid import UUID
 
 import structlog
@@ -78,8 +78,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         id: UUID,
         for_update: bool = False,
         include_deleted: bool = False,
+        options: Sequence[Any] = (),
     ) -> Optional[ModelType]:
+        # options: loader options (``selectinload`` chains) for the relationship graph the caller will read,
+        # so it arrives in a few batched queries instead of one lazy load per attribute access.
         query = db.session.query(self.model).filter(self.model.shop_id == shop_id, self.model.id == id)
+        if options:
+            query = query.options(*options)
         if include_deleted:
             query = query.execution_options(include_deleted=True)
         if for_update:

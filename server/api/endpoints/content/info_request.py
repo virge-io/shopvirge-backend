@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from server.api.helpers import load
 from server.crud.crud_info_request import info_request_crud
 from server.crud.crud_product import product_crud
+from server.db import db
 from server.db.models import ShopTable
 from server.mail import generate_confirmation_mail, send_mail
 from server.schemas.info_request import InfoRequestCreate
@@ -35,7 +36,9 @@ class SubmitFormPage(FormPage):
 
 
 @router.post("/form")
-async def form(shop_id: UUID, product_id: UUID, form_data: list[dict] = []):  # noqa: B006 -- FastAPI body default, part of the schema
+def form(shop_id: UUID, product_id: UUID, form_data: list[dict] = []):  # noqa: B006 -- FastAPI body default, part of the schema
+    # Sync on purpose: the handler does database, Discord and SMTP work, which must run in the threadpool and not
+    # on the event loop.
     def form_generator(state: State):
         class EmailForm(FormPage):
             model_config = ConfigDict(title="Form Title Page 1")
@@ -57,24 +60,32 @@ def create_info_request(data: InfoRequestCreate = Body(...)) -> Any:
         product = product_crud.get_id_by_shop_id(data.shop_id, data.product_id)
         shop = load(ShopTable, data.shop_id)
 
+        # Discord and SMTP are remote: collect what they need, then give the pooled connection back.
+        product_name = product.translation.main_name
+        shop_name = shop.name
+        discord_webhook = shop.discord_webhook
+        confirmation_mail = None
+        if mail_settings.SHOP_MAIL_ENABLED:
+            contact_persons = [MailAddress(email=data.email, name="")]
+            confirmation_mail = generate_confirmation_mail(
+                product, MailType.INFO, shop_name, contact_persons, None, None
+            )
+        db.release_connection()
+
         try:
-            if shop.discord_webhook is not None:
+            if discord_webhook is not None:
                 post_discord_info_request(
-                    f"New info request from {data.email} about product: {product.translation.main_name}",
-                    botname=shop.name,
-                    webhook=shop.discord_webhook,
+                    f"New info request from {data.email} about product: {product_name}",
+                    botname=shop_name,
+                    webhook=discord_webhook,
                     email=data.email,
-                    product_name=product.translation.main_name,
+                    product_name=product_name,
                     product_id=data.product_id,
                 )
         except Exception as e:
             logger.error("Failed to post to Discord: ", error=str(e))
 
-        if mail_settings.SHOP_MAIL_ENABLED:
-            contact_persons = [MailAddress(email=data.email, name="")]
-            confirmation_mail = generate_confirmation_mail(
-                product, MailType.INFO, shop.name, contact_persons, None, None
-            )
+        if confirmation_mail is not None:
             logger.info("Sending info mail", email=data.email)
             send_mail(confirmation_mail)
         else:

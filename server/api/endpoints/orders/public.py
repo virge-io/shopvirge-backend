@@ -7,15 +7,21 @@ import stripe
 import structlog
 from fastapi import APIRouter, Request
 from fastapi.param_functions import Body
+from sqlalchemy.orm import selectinload
 
 from server.api.endpoints.orders.common import attach_names, mark_completed, order_updated, quote_order
 from server.api.error_handling import raise_status
-from server.api.helpers import invalidateCompletedOrdersCache, invalidatePendingOrdersCache
+from server.api.helpers import (
+    invalidateCompletedOrdersCache,
+    invalidatePendingOrdersCache,
+    notify_completed_orders,
+    record_last_completed_order,
+)
 from server.api.route_helpers import get_or_404
 from server.api.utils import is_ip_allowed, validate_uuid4
 from server.crud.crud_account import account_crud
 from server.crud.crud_order import order_crud
-from server.crud.crud_product import product_crud
+from server.crud.crud_product import as_uuid, product_crud
 from server.crud.crud_shop import shop_crud
 from server.db import db
 from server.db.models import Account, OrderTable
@@ -73,13 +79,11 @@ def check(
     if len(id_list) > 10:
         raise_status(HTTPStatus.BAD_REQUEST, "Max 10 orders")
 
-    # Build response
-    items = []
+    # Build response: one query for every id (accounts batched), in the order the ids were given
+    orders = OrderTable.query.options(selectinload(OrderTable.account)).filter(OrderTable.id.in_(id_list)).all()
+    by_id = {str(order.id): order for order in orders}
+    items = [by_id[id] for id in id_list if id in by_id]
     items_with_schema = []
-    for id in id_list:
-        item = order_crud.get(id)
-        if item:
-            items.append(item)
 
     for item in items:
         if item.shop_id != items[0].shop_id:
@@ -131,21 +135,14 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
     shop = get_or_404(shop_crud.get(shop_id), f"Shop with id {shop_id} not found")
 
     if data.account_name and not data.account_id:
-        accounts = Account.query.filter(Account.shop_id == shop_id)
-        new_account = True
-        for account in accounts:
-            if account.name == data.account_name:
-                new_account = False
-                data.account_id = account.id
-                del data.account_name
-                break
-
-        if new_account:
+        account = Account.query.filter(Account.shop_id == shop_id, Account.name == data.account_name).first()
+        if account is not None:
+            data.account_id = account.id
+            del data.account_name
+        else:
             details = {}
             try:
                 stripe_client.configure_for_shop(shop)
-                customer = stripe.Customer.create(email=data.account_name)
-                details["stripe_customer_id"] = customer.id
             except StripeNotConfigured:
                 # Shop has no Stripe key configured — proceed without
                 # creating a Stripe customer (matches prior behavior).
@@ -154,6 +151,12 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
                     shop_id=str(shop.id),
                     account_name=data.account_name,
                 )
+            else:
+                # Stripe is remote and slow, and nothing needs the database until the account insert below:
+                # give the pooled connection back for the duration of the call.
+                db.release_connection()
+                customer = stripe.Customer.create(email=data.account_name)
+                details["stripe_customer_id"] = customer.id
 
             account_data = AccountCreate(shop_id=data.shop_id, name=data.account_name, details=details)
             account = account_crud.create(obj_in=account_data)
@@ -226,9 +229,12 @@ def _deduct_stock(order: OrderTable) -> None:
     deadlock, and each deduction starts from the locked (current) stock so
     concurrent completions can't overwrite each other's deduction.
     """
-    for order_product in sorted(order.order_info, key=lambda item: str(item["product_id"])):
+    lines = sorted(order.order_info, key=lambda item: str(item["product_id"]))
+    # One locked query for every line; ``ORDER BY id ... FOR UPDATE`` takes the row locks in id order.
+    products = product_crud.get_many_by_shop_id(order.shop_id, (line["product_id"] for line in lines), for_update=True)
+    for order_product in lines:
         product = get_or_404(
-            product_crud.get_id_by_shop_id(order.shop_id, order_product["product_id"], for_update=True),
+            products.get(as_uuid(order_product["product_id"])),
             f"Product {order_product['product_id']} not found for this shop",
         )
         new_stock = product.stock - order_product["quantity"]
@@ -284,30 +290,37 @@ def patch(
 
     updated_order = order_updated(order)
 
-    # Notifications only after the commit, so they can never fire for a write that rolled back.
-    # Fetch account once for Discord and email notifications
+    # Notifications only after the commit, so they can never fire for a write that rolled back. They talk to
+    # SMTP, Discord and Lambda: gather what they need from the ORM first, record the order on the shop, and give
+    # the pooled connection back before the first remote call.
     account = account_crud.get(updated_order.account_id) if updated_order.account_id else None
+    account_name = account.name if account else None
+    discord_webhook = shop.discord_webhook
+    shop_name = shop.name
+    push_shop_id = record_last_completed_order(updated_order.id)
 
-    try:
-        if shop.discord_webhook is not None and account:
-            post_discord_order_complete(
-                f"New order from {account.name}",
-                botname=shop.name,
-                webhook=shop.discord_webhook,
-                order=updated_order,
-                email=account.name,
-            )
-    except Exception as e:
-        logger.error("Failed to post to Discord: ", error=str(e))
-
-    # Send order confirmation emails
+    # Send order confirmation emails (builds them from the database, releases the connection, then sends)
     if mail_settings.SHOP_MAIL_ENABLED and item_in.status == "complete" and account:
         try:
             send_order_confirmation_emails(order=order, shop=shop, account=account)
         except Exception as e:
             logger.error("Failed to send order confirmation email", error=str(e))
+    else:
+        db.release_connection()
 
-    invalidateCompletedOrdersCache(updated_order.id)
+    try:
+        if discord_webhook is not None and account_name:
+            post_discord_order_complete(
+                f"New order from {account_name}",
+                botname=shop_name,
+                webhook=discord_webhook,
+                order=updated_order,
+                email=account_name,
+            )
+    except Exception as e:
+        logger.error("Failed to post to Discord: ", error=str(e))
+
+    notify_completed_orders(push_shop_id)
     return updated_order
 
 
@@ -324,8 +337,9 @@ def get_order_products_in_stock(order_id: UUID) -> bool:
     shop = get_or_404(shop_crud.get(shop_id), f"Shop with ID {shop_id} not found")
 
     if shop.config["toggles"]["enable_stock_on_products"]:
+        products = product_crud.get_many_by_shop_id(shop_id, (line["product_id"] for line in order.order_info))
         for order_product in order.order_info:
-            product = product_crud.get_id_by_shop_id(shop_id, order_product["product_id"])
+            product = products.get(as_uuid(order_product["product_id"]))
             if not product or product.stock < order_product["quantity"]:
                 return False
 

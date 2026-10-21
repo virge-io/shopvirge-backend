@@ -6320,7 +6320,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.7.0"
+    "version": "0.7.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6367,21 +6367,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -6852,21 +6859,28 @@
         "operationId": "get_multi_faq__get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -7404,21 +7418,28 @@
         "operationId": "get_multi_licenses_get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -7729,21 +7750,28 @@
         "operationId": "get_multi_orders__get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -7959,21 +7987,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -8065,21 +8100,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -8482,21 +8524,28 @@
         "operationId": "get_multi_shops__get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -9207,21 +9256,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -9707,21 +9763,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -10079,21 +10142,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -10437,21 +10507,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -10894,21 +10971,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -11179,21 +11263,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -11754,21 +11845,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -12322,21 +12420,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -12687,21 +12792,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -13124,21 +13236,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -13352,21 +13471,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -14519,21 +14645,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }

@@ -4,6 +4,7 @@ from http import HTTPStatus
 from typing import Iterable
 
 import structlog
+from sqlalchemy.orm import selectinload
 
 from server.api.deps import page_params_for
 from server.api.error_handling import raise_status
@@ -22,6 +23,10 @@ from server.services.shipping import compute_shipping_for_cart, resolve_vat_rate
 logger = structlog.get_logger(__name__)
 
 order_page_params = page_params_for(order_crud)
+
+# Loader options for a list that ``attach_names`` will walk: accounts and shops come in two batched queries
+# instead of two lazy loads per order.
+NAME_LOADERS = (selectinload(OrderTable.account), selectinload(OrderTable.shop))
 
 
 def attach_names(orders: Iterable[OrderTable]) -> None:
@@ -99,8 +104,10 @@ def quote_order(shop: ShopTable, data: OrderQuoteRequest, validate_stock: bool) 
 
     order_info: list[OrderItem] = []
     shipping_order_info: list[OrderItem] = []
+    # One query for every line's product; the shipping calculation reuses the same rows.
+    products = product_crud.get_many_by_shop_id(shop.id, (item.product_id for item in data.order_info))
     for requested_item in data.order_info:
-        product = product_crud.get_id_by_shop_id(shop.id, requested_item.product_id)
+        product = products.get(requested_item.product_id)
         if not product:
             raise_status(HTTPStatus.NOT_FOUND, f"Product '{requested_item.product_name}' not found")
 
@@ -121,7 +128,7 @@ def quote_order(shop: ShopTable, data: OrderQuoteRequest, validate_stock: bool) 
         )
         shipping_order_info.append(OrderItem(**requested_item.model_dump(), price=price_ex))
 
-    shipping_calc = compute_shipping_for_cart(shipping_order_info, shop)
+    shipping_calc = compute_shipping_for_cart(shipping_order_info, shop, products_by_id=products)
     shipping_fee_inc_btw = shipping_calc.fee_inc_btw if shipping_calc is not None else None
     subtotal = quantize_money(sum((item.price * item.quantity for item in order_info), Decimal("0")))
     return OrderQuote(

@@ -38,15 +38,12 @@ from sqlalchemy.exc import DontWrapMixin
 from sqlalchemy.orm import backref, relationship, with_loader_criteria
 from sqlalchemy_utils import UUIDType
 
-from server.db.database import BaseModel, Database, WrappedSession
-from server.settings import app_settings
+from server.db.database import BaseModel, WrappedSession
 
 logger = structlog.get_logger(__name__)
 
 TAG_LENGTH = 100
 STATUS_LENGTH = 255
-
-db = Database(app_settings.DATABASE_URI)
 
 
 class UtcTimestampException(Exception, DontWrapMixin):
@@ -139,7 +136,7 @@ class TagTable(SoftDeleteMixin, BaseModel):
 
     shop = relationship("ShopTable", lazy=True)
     products_to_tags = relationship("ProductToTagTable", cascade="save-update, merge, delete")
-    translation = relationship("TagTranslationTable", back_populates="tag", uselist=False)
+    translation = relationship("TagTranslationTable", back_populates="tag", uselist=False, lazy="selectin")
 
     def __repr__(self):
         return f"{self.shop.name}: {self.translation.main_name}"
@@ -153,7 +150,7 @@ class TagTranslationTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    tag_id = Column("tag_id", UUIDType, ForeignKey("tags.id"))
+    tag_id = Column("tag_id", UUIDType, ForeignKey("tags.id"), index=True)
     main_name = Column(String(TAG_LENGTH), index=True, nullable=False)
     alt1_name = Column(String(TAG_LENGTH), index=True, nullable=True)
     alt2_name = Column(String(TAG_LENGTH), index=True, nullable=True)
@@ -176,6 +173,9 @@ class Account(BaseModel):
     details = Column("details", JSON, nullable=True)
     shop = relationship("ShopTable", lazy=True)
 
+    # Order creation looks an account up by (shop, name); without this the lookup scans the shop's accounts.
+    __table_args__ = (sqlalchemy.Index("ix_accounts_shop_id_name", "shop_id", "name"),)
+
     def __repr__(self):
         return f"{self.shop.name}: {self.name}"
 
@@ -197,7 +197,7 @@ class CategoryTable(SoftDeleteMixin, BaseModel):
     main_image = Column(String(255), index=True)
     alt1_image = Column(String(255), index=True)
     alt2_image = Column(String(255), index=True)
-    translation = relationship("CategoryTranslationTable", back_populates="category", uselist=False)
+    translation = relationship("CategoryTranslationTable", back_populates="category", uselist=False, lazy="selectin")
 
     def __repr__(self):
         return f"{self.shop.name}: {self.translation.main_name}"
@@ -211,7 +211,7 @@ class CategoryTranslationTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    category_id = Column("category_id", UUIDType, ForeignKey("categories.id"))
+    category_id = Column("category_id", UUIDType, ForeignKey("categories.id"), index=True)
     main_name = Column(String(255), index=True, nullable=False)
     main_description = Column(String(), index=True, nullable=False)
     alt1_name = Column(String(255), index=True, nullable=True)
@@ -232,7 +232,7 @@ class OrderTable(BaseModel):
     customer_order_id = Column(Integer)
     notes = Column(String, nullable=True)
     shop_id = Column(UUIDType, ForeignKey("shops.id"), index=True)
-    account_id = Column(UUIDType, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True)
+    account_id = Column(UUIDType, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
     order_info = Column(postgresql.JSONB())
     total = Column(Numeric(12, 2))
     shipping_fee_inc_btw = Column(Numeric(12, 2), nullable=True)
@@ -289,7 +289,8 @@ class ProductTable(SoftDeleteMixin, BaseModel):
         server_onupdate=text("CURRENT_TIMESTAMP"),
     )
 
-    translation = relationship("ProductTranslationTable", back_populates="product", uselist=False)
+    # Every product response carries its translation: load them per batch (one ``IN`` query) instead of per row.
+    translation = relationship("ProductTranslationTable", back_populates="product", uselist=False, lazy="selectin")
     shop = relationship("ShopTable", lazy=True)
     category = relationship("CategoryTable", lazy=True)
     tags = relationship(
@@ -299,19 +300,11 @@ class ProductTable(SoftDeleteMixin, BaseModel):
         overlaps="products_to_tags",
     )
 
-    # All concrete attribute values for this product
+    # All concrete attribute values for this product. Lazy on purpose: most product loads (quotes, stock
+    # deduction, plain listings) never read them. Paths that render attributes opt in with
+    # ``server.crud.crud_product.ATTRIBUTE_GRAPH`` so the whole graph comes in a handful of batched queries.
     attribute_values = relationship(
-        "ProductAttributeValueTable", back_populates="product", lazy="selectin", cascade="save-update, merge, delete"
-    )
-
-    # View-only relationship to attribute definitions used by this product
-    attributes_rel = relationship(
-        "AttributeTable",
-        secondary="product_attribute_values",
-        primaryjoin="ProductTable.id == ProductAttributeValueTable.product_id",
-        secondaryjoin="AttributeTable.id == ProductAttributeValueTable.attribute_id",
-        viewonly=True,
-        lazy="selectin",
+        "ProductAttributeValueTable", back_populates="product", cascade="save-update, merge, delete"
     )
 
     def __repr__(self):
@@ -326,7 +319,7 @@ class ProductTranslationTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    product_id = Column("product_id", UUIDType, ForeignKey("products.id"))
+    product_id = Column("product_id", UUIDType, ForeignKey("products.id"), index=True)
     main_name = Column(String(255), index=True, nullable=False)
     main_description = Column(String(), index=True, nullable=False)
     main_description_short = Column(String(), index=True, nullable=False)
@@ -458,6 +451,7 @@ class AttributeTable(SoftDeleteMixin, BaseModel):
         back_populates="attribute",
         cascade="save-update, merge, delete",
         uselist=False,
+        lazy="selectin",
     )
 
     # One-to-many: all discrete choices (like XS/S/M/L/XL) that belong to this attribute when it acts as an enum.
@@ -481,7 +475,7 @@ class AttributeTranslationTable(BaseModel):
     __tablename__ = "attribute_translations"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
-    attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id"))
+    attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id"), index=True)
     main_name = Column(String(TAG_LENGTH), index=True, nullable=False)
     alt1_name = Column(String(TAG_LENGTH), index=True, nullable=True)
     alt2_name = Column(String(TAG_LENGTH), index=True, nullable=True)

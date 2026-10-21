@@ -103,13 +103,16 @@ def send_mail(
     message = make_mime_mail(confirmation_mail, attachments, allow_unsupervised)
     if mail_settings.MAIL_ENABLED:
         logger.debug("Sending an email", message=message)
-        mailer = SMTP(host=mail_settings.MAIL_SERVER, port=mail_settings.MAIL_PORT)
-        if mail_settings.MAIL_STARTTLS:
-            mailer.starttls()
-        if mail_settings.MAIL_SMTP_USERNAME and mail_settings.MAIL_SMTP_PASSWORD:
-            mailer.login(user=mail_settings.MAIL_SMTP_USERNAME, password=mail_settings.MAIL_SMTP_PASSWORD)
-        mailer.send_message(message)
-        mailer.quit()
+        mailer = SMTP(host=mail_settings.MAIL_SERVER, port=mail_settings.MAIL_PORT, timeout=mail_settings.MAIL_TIMEOUT)
+        try:
+            if mail_settings.MAIL_STARTTLS:
+                mailer.starttls()
+            if mail_settings.MAIL_SMTP_USERNAME and mail_settings.MAIL_SMTP_PASSWORD:
+                mailer.login(user=mail_settings.MAIL_SMTP_USERNAME, password=mail_settings.MAIL_SMTP_PASSWORD)
+            mailer.send_message(message)
+            mailer.quit()
+        finally:
+            mailer.close()
         logger.info("Email dispatched successfully", subject=confirmation_mail["subject"])
     else:
         logger.info("Mail sending disabled in settings; skipping dispatch", subject=confirmation_mail["subject"])
@@ -350,12 +353,16 @@ def _map_language(language_name: str) -> str:
 
 def _compute_order_lines_for_email(order_info: list[dict], shop: Any) -> list[dict]:
     """Build enriched order line dicts with VAT and attribute info for email templates."""
-    from server.crud.crud_product import product_crud
+    from server.crud.crud_product import ATTRIBUTE_GRAPH, as_uuid, product_crud
     from server.services.shipping import resolve_vat_rate
 
+    # One query for every line's product, attribute graph included (the template lists size/colour per line).
+    products = product_crud.get_many_by_shop_id(
+        shop.id, (item["product_id"] for item in order_info), options=ATTRIBUTE_GRAPH
+    )
     lines = []
     for item in order_info:
-        product = product_crud.get_id_by_shop_id(shop.id, item["product_id"])
+        product = products.get(as_uuid(item["product_id"]))
 
         vat_rate = resolve_vat_rate(product, shop)
 
@@ -401,187 +408,204 @@ def _compute_order_lines_for_email(order_info: list[dict], shop: Any) -> list[di
 def send_order_confirmation_emails(order: Any, shop: Any, account: Any) -> None:
     """Send order confirmation emails to both customer and shop owner.
 
+    Builds every mail from the database first, hands the request's pooled DB connection back, and only then
+    talks to SMTP (up to three sessions), so a slow mail server never sits on a connection from the pool.
+
     Args:
         order: OrderTable instance with order_info, customer_order_id, completed_at
         shop: ShopTable instance with config (contact, legal, languages) and VAT rates
         account: Account instance with name (customer email) and details (optional business info)
     """
+    from server.db import db
+
     try:
-        config = shop.config
-        contact = config.get("contact", {})
-        legal = config.get("legal") or {}
+        order_id = str(order.id)
+        mails = build_order_confirmation_mails(order, shop, account)
+        db.release_connection()
+        for mail, log_message, log_fields in mails:
+            send_mail(mail)
+            logger.info(log_message, order_id=order_id, **log_fields)
+    except Exception as e:
+        logger.error("Failed to send order confirmation emails", error=str(e), order_id=str(order.id))
 
-        # Determine language from shop config
-        language = "NL"
-        languages_config = config.get("languages", {})
-        main_lang = languages_config.get("main", {})
-        if main_lang.get("language_name"):
-            language = _map_language(main_lang["language_name"])
 
-        # Build order lines with VAT and attribute data
-        order_lines = _compute_order_lines_for_email(order.order_info, shop)
+def build_order_confirmation_mails(order: Any, shop: Any, account: Any) -> list[tuple[ConfirmationMail, str, dict]]:
+    """Render the customer, owner and copy mails for a completed order without sending anything.
 
-        # Compute item totals
-        items_total_ex_btw = quantize_money(sum((line["line_total_ex_btw"] for line in order_lines), Decimal("0")))
-        items_total_inc_btw = quantize_money(sum((line["line_total_inc_btw"] for line in order_lines), Decimal("0")))
+    Returns ``(mail, log message, log fields)`` per mail, in sending order. Only this half touches the database.
+    """
+    mails: list[tuple[ConfirmationMail, str, dict]] = []
+    config = shop.config
+    contact = config.get("contact", {})
+    legal = config.get("legal") or {}
 
-        # Build shipping lines (one per VAT rate) using the same allocation logic
-        # the order create endpoint used. Persisted on the order as a single
-        # inc-VAT figure; we re-derive the per-rate split for display by
-        # re-running the shipping calculation against current shop config.
-        # When the shop opts out of VAT on shipping, the calc returns no lines
-        # and the fee is rendered flat.
-        shipping_fee_raw = getattr(order, "shipping_fee_inc_btw", None)
-        shipping_fee_inc_btw: Decimal | None = (
-            None
-            if shipping_fee_raw is None
-            else (shipping_fee_raw if isinstance(shipping_fee_raw, Decimal) else Decimal(str(shipping_fee_raw)))
-        )
-        shipping_lines: list[dict] = []
-        shipping_total_ex_btw = Decimal("0")
-        shipping_total_inc_btw = Decimal("0")
-        if shipping_fee_inc_btw is not None and shipping_fee_inc_btw > 0:
-            from server.services.shipping import compute_shipping_for_cart
+    # Determine language from shop config
+    language = "NL"
+    languages_config = config.get("languages", {})
+    main_lang = languages_config.get("main", {})
+    if main_lang.get("language_name"):
+        language = _map_language(main_lang["language_name"])
 
-            shipping_calc = compute_shipping_for_cart(order.order_info, shop)
-            if shipping_calc is not None and not shipping_calc.free_shipping_applied:
-                for sl in shipping_calc.lines:
-                    shipping_lines.append(
-                        {
-                            "btw_rate": sl.btw_rate,
-                            "amount_ex_btw": sl.amount_ex_btw,
-                            "amount_inc_btw": sl.amount_inc_btw,
-                            "amount_btw": sl.amount_btw,
-                        }
-                    )
-            shipping_total_inc_btw = quantize_money(shipping_fee_inc_btw)
-            if shipping_lines:
-                shipping_total_ex_btw = quantize_money(
-                    sum((line["amount_ex_btw"] for line in shipping_lines), Decimal("0"))
+    # Build order lines with VAT and attribute data
+    order_lines = _compute_order_lines_for_email(order.order_info, shop)
+
+    # Compute item totals
+    items_total_ex_btw = quantize_money(sum((line["line_total_ex_btw"] for line in order_lines), Decimal("0")))
+    items_total_inc_btw = quantize_money(sum((line["line_total_inc_btw"] for line in order_lines), Decimal("0")))
+
+    # Build shipping lines (one per VAT rate) using the same allocation logic
+    # the order create endpoint used. Persisted on the order as a single
+    # inc-VAT figure; we re-derive the per-rate split for display by
+    # re-running the shipping calculation against current shop config.
+    # When the shop opts out of VAT on shipping, the calc returns no lines
+    # and the fee is rendered flat.
+    shipping_fee_raw = getattr(order, "shipping_fee_inc_btw", None)
+    shipping_fee_inc_btw: Decimal | None = (
+        None
+        if shipping_fee_raw is None
+        else (shipping_fee_raw if isinstance(shipping_fee_raw, Decimal) else Decimal(str(shipping_fee_raw)))
+    )
+    shipping_lines: list[dict] = []
+    shipping_total_ex_btw = Decimal("0")
+    shipping_total_inc_btw = Decimal("0")
+    if shipping_fee_inc_btw is not None and shipping_fee_inc_btw > 0:
+        from server.services.shipping import compute_shipping_for_cart
+
+        shipping_calc = compute_shipping_for_cart(order.order_info, shop)
+        if shipping_calc is not None and not shipping_calc.free_shipping_applied:
+            for sl in shipping_calc.lines:
+                shipping_lines.append(
+                    {
+                        "btw_rate": sl.btw_rate,
+                        "amount_ex_btw": sl.amount_ex_btw,
+                        "amount_inc_btw": sl.amount_inc_btw,
+                        "amount_btw": sl.amount_btw,
+                    }
                 )
-            else:
-                # VAT bypass (or unknown config): flat fee with no VAT split.
-                shipping_total_ex_btw = shipping_total_inc_btw
+        shipping_total_inc_btw = quantize_money(shipping_fee_inc_btw)
+        if shipping_lines:
+            shipping_total_ex_btw = quantize_money(
+                sum((line["amount_ex_btw"] for line in shipping_lines), Decimal("0"))
+            )
+        else:
+            # VAT bypass (or unknown config): flat fee with no VAT split.
+            shipping_total_ex_btw = shipping_total_inc_btw
 
-        total_ex_btw = quantize_money(items_total_ex_btw + shipping_total_ex_btw)
-        total_inc_btw = quantize_money(items_total_inc_btw + shipping_total_inc_btw)
-        total_btw = quantize_money(total_inc_btw - total_ex_btw)
+    total_ex_btw = quantize_money(items_total_ex_btw + shipping_total_ex_btw)
+    total_inc_btw = quantize_money(items_total_inc_btw + shipping_total_inc_btw)
+    total_btw = quantize_money(total_inc_btw - total_ex_btw)
 
-        # Extract business info from account details
-        account_details = account.details or {} if account.details else {}
-        customer_company_name = account_details.get("company_name")
-        customer_btw_number = account_details.get("btw_number")
+    # Extract business info from account details
+    account_details = account.details or {} if account.details else {}
+    customer_company_name = account_details.get("company_name")
+    customer_btw_number = account_details.get("btw_number")
 
-        # Format completion date. `completed_at` is stored as a naive UTC timestamp
-        # (DateTime column without timezone=True); for NL mails we render it in
-        # Europe/Amsterdam so the date shown to customers matches their local clock.
-        completed_at_str = ""
-        if order.completed_at:
-            completed_at_dt = order.completed_at
-            if completed_at_dt.tzinfo is None:
-                completed_at_dt = completed_at_dt.replace(tzinfo=timezone.utc)
-            if language == "NL":
-                completed_at_dt = completed_at_dt.astimezone(ZoneInfo("Europe/Amsterdam"))
-            completed_at_str = completed_at_dt.strftime("%d-%m-%Y %H:%M")
+    # Format completion date. `completed_at` is stored as a naive UTC timestamp
+    # (DateTime column without timezone=True); for NL mails we render it in
+    # Europe/Amsterdam so the date shown to customers matches their local clock.
+    completed_at_str = ""
+    if order.completed_at:
+        completed_at_dt = order.completed_at
+        if completed_at_dt.tzinfo is None:
+            completed_at_dt = completed_at_dt.replace(tzinfo=timezone.utc)
+        if language == "NL":
+            completed_at_dt = completed_at_dt.astimezone(ZoneInfo("Europe/Amsterdam"))
+        completed_at_str = completed_at_dt.strftime("%d-%m-%Y %H:%M")
 
-        # Common template variables
-        template_vars = {
-            "customer_order_id": order.customer_order_id,
-            "customer_email": account.name,
-            "order_lines": order_lines,
-            "shipping_lines": shipping_lines,
-            "shipping_fee_inc_btw": shipping_fee_inc_btw,
-            "total_ex_btw": total_ex_btw,
-            "total_inc_btw": total_inc_btw,
-            "total_btw": total_btw,
-            "shop_name": shop.name,
-            "shop_company": contact.get("company", shop.name),
-            "shop_address": contact.get("address", ""),
-            "shop_zip_code": contact.get("zip_code", ""),
-            "shop_city": contact.get("city", ""),
-            "shop_phone": contact.get("phone", ""),
-            "shop_email": contact.get("email", ""),
-            "kvk_number": legal.get("kvk_number"),
-            "btw_number": legal.get("btw_number"),
-            "customer_company_name": customer_company_name,
-            "customer_btw_number": customer_btw_number,
-            "completed_at": completed_at_str,
+    # Common template variables
+    template_vars = {
+        "customer_order_id": order.customer_order_id,
+        "customer_email": account.name,
+        "order_lines": order_lines,
+        "shipping_lines": shipping_lines,
+        "shipping_fee_inc_btw": shipping_fee_inc_btw,
+        "total_ex_btw": total_ex_btw,
+        "total_inc_btw": total_inc_btw,
+        "total_btw": total_btw,
+        "shop_name": shop.name,
+        "shop_company": contact.get("company", shop.name),
+        "shop_address": contact.get("address", ""),
+        "shop_zip_code": contact.get("zip_code", ""),
+        "shop_city": contact.get("city", ""),
+        "shop_phone": contact.get("phone", ""),
+        "shop_email": contact.get("email", ""),
+        "kvk_number": legal.get("kvk_number"),
+        "btw_number": legal.get("btw_number"),
+        "customer_company_name": customer_company_name,
+        "customer_btw_number": customer_btw_number,
+        "completed_at": completed_at_str,
+    }
+
+    env = template_environment(loader)
+    lang_folder = language.lower()
+
+    # Send customer email
+    customer_template = env.get_template(f"{lang_folder}/mail_order_confirmation_customer.html.j2")
+    customer_body = customer_template.render(**template_vars)
+
+    subject_prefix_customer = {
+        "NL": f"Orderbevestiging #{order.customer_order_id} - {shop.name}",
+        "EN": f"Order confirmation #{order.customer_order_id} - {shop.name}",
+    }
+
+    customer_mail: ConfirmationMail = {
+        "message": customer_body,
+        "subject": subject_prefix_customer.get(language, subject_prefix_customer["NL"]),
+        "to": [{"email": account.name, "name": account.name}],
+        "cc": [],
+        "bcc": BCC,
+        "language": language,
+        "images": IMAGES_SHOP_VIRGE,
+    }
+    mails.append((customer_mail, "Sent order confirmation to customer", {"customer": account.name}))
+
+    # Resolve owner mail settings — defaults preserve existing behaviour for shops
+    # that have no order_status_mails config yet.
+    order_status_mails_cfg = config.get("order_status_mails") or {}
+    owner_notification_enabled = order_status_mails_cfg.get("owner_notification_enabled", True)
+    owner_notification_email = order_status_mails_cfg.get("owner_notification_email") or contact.get("email")
+    copy_enabled = order_status_mails_cfg.get("copy_enabled", False)
+    copy_email = order_status_mails_cfg.get("copy_email")
+
+    # Active owner notification — goes to owner_notification_email (or contact.email as fallback).
+    if owner_notification_enabled and owner_notification_email:
+        owner_template = env.get_template(f"{lang_folder}/mail_order_confirmation_owner.html.j2")
+        owner_body = owner_template.render(**template_vars)
+
+        subject_prefix_owner = {
+            "NL": f"Nieuwe bestelling #{order.customer_order_id} - {shop.name}",
+            "EN": f"New order #{order.customer_order_id} - {shop.name}",
         }
 
-        env = template_environment(loader)
-        lang_folder = language.lower()
-
-        # Send customer email
-        customer_template = env.get_template(f"{lang_folder}/mail_order_confirmation_customer.html.j2")
-        customer_body = customer_template.render(**template_vars)
-
-        subject_prefix_customer = {
-            "NL": f"Orderbevestiging #{order.customer_order_id} - {shop.name}",
-            "EN": f"Order confirmation #{order.customer_order_id} - {shop.name}",
-        }
-
-        customer_mail: ConfirmationMail = {
-            "message": customer_body,
-            "subject": subject_prefix_customer.get(language, subject_prefix_customer["NL"]),
-            "to": [{"email": account.name, "name": account.name}],
+        owner_mail: ConfirmationMail = {
+            "message": owner_body,
+            "subject": subject_prefix_owner.get(language, subject_prefix_owner["NL"]),
+            "to": [{"email": owner_notification_email, "name": contact.get("company", shop.name)}],
             "cc": [],
             "bcc": BCC,
             "language": language,
             "images": IMAGES_SHOP_VIRGE,
         }
-        send_mail(customer_mail)
-        logger.info("Sent order confirmation to customer", order_id=str(order.id), customer=account.name)
+        mails.append((owner_mail, "Sent order notification to shop owner", {"owner": owner_notification_email}))
+    elif not owner_notification_email:
+        logger.warning("No shop owner email configured, skipping owner notification", shop_id=str(shop.id))
 
-        # Resolve owner mail settings — defaults preserve existing behaviour for shops
-        # that have no order_status_mails config yet.
-        order_status_mails_cfg = config.get("order_status_mails") or {}
-        owner_notification_enabled = order_status_mails_cfg.get("owner_notification_enabled", True)
-        owner_notification_email = order_status_mails_cfg.get("owner_notification_email") or contact.get("email")
-        copy_enabled = order_status_mails_cfg.get("copy_enabled", False)
-        copy_email = order_status_mails_cfg.get("copy_email")
+    # Backup/support copy — silent archive, only sent when explicitly enabled and address is set.
+    if copy_enabled and copy_email:
+        subject_prefix_copy = {
+            "NL": f"[KOPIE klantmail] Orderbevestiging #{order.customer_order_id} - {shop.name}",
+            "EN": f"[COPY of customer mail] Order confirmation #{order.customer_order_id} - {shop.name}",
+        }
 
-        # Active owner notification — goes to owner_notification_email (or contact.email as fallback).
-        if owner_notification_enabled and owner_notification_email:
-            owner_template = env.get_template(f"{lang_folder}/mail_order_confirmation_owner.html.j2")
-            owner_body = owner_template.render(**template_vars)
+        copy_mail: ConfirmationMail = {
+            "message": customer_body,
+            "subject": subject_prefix_copy.get(language, subject_prefix_copy["NL"]),
+            "to": [{"email": copy_email, "name": copy_email}],
+            "cc": [],
+            "bcc": BCC,
+            "language": language,
+            "images": IMAGES_SHOP_VIRGE,
+        }
+        mails.append((copy_mail, "Sent customer-mail backup copy", {"copy_email": copy_email}))
 
-            subject_prefix_owner = {
-                "NL": f"Nieuwe bestelling #{order.customer_order_id} - {shop.name}",
-                "EN": f"New order #{order.customer_order_id} - {shop.name}",
-            }
-
-            owner_mail: ConfirmationMail = {
-                "message": owner_body,
-                "subject": subject_prefix_owner.get(language, subject_prefix_owner["NL"]),
-                "to": [{"email": owner_notification_email, "name": contact.get("company", shop.name)}],
-                "cc": [],
-                "bcc": BCC,
-                "language": language,
-                "images": IMAGES_SHOP_VIRGE,
-            }
-            send_mail(owner_mail)
-            logger.info("Sent order notification to shop owner", order_id=str(order.id), owner=owner_notification_email)
-        elif not owner_notification_email:
-            logger.warning("No shop owner email configured, skipping owner notification", shop_id=str(shop.id))
-
-        # Backup/support copy — silent archive, only sent when explicitly enabled and address is set.
-        if copy_enabled and copy_email:
-            subject_prefix_copy = {
-                "NL": f"[KOPIE klantmail] Orderbevestiging #{order.customer_order_id} - {shop.name}",
-                "EN": f"[COPY of customer mail] Order confirmation #{order.customer_order_id} - {shop.name}",
-            }
-
-            copy_mail: ConfirmationMail = {
-                "message": customer_body,
-                "subject": subject_prefix_copy.get(language, subject_prefix_copy["NL"]),
-                "to": [{"email": copy_email, "name": copy_email}],
-                "cc": [],
-                "bcc": BCC,
-                "language": language,
-                "images": IMAGES_SHOP_VIRGE,
-            }
-            send_mail(copy_mail)
-            logger.info("Sent customer-mail backup copy", order_id=str(order.id), copy_email=copy_email)
-
-    except Exception as e:
-        logger.error("Failed to send order confirmation emails", error=str(e), order_id=str(order.id))
+    return mails
