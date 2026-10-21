@@ -13,7 +13,7 @@ from server.agent_tags import AgentTag
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud import crud_shop
-from server.crud.crud_product import product_crud
+from server.crud.crud_product import ATTRIBUTE_GRAPH, product_crud
 from server.db import db
 from server.db.models import ProductTable, ProductTranslationTable
 from server.schemas.product import (
@@ -153,7 +153,7 @@ def get_multi_with_attributes(
         else:
             filter_parameters.append(f"{name}:{value}")
 
-    # Base: fetch paginated products for this shop
+    # Base: fetch paginated products for this shop, with the attribute graph in batched queries
     products, header_range = product_crud.get_multi_by_shop_id(
         shop_id=shop_id,
         skip=common["skip"],
@@ -161,6 +161,9 @@ def get_multi_with_attributes(
         filter_parameters=filter_parameters,
         sort_parameters=common["sort"],
         stock_status=stock_status,
+        query_parameter=db.session.query(ProductTable)
+        .options(*ATTRIBUTE_GRAPH)
+        .filter(ProductTable.shop_id == shop_id),
     )
     # We will update Content-Range if filtering by option_id changes the visible count
     response.headers["Content-Range"] = header_range

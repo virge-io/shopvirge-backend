@@ -71,7 +71,8 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
-        customer_id = get_stripe_customer(order.account_id, shop_id)
+        account_id = order.account_id
+        customer_id = get_stripe_customer(account_id, shop_id)
 
         intent_args = {
             "amount": int(quantize_money(order.total) * 100),
@@ -80,12 +81,14 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             "setup_future_usage": "off_session",
             "customer": customer_id,
         }
+        # Everything Stripe needs is in plain values now: give the pooled connection back for the remote call.
+        db.release_connection()
         try:
             intent = stripe.PaymentIntent.create(**intent_args)
         except stripe.error.InvalidRequestError as exc:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
-            customer_id = replace_missing_customer(order.account_id, shop_id)
+            customer_id = replace_missing_customer(account_id, shop_id)
             logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
             intent = stripe.PaymentIntent.create(**(intent_args | {"customer": customer_id}))
         logger.info(
@@ -125,8 +128,12 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
-        customer_id = get_stripe_customer(order.account_id, shop_id)
-        prices = get_stripe_prices(order.order_info, yearly)
+        account_id = order.account_id
+        order_info = order.order_info
+        customer_id = get_stripe_customer(account_id, shop_id)
+        # Two remote calls follow; nothing below reads the ORM objects, so return the pooled connection first.
+        db.release_connection()
+        prices = get_stripe_prices(order_info, yearly)
 
         subscription_args = {
             "items": prices,
@@ -143,7 +150,7 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
         except stripe.error.InvalidRequestError as exc:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
-            customer_id = replace_missing_customer(order.account_id, shop_id)
+            customer_id = replace_missing_customer(account_id, shop_id)
             logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
             subscription = stripe.Subscription.create(**(subscription_args | {"customer": customer_id}))
         logger.info(
@@ -173,6 +180,7 @@ def cancel_subscription(shop_id: UUID, subscription_id: str):
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
+        db.release_connection()
         stripe.Subscription.cancel(subscription_id)
         logger.info("Subscription cancelled successfully", subscription_id=subscription_id, shop_id=str(shop_id))
         return 204

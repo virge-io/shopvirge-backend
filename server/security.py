@@ -20,6 +20,7 @@ from fastapi.param_functions import Depends
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_cognito import CognitoAuth, CognitoSettings
 from pydantic import BaseModel, Field, HttpUrl
+from starlette.concurrency import run_in_threadpool
 
 from server.settings import app_settings, auth_settings
 
@@ -200,7 +201,9 @@ async def current_principal(
                 plaintext = candidate
 
     if plaintext is not None and plaintext.startswith(f"{KEY_PLAINTEXT_PREFIX}_"):
-        row = api_key_crud.lookup_by_plaintext(plaintext)
+        # A sync SELECT plus bcrypt: off the event loop. The worker thread sees the request's session scope
+        # because anyio copies the context, exactly as it does for sync route handlers.
+        row = await run_in_threadpool(api_key_crud.lookup_by_plaintext, plaintext)
         if row is None:
             logger.warning("API key lookup failed", via=via, path=request.url.path)
             raise HTTPException(status_code=401, detail="Invalid API key")

@@ -6,9 +6,12 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel
+from sqlalchemy.orm import contains_eager, selectinload
 
+from server.api.route_helpers import get_or_404
+from server.crud.crud_product import ATTRIBUTE_NAMES
 from server.crud.crud_shop import shop_crud
-from server.db import ProductTable
+from server.db import ProductTable, db
 from server.db.models import (
     CategoryTable,
     CategoryTranslationTable,
@@ -68,6 +71,57 @@ class Cart(BaseModel):
     products: list[UUID]
 
 
+def _catalogue_query(shop_id: UUID):
+    """The shop's products with everything the pricelist renders, loaded in a fixed number of queries.
+
+    The inner joins keep excluding products without a translation or a (translated) category; ``contains_eager``
+    makes those already-joined rows populate the relationships instead of one lazy SELECT per product. Tags and
+    attribute names follow in a few batched ``IN`` queries, so the statement count no longer grows with the
+    catalogue — the old version issued roughly two queries per product and kept its pooled connection busy for
+    the whole catalogue.
+    """
+    return (
+        db.session.query(ProductTable)
+        .join(ProductTable.translation)
+        .join(ProductTable.category)
+        .join(CategoryTable.translation)
+        .options(
+            contains_eager(ProductTable.translation),
+            contains_eager(ProductTable.category).contains_eager(CategoryTable.translation),
+            selectinload(ProductTable.tags),
+            *ATTRIBUTE_NAMES,
+        )
+        .filter(ProductTable.shop_id == shop_id)
+    )
+
+
+def _load_and_release(query) -> list[ProductTable]:
+    """Run the catalogue query, then give the pooled connection back before the response is built.
+
+    Building a few hundred ``ProductResponse`` objects is pure Python and takes far longer than the queries;
+    everything it reads has been eagerly loaded, so the ORM objects are detached (keeping their loaded state)
+    and the connection goes back to the pool instead of idling in a transaction until the response is sent.
+    """
+    rows = query.all()
+    db.session.expunge_all()
+    db.release_connection()
+    return rows
+
+
+def _shop_config(shop) -> dict:
+    """The shop config as a dict, without writing a normalised copy back onto the ORM object."""
+    return json.loads(shop.config) if isinstance(shop.config, str) else (shop.config or {})
+
+
+def _attribute_names(product: ProductTable) -> list[str]:
+    # A soft-deleted attribute is filtered out of the eager load, leaving ``pav.attribute`` empty.
+    return [
+        pav.attribute.translation.main_name
+        for pav in product.attribute_values
+        if pav.attribute is not None and pav.attribute.translation is not None
+    ]
+
+
 # Note: the "product" will have some Joined attributes that are not avail on the type itself
 def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductResponse:
     tax = getattr(shop, product.tax_category)
@@ -91,7 +145,7 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
             shippable=product.shippable,
             featured=product.featured,
             new_product=product.new_product,
-            attributes=[attr.attribute.translation.main_name for attr in product.attribute_values],
+            attributes=_attribute_names(product),
         )
     elif lang == Lang.ALT1:
         product_response = ProductResponse(
@@ -114,9 +168,7 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
             shippable=product.shippable,
             featured=product.featured,
             new_product=product.new_product,
-            attributes=[
-                attr.attribute.translation.main_name for attr in product.attribute_values
-            ],  # TODO update me when attribute translations are implemented
+            attributes=_attribute_names(product),  # TODO update me when attribute translations are implemented
         )
     elif lang == Lang.ALT2:
         product_response = ProductResponse(
@@ -139,9 +191,7 @@ def to_response_model(product: ProductTable, lang: Lang, shop) -> ProductRespons
             shippable=product.shippable,
             featured=product.featured,
             new_product=product.new_product,
-            attributes=[
-                attr.attribute.translation.main_name for attr in product.attribute_values
-            ],  # TODO update me when attribute translations are implemented
+            attributes=_attribute_names(product),  # TODO update me when attribute translations are implemented
         )
     else:
         raise ValueError(f"Unsupported language: {lang}")
@@ -179,12 +229,8 @@ def get_products(
     lang: Lang,
     # response: Response,
 ) -> list[dict]:
-    products = (
-        ProductTable.query.join(ProductTranslationTable)
-        .join(CategoryTable)
-        .join(CategoryTranslationTable)
-        .filter(ProductTable.shop_id == shop_id)
-    )
+    shop = get_or_404(shop_crud.get(shop_id), f"Shop with id {shop_id} not found")
+    products = _catalogue_query(shop_id)
 
     if lang == Lang.ALT1:
         # filter out products and categories with missing translations
@@ -203,17 +249,12 @@ def get_products(
             .filter(CategoryTranslationTable.alt2_name.is_not(None))
         )
 
-    shop = shop_crud.get(shop_id)
+    # Filter out-of-stock products in SQL rather than after building every response row.
+    if _shop_config(shop).get("toggles", {}).get("enable_stock_on_products"):
+        products = products.filter(ProductTable.stock > 0)
 
-    if isinstance(shop.config, str):
-        shop.config = json.loads(shop.config)
-
-    products = [to_response_model(product, lang, shop) for product in products]
-
-    if shop.config.get("toggles", {}).get("enable_stock_on_products"):
-        products = [p for p in products if p.stock and p.stock > 0]
-
-    return products
+    rows = _load_and_release(products)
+    return [to_response_model(product, lang, shop) for product in rows]
 
 
 @router.post(
@@ -231,19 +272,12 @@ def get_cart_products(
     cart: Cart,
     # response: Response,
 ) -> list[dict]:
-    products = (
-        ProductTable.query.join(ProductTranslationTable)
-        .join(CategoryTable)
-        .join(CategoryTranslationTable)
-        .filter(ProductTable.shop_id == shop_id)
-        .filter(ProductTable.id.in_(cart.products))
-    )
+    shop = get_or_404(shop_crud.get(shop_id), f"Shop with id {shop_id} not found")
+    products = _catalogue_query(shop_id).filter(ProductTable.id.in_(cart.products))
 
     response_products = []
 
-    shop = shop_crud.get(shop_id)
-
-    for product in products:
+    for product in _load_and_release(products):
         if lang == Lang.ALT1:
             if (
                 product.translation.alt1_name is None

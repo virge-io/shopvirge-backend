@@ -27,6 +27,13 @@ import stripe
 
 from server.db.models import Account, ShopTable
 
+# Stripe is called from inside request handlers. The SDK defaults (80 s per request, no retries) would let a
+# slow Stripe keep a worker thread busy long after the customer gave up; bound it and retry once on network
+# errors.
+STRIPE_TIMEOUT_SECONDS = 20
+stripe.max_network_retries = 1
+stripe.default_http_client = stripe.http_client.new_default_http_client(timeout=STRIPE_TIMEOUT_SECONDS)
+
 
 class StripeNotConfigured(Exception):
     """Raised when a shop has no usable ``stripe_secret_key``."""

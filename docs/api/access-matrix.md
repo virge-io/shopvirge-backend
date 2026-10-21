@@ -125,7 +125,6 @@ As above, but API keys are refused (key management, accounts, uploads).
 | POST | `/shops/allowed-ips/{shop_id}/remove` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/config/{shop_id}` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/{shop_id}` |  | – | – | W own | W any | · | · |
-| DELETE | `/shops/{shop_id}` |  | – | – | W own | W any | · | · |
 | GET | `/shops/{shop_id}/accounts/` |  | – | – | R own | R any | · | · |
 | POST | `/shops/{shop_id}/accounts/` |  | – | – | W own | W any | · | · |
 | PUT | `/shops/{shop_id}/accounts/{account_id}` |  | – | – | W own | W any | · | · |
@@ -152,6 +151,7 @@ Cross-shop management; the `admins` group or a service token.
 | GET | `/admin/accounts/{id}/stripe-customer` |  | – | – | – | R | · | · |
 | POST | `/admin/accounts/{id}/sync-stripe` |  | – | – | – | W | · | · |
 | DELETE | `/orders/{order_id}` |  | – | – | – | W | · | · |
+| DELETE | `/shops/{shop_id}` |  | – | – | – | W any | · | · |
 | PUT | `/shops/{shop_id}/shop-type` |  | – | – | – | W any | · | · |
 
 ## Public
@@ -183,8 +183,6 @@ No credential; storefront, checkout and discovery.
 | POST | `/shipping/calculate` |  | W | W | W | W | · | · |
 | GET | `/shops/cache-status/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/config/{shop_id}` |  | R | R | R | R | · | · |
-| GET | `/shops/last-completed-order/{shop_id}` |  | R | R | R | R | · | · |
-| GET | `/shops/last-pending-order/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}/categories/{category_id}/available-attributes` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}/categories/{category_id}/products` |  | R | R | R | R | · | · |

@@ -9,7 +9,7 @@ from starlette.responses import Response
 
 from server.agent_tags import AgentTag
 from server.api.deps import PageParams
-from server.api.endpoints.orders.common import attach_names, order_page_params
+from server.api.endpoints.orders.common import NAME_LOADERS, attach_names, order_page_params
 from server.api.route_helpers import list_page
 from server.crud.crud_order import order_crud
 from server.db.models import OrderTable
@@ -42,7 +42,11 @@ def show_all_pending_orders_per_shop(
     response: Response,
     page: PageParams = Depends(order_page_params),
 ) -> List[OrderTable]:
-    query = OrderTable.query.filter(OrderTable.shop_id == shop_id).filter(OrderTable.status == "pending")
+    query = (
+        OrderTable.query.options(*NAME_LOADERS)
+        .filter(OrderTable.shop_id == shop_id)
+        .filter(OrderTable.status == "pending")
+    )
     orders = list_page(order_crud, page, response, query=query)
     attach_names(orders)
     return orders
@@ -68,8 +72,10 @@ def show_all_complete_orders_per_shop(
     response: Response,
     page: PageParams = Depends(order_page_params),
 ) -> List[OrderTable]:
-    query = OrderTable.query.filter(OrderTable.shop_id == shop_id).filter(
-        or_(OrderTable.status == "complete", OrderTable.status == "cancelled")
+    query = (
+        OrderTable.query.options(*NAME_LOADERS)
+        .filter(OrderTable.shop_id == shop_id)
+        .filter(or_(OrderTable.status == "complete", OrderTable.status == "cancelled"))
     )
     orders = list_page(order_crud, page, response, query=query)
     attach_names(orders)

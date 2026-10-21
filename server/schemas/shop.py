@@ -95,14 +95,6 @@ class MyShopsResponse(BoilerplateBaseModel):
     can_write: bool
 
 
-class ShopLastCompletedOrder(ShopEmptyBase):
-    last_completed_order: Optional[str]
-
-
-class ShopLastPendingOrder(ShopEmptyBase):
-    last_pending_order: Optional[str]
-
-
 class ShopIp(BoilerplateBaseModel):
     ip: str
 
