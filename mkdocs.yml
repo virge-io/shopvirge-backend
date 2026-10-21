@@ -126,4 +126,5 @@ nav:
       - Testing: development/testing.md
       - Code style: development/code-style.md
       - Writing migrations: development/migrations.md
+      - Benchmarking: development/benchmarking.md
   - Contributing: contributing.md

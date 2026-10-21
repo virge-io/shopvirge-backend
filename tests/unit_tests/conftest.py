@@ -9,7 +9,7 @@ from alembic.config import Config
 from fastapi import HTTPException
 from fastapi.applications import FastAPI
 from fastapi.testclient import TestClient as _TestClient
-from sqlalchemy import create_engine, make_url, text
+from sqlalchemy import create_engine, event, make_url, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -177,6 +177,26 @@ def db_session(database):
         finally:
             if not trans._deactivated_from_connection:
                 trans.rollback()
+
+
+@pytest.fixture()
+def query_counter():
+    """Every SQL statement the test connection runs, in order (``before_cursor_execute``).
+
+    Requests made through the test client share this connection, so ``len(statements)`` after a request is
+    its statement count; call ``statements.clear()`` between steps.
+    """
+    statements: list[str] = []
+    target = db.session.bind
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(target, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(target, "before_cursor_execute", record)
 
 
 @pytest.fixture(scope="session", autouse=True)
