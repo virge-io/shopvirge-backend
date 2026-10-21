@@ -1,7 +1,7 @@
 """Add missing FK indexes.
 
 Revision ID: a6066f0d2ff7
-Revises: 05b6de2cba27
+Revises: d6e7f8a9b0c1
 Create Date: 2026-10-21
 
 Every translation table was joined and looked up through its foreign key without an index, so each product,
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a6066f0d2ff7"
-down_revision = "05b6de2cba27"
+down_revision = "d6e7f8a9b0c1"
 branch_labels = None
 depends_on = None
 

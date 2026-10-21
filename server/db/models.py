@@ -117,7 +117,9 @@ class ShopTable(BaseModel):
         server_default=text("CURRENT_TIMESTAMP"),
         server_onupdate=text("CURRENT_TIMESTAMP"),
     )
-    shop_to_category = relationship("CategoryTable", back_populates="shop", cascade="save-update, merge, delete")
+    shop_to_category = relationship(
+        "CategoryTable", back_populates="shop", cascade="all, delete-orphan", passive_deletes=True
+    )
 
     def __repr__(self):
         return self.name
@@ -131,12 +133,19 @@ class TagTable(SoftDeleteMixin, BaseModel):
         primary_key=True,
         index=True,
     )
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
     name = Column(String(60), index=True)
 
     shop = relationship("ShopTable", lazy=True)
-    products_to_tags = relationship("ProductToTagTable", cascade="save-update, merge, delete")
-    translation = relationship("TagTranslationTable", back_populates="tag", uselist=False, lazy="selectin")
+    products_to_tags = relationship("ProductToTagTable", cascade="all, delete-orphan", passive_deletes=True)
+    translation = relationship(
+        "TagTranslationTable",
+        back_populates="tag",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
 
     def __repr__(self):
         return f"{self.shop.name}: {self.translation.main_name}"
@@ -150,7 +159,7 @@ class TagTranslationTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    tag_id = Column("tag_id", UUIDType, ForeignKey("tags.id"), index=True)
+    tag_id = Column("tag_id", UUIDType, ForeignKey("tags.id", ondelete="CASCADE"), index=True)
     main_name = Column(String(TAG_LENGTH), index=True, nullable=False)
     alt1_name = Column(String(TAG_LENGTH), index=True, nullable=True)
     alt2_name = Column(String(TAG_LENGTH), index=True, nullable=True)
@@ -165,7 +174,7 @@ class Account(BaseModel):
         primary_key=True,
         index=True,
     )
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
     name = Column(String(255))
     # a hash for the name, so sensible info can be used as an identifier
     hash_name = Column(String(255), nullable=True, index=True)
@@ -191,13 +200,20 @@ class CategoryTable(SoftDeleteMixin, BaseModel):
     color = Column(String(20), default="#376E1A")
     # Todo: deal with translation in a correct way
     icon = Column(String(TAG_LENGTH), nullable=True)
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
     shop = relationship("ShopTable", back_populates="shop_to_category", lazy=True)
     order_number = Column(Integer, default=0)
     main_image = Column(String(255), index=True)
     alt1_image = Column(String(255), index=True)
     alt2_image = Column(String(255), index=True)
-    translation = relationship("CategoryTranslationTable", back_populates="category", uselist=False, lazy="selectin")
+    translation = relationship(
+        "CategoryTranslationTable",
+        back_populates="category",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
 
     def __repr__(self):
         return f"{self.shop.name}: {self.translation.main_name}"
@@ -211,7 +227,7 @@ class CategoryTranslationTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    category_id = Column("category_id", UUIDType, ForeignKey("categories.id"), index=True)
+    category_id = Column("category_id", UUIDType, ForeignKey("categories.id", ondelete="CASCADE"), index=True)
     main_name = Column(String(255), index=True, nullable=False)
     main_description = Column(String(), index=True, nullable=False)
     alt1_name = Column(String(255), index=True, nullable=True)
@@ -231,7 +247,7 @@ class OrderTable(BaseModel):
     )
     customer_order_id = Column(Integer)
     notes = Column(String, nullable=True)
-    shop_id = Column(UUIDType, ForeignKey("shops.id"), index=True)
+    shop_id = Column(UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
     account_id = Column(UUIDType, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
     order_info = Column(postgresql.JSONB())
     total = Column(Numeric(12, 2))
@@ -255,8 +271,8 @@ class ProductTable(SoftDeleteMixin, BaseModel):
         primary_key=True,
         index=True,
     )
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
-    category_id = Column("category_id", UUIDType, ForeignKey("categories.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
+    category_id = Column("category_id", UUIDType, ForeignKey("categories.id", ondelete="CASCADE"), index=True)
     price = Column(Numeric(12, 2), nullable=True)
     tax_category = Column(String(20), default="vat_standard")
     discounted_price = Column(Numeric(12, 2), nullable=True)
@@ -290,7 +306,14 @@ class ProductTable(SoftDeleteMixin, BaseModel):
     )
 
     # Every product response carries its translation: load them per batch (one ``IN`` query) instead of per row.
-    translation = relationship("ProductTranslationTable", back_populates="product", uselist=False, lazy="selectin")
+    translation = relationship(
+        "ProductTranslationTable",
+        back_populates="product",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
     shop = relationship("ShopTable", lazy=True)
     category = relationship("CategoryTable", lazy=True)
     tags = relationship(
@@ -304,7 +327,10 @@ class ProductTable(SoftDeleteMixin, BaseModel):
     # deduction, plain listings) never read them. Paths that render attributes opt in with
     # ``server.crud.crud_product.ATTRIBUTE_GRAPH`` so the whole graph comes in a handful of batched queries.
     attribute_values = relationship(
-        "ProductAttributeValueTable", back_populates="product", cascade="save-update, merge, delete"
+        "ProductAttributeValueTable",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     def __repr__(self):
@@ -319,7 +345,7 @@ class ProductTranslationTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    product_id = Column("product_id", UUIDType, ForeignKey("products.id"), index=True)
+    product_id = Column("product_id", UUIDType, ForeignKey("products.id", ondelete="CASCADE"), index=True)
     main_name = Column(String(255), index=True, nullable=False)
     main_description = Column(String(), index=True, nullable=False)
     main_description_short = Column(String(), index=True, nullable=False)
@@ -341,9 +367,9 @@ class ProductToTagTable(BaseModel):
         primary_key=True,
         index=True,
     )
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
-    product_id = Column("product_id", UUIDType, ForeignKey("products.id"), index=True)
-    tag_id = Column("tag_id", UUIDType, ForeignKey("tags.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
+    product_id = Column("product_id", UUIDType, ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    tag_id = Column("tag_id", UUIDType, ForeignKey("tags.id", ondelete="CASCADE"), index=True)
     product = relationship("ProductTable", lazy=True, viewonly=True, overlaps="products,tags")
     tag = relationship("TagTable", lazy=True, viewonly=True, overlaps="products,products_to_tags,tags")
 
@@ -363,7 +389,7 @@ class License(BaseModel):
     end_date = Column(UtcTimestamp)
     improviser_user = Column(UUIDType, nullable=False)
     seats = Column(Integer, nullable=False)
-    order_id = Column(UUIDType, ForeignKey("orders.id"), index=True)
+    order_id = Column(UUIDType, ForeignKey("orders.id", ondelete="CASCADE"), index=True)
     created_at = Column(UtcTimestamp, server_default=text("CURRENT_TIMESTAMP"))
     modified_at = Column(
         UtcTimestamp,
@@ -394,8 +420,8 @@ class InfoRequestTable(BaseModel):
         index=True,
     )
     email = Column(String(255))
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
-    product_id = Column("product_id", UUIDType, ForeignKey("products.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
+    product_id = Column("product_id", UUIDType, ForeignKey("products.id", ondelete="CASCADE"), index=True)
 
     shop = relationship("ShopTable", lazy=True)
     product = relationship("ProductTable", lazy=True)
@@ -425,7 +451,7 @@ class AttributeTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "attributes"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
-    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id"), index=True)
+    shop_id = Column("shop_id", UUIDType, ForeignKey("shops.id", ondelete="CASCADE"), index=True)
 
     # A machine-friendly key (unique within a shop), e.g. "shoe_size", "clothing_size", "length"
     name = Column(String(60), index=True)
@@ -449,7 +475,8 @@ class AttributeTable(SoftDeleteMixin, BaseModel):
     translation = relationship(
         "AttributeTranslationTable",
         back_populates="attribute",
-        cascade="save-update, merge, delete",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
         uselist=False,
         lazy="selectin",
     )
@@ -459,13 +486,16 @@ class AttributeTable(SoftDeleteMixin, BaseModel):
     options = relationship(
         "AttributeOptionTable",
         back_populates="attribute",
-        cascade="save-update, merge, delete",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # All concrete product values that reference this attribute
     attribute_values = relationship(
         "ProductAttributeValueTable",
         back_populates="attribute",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     __table_args__ = (sqlalchemy.UniqueConstraint("shop_id", "name", name="uq_attribute_shop_name"),)
@@ -475,7 +505,7 @@ class AttributeTranslationTable(BaseModel):
     __tablename__ = "attribute_translations"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
-    attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id"), index=True)
+    attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id", ondelete="CASCADE"), index=True)
     main_name = Column(String(TAG_LENGTH), index=True, nullable=False)
     alt1_name = Column(String(TAG_LENGTH), index=True, nullable=True)
     alt2_name = Column(String(TAG_LENGTH), index=True, nullable=True)
@@ -487,7 +517,7 @@ class AttributeOptionTable(SoftDeleteMixin, BaseModel):
     __tablename__ = "attribute_options"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
-    attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id"), index=True)
+    attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id", ondelete="CASCADE"), index=True)
     # Compact, language-agnostic key for the option. Example values: "XS", "S", "M", "L", "XL"
     value_key = Column(String(60), index=True)
 
@@ -506,7 +536,7 @@ class ProductAttributeValueTable(BaseModel):
     __tablename__ = "product_attribute_values"
 
     id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
-    product_id = Column("product_id", UUIDType, ForeignKey("products.id"), index=True)
+    product_id = Column("product_id", UUIDType, ForeignKey("products.id", ondelete="CASCADE"), index=True)
     attribute_id = Column("attribute_id", UUIDType, ForeignKey("attributes.id"), index=True)
 
     # For enumerations (points to AttributeOptionTable). Can be NULL for free-form values.
