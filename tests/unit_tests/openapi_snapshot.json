@@ -5545,46 +5545,6 @@
         "title": "ShopIp",
         "type": "object"
       },
-      "ShopLastCompletedOrder": {
-        "properties": {
-          "last_completed_order": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Completed Order"
-          }
-        },
-        "required": [
-          "last_completed_order"
-        ],
-        "title": "ShopLastCompletedOrder",
-        "type": "object"
-      },
-      "ShopLastPendingOrder": {
-        "properties": {
-          "last_pending_order": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Pending Order"
-          }
-        },
-        "required": [
-          "last_pending_order"
-        ],
-        "title": "ShopLastPendingOrder",
-        "type": "object"
-      },
       "ShopSchema": {
         "properties": {
           "description": {
@@ -6320,7 +6280,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.8.1"
+    "version": "0.9.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8978,94 +8938,6 @@
           }
         ],
         "summary": "Update shop configuration",
-        "tags": [
-          "shops"
-        ]
-      }
-    },
-    "/shops/last-completed-order/{shop_id}": {
-      "get": {
-        "description": "Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
-        "operationId": "get_last_completed_order_shops_last_completed_order__shop_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "shop_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Shop Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShopLastCompletedOrder"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get timestamp of last completed order",
-        "tags": [
-          "shops"
-        ]
-      }
-    },
-    "/shops/last-pending-order/{shop_id}": {
-      "get": {
-        "description": "Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
-        "operationId": "get_last_pending_order_shops_last_pending_order__shop_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "shop_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Shop Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShopLastPendingOrder"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get timestamp of last pending order",
         "tags": [
           "shops"
         ]

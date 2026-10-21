@@ -11,15 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
-import json
 import os
 from ast import literal_eval
-from datetime import datetime
 from http import HTTPStatus
 from typing import List, Optional
 
 import boto3 as boto3
-from botocore.config import Config as BotoConfig
 from fastapi import HTTPException
 from more_itertools import chunked
 from sqlalchemy import String, cast
@@ -29,11 +26,8 @@ from starlette.responses import Response
 from structlog import get_logger
 
 from server.api.error_handling import raise_status
-from server.crud.crud_order import order_crud
-from server.crud.crud_shop import shop_crud
 from server.db import db
 from server.db.database import BaseModel
-from server.schemas import ShopUpdate
 from server.settings import app_settings
 
 logger = get_logger(__name__)
@@ -74,17 +68,6 @@ s3_temporary = boto3.resource(
     aws_access_key_id=app_settings.S3_TEMPORARY_ACCESS_KEY_ID,
     aws_secret_access_key=app_settings.S3_TEMPORARY_ACCESS_KEY,
     region_name="eu-central-1",
-)
-
-# The websocket push runs inside request handlers. boto's defaults (60 s connect, 60 s read, retries) could park
-# a request for minutes behind an unreachable Lambda; the push is best effort, so keep it short.
-LAMBDA_CONFIG = BotoConfig(connect_timeout=3, read_timeout=5, retries={"max_attempts": 1})
-send_message_lambda = boto3.client(
-    "lambda",
-    aws_access_key_id=app_settings.LAMBDA_ACCESS_KEY_ID,
-    aws_secret_access_key=app_settings.LAMBDA_SECRET_ACCESS_KEY,
-    region_name="eu-central-1",
-    config=LAMBDA_CONFIG,
 )
 
 
@@ -272,91 +255,6 @@ def name_file(column_name, record_name, image_name=""):
     name = f"{name}.{extension}"
     logger.info("Named file", col_name=column_name, name_in=image_name, name_out=name)
     return name
-
-
-def sendMessageToWebSocketServer(payload):
-    """Push a websocket signal through the ``sendMessage`` Lambda; fire-and-forget, its reply is never read."""
-    try:
-        send_message_lambda.invoke(FunctionName="sendMessage", InvocationType="Event", Payload=json.dumps(payload))
-        logger.info("Sending websocket message")
-    except Exception as e:
-        logger.warning("Websocket exception", exception=str(e))
-
-
-def invalidateShopCache(shop_id):
-    item = shop_crud.get(shop_id)
-    item_in = ShopUpdate(
-        name=item.name,
-        description=item.description,
-        modified_at=datetime.utcnow(),
-        # Todo: deal with the commented params below
-        # last_pending_order=item.last_pending_order,
-        # last_completed_order=item.last_completed_order,
-        allowed_ips=item.allowed_ips,
-    )
-    payload = {"connectionType": "shop", "shopId": str(shop_id)}
-    sendMessageToWebSocketServer(payload)
-    shop_crud.update(db_obj=item, obj_in=item_in)
-
-
-def _record_last_order(order_id, field: str):
-    """Store ``order_id`` in ``shops.<field>`` and return the shop id (database work only)."""
-    item = order_crud.get(order_id)
-    shop = shop_crud.get(item.shop_id)
-    shop_id = shop.id
-    shop_in = ShopUpdate(
-        name=shop.name,
-        description=shop.description,
-        modified_at=None,
-        vat_standard=shop.vat_standard,
-        vat_lower_1=shop.vat_lower_1,
-        vat_lower_2=shop.vat_lower_2,
-        vat_lower_3=shop.vat_lower_3,
-        vat_special=shop.vat_special,
-        vat_zero=shop.vat_zero,
-        **{field: str(order_id)},
-    )
-    try:
-        shop_crud.update(db_obj=shop, obj_in=shop_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {e}")
-    return shop_id
-
-
-def record_last_completed_order(order_id):
-    return _record_last_order(order_id, "last_completed_order")
-
-
-def record_last_pending_order(order_id):
-    return _record_last_order(order_id, "last_pending_order")
-
-
-def notify_completed_orders(shop_id) -> None:
-    """Tell websocket clients to refetch completed orders. No database access: safe after releasing the connection."""
-    sendMessageToWebSocketServer({"connectionType": "completed_orders", "shopId": str(shop_id)})
-
-
-def notify_pending_orders(shop_id) -> None:
-    """Tell websocket clients to refetch pending orders. No database access: safe after releasing the connection."""
-    sendMessageToWebSocketServer({"connectionType": "pending_orders", "shopId": str(shop_id)})
-
-
-def invalidateCompletedOrdersCache(order_id):
-    """Record the order on its shop, give the pooled connection back, then push the websocket signal.
-
-    The push used to go out before the shop row was updated, while the connection sat idle in a transaction
-    for the whole Lambda round trip; clients that refetch on the signal now also see the new value.
-    """
-    shop_id = record_last_completed_order(order_id)
-    db.release_connection()
-    notify_completed_orders(shop_id)
-
-
-def invalidatePendingOrdersCache(order_id):
-    """Pending-orders counterpart of :func:`invalidateCompletedOrdersCache`."""
-    shop_id = record_last_pending_order(order_id)
-    db.release_connection()
-    notify_pending_orders(shop_id)
 
 
 def create_presigned_url(object_name, expiration=7200):

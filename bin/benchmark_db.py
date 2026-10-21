@@ -161,7 +161,8 @@ def install_stubs(delay: float) -> None:
         if delay:
             time.sleep(delay)
 
-    helpers.sendMessageToWebSocketServer = lambda payload: external_call()
+    if hasattr(helpers, "sendMessageToWebSocketServer"):  # the Lambda push; gone on newer branches
+        helpers.sendMessageToWebSocketServer = lambda payload: external_call()
     orders_public.post_discord_order_complete = lambda *args, **kwargs: external_call()
 
     class FakeSMTP:

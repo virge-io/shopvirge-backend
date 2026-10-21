@@ -37,8 +37,6 @@ PUBLIC_SHOP_ROUTES = {
     ("GET", "/shops/{shop_id}"): "public shop page",
     ("GET", "/shops/config/{shop_id}"): "public storefront config",
     ("GET", "/shops/cache-status/{shop_id}"): "public cache probe",
-    ("GET", "/shops/last-completed-order/{shop_id}"): "public POS poll",
-    ("GET", "/shops/last-pending-order/{shop_id}"): "public POS poll",
     ("GET", "/shops/{shop_id}/prices/"): "public price list",
     ("POST", "/shops/{shop_id}/prices/"): "public price lookup",
     ("GET", "/shops/{shop_id}/products/{product_id}"): "public product page",

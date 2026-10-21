@@ -11,12 +11,6 @@ from sqlalchemy.orm import selectinload
 
 from server.api.endpoints.orders.common import attach_names, mark_completed, order_updated, quote_order
 from server.api.error_handling import raise_status
-from server.api.helpers import (
-    invalidateCompletedOrdersCache,
-    invalidatePendingOrdersCache,
-    notify_completed_orders,
-    record_last_completed_order,
-)
 from server.api.route_helpers import get_or_404
 from server.api.utils import is_ip_allowed, validate_uuid4
 from server.crud.crud_account import account_crud
@@ -214,11 +208,6 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         total=float(order.total) if order.total else 0.0,
         status=order.status,
     )
-    if str(data.account_id) == "0999fbcd-a72b-4cc2-abbe-41ccd466cdaf":
-        # Test table -> invalidate completed orders
-        invalidateCompletedOrdersCache(created_order.id)
-    else:
-        invalidatePendingOrdersCache(created_order.id)
     return created_order
 
 
@@ -291,13 +280,12 @@ def patch(
     updated_order = order_updated(order)
 
     # Notifications only after the commit, so they can never fire for a write that rolled back. They talk to
-    # SMTP, Discord and Lambda: gather what they need from the ORM first, record the order on the shop, and give
-    # the pooled connection back before the first remote call.
+    # SMTP and Discord: gather what they need from the ORM first and give the pooled connection back before the
+    # first remote call.
     account = account_crud.get(updated_order.account_id) if updated_order.account_id else None
     account_name = account.name if account else None
     discord_webhook = shop.discord_webhook
     shop_name = shop.name
-    push_shop_id = record_last_completed_order(updated_order.id)
 
     # Send order confirmation emails (builds them from the database, releases the connection, then sends)
     if mail_settings.SHOP_MAIL_ENABLED and item_in.status == "complete" and account:
@@ -320,7 +308,6 @@ def patch(
     except Exception as e:
         logger.error("Failed to post to Discord: ", error=str(e))
 
-    notify_completed_orders(push_shop_id)
     return updated_order
 
 

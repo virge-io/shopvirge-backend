@@ -182,8 +182,6 @@ No credential; storefront, checkout and discovery.
 | POST | `/shipping/calculate` |  | W | W | W | W | · | · |
 | GET | `/shops/cache-status/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/config/{shop_id}` |  | R | R | R | R | · | · |
-| GET | `/shops/last-completed-order/{shop_id}` |  | R | R | R | R | · | · |
-| GET | `/shops/last-pending-order/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}/categories/{category_id}/available-attributes` |  | R | R | R | R | · | · |
 | GET | `/shops/{shop_id}/categories/{category_id}/products` |  | R | R | R | R | · | · |

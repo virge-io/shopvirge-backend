@@ -153,8 +153,6 @@ class AppSettings(BaseSettings):
     EMAIL_TEST_USER: EmailStr = "test@example.com"  # type: ignore
 
     # AWS Lambda settings
-    LAMBDA_ACCESS_KEY_ID: str = "CHANGEME"
-    LAMBDA_SECRET_ACCESS_KEY: str = "CHANGEME"
 
     # TODO: think of better naming convention
     # Production S3 bucket
