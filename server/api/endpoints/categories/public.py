@@ -13,7 +13,7 @@ from starlette.responses import Response
 from server.api.deps import common_parameters
 from server.api.error_handling import raise_status
 from server.crud.crud_category import category_crud
-from server.crud.crud_product import product_crud
+from server.crud.crud_product import ATTRIBUTE_GRAPH, product_crud
 from server.crud.crud_shop import shop_crud
 from server.db import db
 from server.db.models import (
@@ -185,9 +185,10 @@ def get_category_products(
         else:
             filter_parameters.append(f"{name}:{value}")
 
-    # Base query: products for this shop scoped to this category
+    # Base query: products for this shop scoped to this category, attribute graph loaded in batches
     base_query = (
         db.session.query(ProductTable)
+        .options(*ATTRIBUTE_GRAPH)
         .filter(ProductTable.shop_id == shop_id)
         .filter(ProductTable.category_id == category_id)
     )

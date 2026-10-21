@@ -8,7 +8,13 @@ from fastapi.param_functions import Depends
 from starlette.responses import Response
 
 from server.api.deps import PageParams
-from server.api.endpoints.orders.common import attach_names, mark_completed, order_page_params, order_updated
+from server.api.endpoints.orders.common import (
+    NAME_LOADERS,
+    attach_names,
+    mark_completed,
+    order_page_params,
+    order_updated,
+)
 from server.api.route_helpers import get_or_404, list_page
 from server.crud.crud_order import order_crud
 from server.db.models import OrderTable
@@ -31,7 +37,7 @@ router = APIRouter()
     description="Returns all orders across all shops. Requires authentication. Supports pagination, filtering (e.g. `status:pending`), and sorting.",
 )
 def get_multi(response: Response, page: PageParams = Depends(order_page_params)) -> List[OrderTable]:
-    orders = list_page(order_crud, page, response)
+    orders = list_page(order_crud, page, response, query=OrderTable.query.options(*NAME_LOADERS))
     attach_names(orders)
     return orders
 

@@ -11,10 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
-import json
 import os
 from ast import literal_eval
-from datetime import datetime
 from http import HTTPStatus
 from typing import List, Optional
 
@@ -28,11 +26,8 @@ from starlette.responses import Response
 from structlog import get_logger
 
 from server.api.error_handling import raise_status
-from server.crud.crud_order import order_crud
-from server.crud.crud_shop import shop_crud
 from server.db import db
 from server.db.database import BaseModel
-from server.schemas import ShopUpdate
 from server.settings import app_settings
 
 logger = get_logger(__name__)
@@ -72,13 +67,6 @@ s3_temporary = boto3.resource(
     "s3",
     aws_access_key_id=app_settings.S3_TEMPORARY_ACCESS_KEY_ID,
     aws_secret_access_key=app_settings.S3_TEMPORARY_ACCESS_KEY,
-    region_name="eu-central-1",
-)
-
-send_message_lambda = boto3.client(
-    "lambda",
-    aws_access_key_id=app_settings.LAMBDA_ACCESS_KEY_ID,
-    aws_secret_access_key=app_settings.LAMBDA_SECRET_ACCESS_KEY,
     region_name="eu-central-1",
 )
 
@@ -267,78 +255,6 @@ def name_file(column_name, record_name, image_name=""):
     name = f"{name}.{extension}"
     logger.info("Named file", col_name=column_name, name_in=image_name, name_out=name)
     return name
-
-
-def sendMessageToWebSocketServer(payload):
-    try:
-        send_message_lambda.invoke(
-            FunctionName="sendMessage", InvocationType="RequestResponse", Payload=json.dumps(payload)
-        )
-        logger.info("Sending websocket message")
-    except Exception as e:
-        logger.warning("Websocket exception", exception=str(e))
-
-
-def invalidateShopCache(shop_id):
-    item = shop_crud.get(shop_id)
-    item_in = ShopUpdate(
-        name=item.name,
-        description=item.description,
-        modified_at=datetime.utcnow(),
-        # Todo: deal with the commented params below
-        # last_pending_order=item.last_pending_order,
-        # last_completed_order=item.last_completed_order,
-        allowed_ips=item.allowed_ips,
-    )
-    payload = {"connectionType": "shop", "shopId": str(shop_id)}
-    sendMessageToWebSocketServer(payload)
-    shop_crud.update(db_obj=item, obj_in=item_in)
-
-
-def invalidateCompletedOrdersCache(order_id):
-    item = order_crud.get(order_id)
-    shop = shop_crud.get(item.shop_id)
-    shop_in = ShopUpdate(
-        name=shop.name,
-        description=shop.description,
-        last_completed_order=str(order_id),
-        modified_at=None,
-        vat_standard=shop.vat_standard,
-        vat_lower_1=shop.vat_lower_1,
-        vat_lower_2=shop.vat_lower_2,
-        vat_lower_3=shop.vat_lower_3,
-        vat_special=shop.vat_special,
-        vat_zero=shop.vat_zero,
-    )
-    payload = {"connectionType": "completed_orders", "shopId": str(shop.id)}
-    sendMessageToWebSocketServer(payload)
-    try:
-        shop_crud.update(db_obj=shop, obj_in=shop_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {e}")
-
-
-def invalidatePendingOrdersCache(order_id):
-    item = order_crud.get(order_id)
-    shop = shop_crud.get(item.shop_id)
-    shop_in = ShopUpdate(
-        name=shop.name,
-        description=shop.description,
-        last_pending_order=str(order_id),
-        modified_at=None,
-        vat_standard=shop.vat_standard,
-        vat_lower_1=shop.vat_lower_1,
-        vat_lower_2=shop.vat_lower_2,
-        vat_lower_3=shop.vat_lower_3,
-        vat_special=shop.vat_special,
-        vat_zero=shop.vat_zero,
-    )
-    payload = {"connectionType": "pending_orders", "shopId": str(shop.id)}
-    sendMessageToWebSocketServer(payload)
-    try:
-        return shop_crud.update(db_obj=shop, obj_in=shop_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {e}")
 
 
 def create_presigned_url(object_name, expiration=7200):
