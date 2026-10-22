@@ -20,12 +20,14 @@ from uuid import uuid4
 import structlog
 from sqlalchemy import create_engine
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import Query, Session, as_declarative, scoped_session, sessionmaker
 from sqlalchemy.sql.schema import MetaData
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from structlog.stdlib import BoundLogger
 
+from server.settings import app_settings
 from server.utils.json import json_dumps, json_loads
 
 logger = structlog.get_logger(__name__)
@@ -162,7 +164,10 @@ class WrappedSession(Session):
 ENGINE_ARGUMENTS = {
     "connect_args": {"connect_timeout": 10, "options": "-c timezone=UTC"},
     "pool_pre_ping": True,
-    "pool_size": 60,
+    "pool_size": app_settings.DB_POOL_SIZE,
+    "max_overflow": app_settings.DB_MAX_OVERFLOW,
+    "pool_timeout": app_settings.DB_POOL_TIMEOUT,
+    "pool_recycle": 300,
     "json_serializer": json_dumps,
     "json_deserializer": json_loads,
 }
@@ -197,6 +202,30 @@ class Database:
     def session(self) -> WrappedSession:
         return self.scoped_session()
 
+    def release_connection(self) -> None:
+        """Hand the request's pooled connection back before slow non-DB work (Stripe, SMTP, Lambda, Discord).
+
+        Ends the current transaction with a rollback, which is only legal when nothing is waiting to be written:
+        the caller has committed, or only read. Objects stay attached but expired, so a later attribute access
+        transparently reloads on a fresh connection -- collect the plain values the slow call needs *before*
+        calling this, or that reload holds a connection during the call after all.
+
+        A session bound to a connection whose transaction it does not own (the test harness wraps every test in
+        one) has no pooled connection to return and must not roll that transaction back; its objects are only
+        expired, so the calling code behaves the same in both places.
+        """
+        session = self.session
+        if session.new or session.dirty or session.deleted:
+            raise RuntimeError("release_connection() called with unflushed changes; commit or roll back first")
+        transaction = session.get_transaction()
+        if transaction is not None and any(getattr(transaction, attr, None) for attr in ("_new", "_dirty", "_deleted")):
+            raise RuntimeError("release_connection() called with flushed but uncommitted changes; commit first")
+        bind = session.bind
+        if isinstance(bind, Connection) and bind.in_transaction():
+            session.expire_all()
+            return
+        session.rollback()
+
     @contextmanager
     def database_scope(self, **kwargs: Any) -> Generator["Database", None, None]:
         """Create a new database session (scope).
@@ -222,19 +251,42 @@ class DBSessionMiddleware:
     Rewritten from BaseHTTPMiddleware because BaseHTTPMiddleware buffers the
     response body, which breaks streaming responses (notably the MCP sub-app
     mounted at /mcp, which uses StreamableHTTPSessionManager).
+
+    The session (and with it the pooled connection) is removed as soon as the
+    response headers go out. FastAPI has rendered the whole body by then, so
+    keeping the connection through the network send only parked a pool slot
+    behind a slow client. Paths that stream -- the MCP sub-app -- keep their
+    session until the stream ends; ``database_scope``'s ``finally`` covers those
+    and every error path.
     """
 
-    def __init__(self, app: ASGIApp, database: Database, commit_on_exit: bool = False) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        database: Database,
+        commit_on_exit: bool = False,
+        streaming_path_prefixes: tuple[str, ...] = ("/mcp",),
+    ) -> None:
         self.app = app
         self.commit_on_exit = commit_on_exit
         self.database = database
+        self.streaming_path_prefixes = streaming_path_prefixes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
         with self.database.database_scope():
-            await self.app(scope, receive, send)
+            if scope["type"] != "http" or scope.get("path", "").startswith(self.streaming_path_prefixes):
+                await self.app(scope, receive, send)
+                return
+
+            async def send_and_release(message: Message) -> None:
+                if message["type"] == "http.response.start":
+                    self.database.scoped_session.remove()
+                await send(message)
+
+            await self.app(scope, receive, send_and_release)
 
 
 @contextmanager

@@ -8,8 +8,6 @@ from server.db.models import ShopTable
 from server.schemas.shop import (
     ShopCacheStatus,
     ShopConfig,
-    ShopLastCompletedOrder,
-    ShopLastPendingOrder,
     ShopWithPrices,
 )
 
@@ -25,26 +23,6 @@ router = APIRouter()
     description="Returns the timestamp of the last data change visible in this shop. Useful for cache invalidation.",
 )
 def get_cache_status(shop_id: UUID) -> ShopTable:
-    return shop_or_404(shop_id)
-
-
-@router.get(
-    "/last-completed-order/{shop_id}",
-    response_model=ShopLastCompletedOrder,
-    summary="Get timestamp of last completed order",
-    description="Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
-)
-def get_last_completed_order(shop_id: UUID) -> ShopTable:
-    return shop_or_404(shop_id)
-
-
-@router.get(
-    "/last-pending-order/{shop_id}",
-    response_model=ShopLastPendingOrder,
-    summary="Get timestamp of last pending order",
-    description="Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
-)
-def get_last_pending_order(shop_id: UUID) -> ShopTable:
     return shop_or_404(shop_id)
 
 

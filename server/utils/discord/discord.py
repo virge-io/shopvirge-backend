@@ -7,6 +7,9 @@ from server.schemas.order import OrderUpdated
 
 logger = structlog.get_logger(__name__)
 
+# Webhooks run inside request handlers; a stalled Discord must not keep a request (and its DB connection) busy.
+WEBHOOK_TIMEOUT_SECONDS = 5.0
+
 
 def post_discord_info_request(
     content: str, botname: str, webhook: str, email: str, product_name: str, product_id: UUID
@@ -23,7 +26,7 @@ def post_discord_info_request(
         ],
     }
 
-    result = httpx.post(webhook, json=data)
+    result = httpx.post(webhook, json=data, timeout=WEBHOOK_TIMEOUT_SECONDS)
     result.raise_for_status()
     logger.info("Posted info request to Discord", botname=botname, product_id=str(product_id))
 
@@ -41,7 +44,7 @@ def post_discord_order_complete(content: str, botname: str, webhook: str, order:
         ],
     }
 
-    result = httpx.post(webhook, json=data)
+    result = httpx.post(webhook, json=data, timeout=WEBHOOK_TIMEOUT_SECONDS)
     result.raise_for_status()
     logger.info(
         "Posted order complete notification to Discord", botname=botname, customer_order_id=order.customer_order_id

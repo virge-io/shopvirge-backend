@@ -250,3 +250,57 @@ def test_cannot_list_or_revoke_another_shops_api_keys(as_cognito_user):
     still_active = api_key_crud.list_by_shop(other_shop)
     assert [r.id for r in still_active] == [victim_key.id]
     assert still_active[0].revoked_at is None
+
+
+# --- Cost of authenticating with a key ---------------------------------------------------------------------------
+#
+# ``current_principal`` is async; the key branch used to run a SELECT, bcrypt and an UPDATE + commit on the event
+# loop for every request. It now runs in a worker thread and writes ``last_used_at`` at most once per interval.
+
+
+def test_api_key_lookup_runs_off_the_event_loop(real_auth_client, monkeypatch):
+    import asyncio
+
+    shop_id = make_shop()
+    _, plaintext = make_api_key(shop_id)
+    original = api_key_crud.lookup_by_plaintext
+    seen_running_loop: list[bool] = []
+
+    def spy(plaintext_arg):
+        try:
+            asyncio.get_running_loop()
+            seen_running_loop.append(True)
+        except RuntimeError:
+            seen_running_loop.append(False)
+        return original(plaintext_arg)
+
+    monkeypatch.setattr(api_key_crud, "lookup_by_plaintext", spy)
+    assert real_auth_client.get(f"/shops/{shop_id}/tags/", headers={"X-API-Key": plaintext}).status_code == 200
+    assert seen_running_loop == [False], "bcrypt and the SELECT must not run on the event loop thread"
+
+
+def test_last_used_at_is_written_at_most_once_per_interval(monkeypatch):
+    shop_id = make_shop()
+    _, plaintext = make_api_key(shop_id)
+
+    first = api_key_crud.lookup_by_plaintext(plaintext)
+    assert first is not None and first.last_used_at is not None
+    stamp = first.last_used_at
+
+    again = api_key_crud.lookup_by_plaintext(plaintext)
+    assert again.last_used_at == stamp, "a second use inside the interval must not write"
+
+    monkeypatch.setattr(app_settings, "API_KEY_LAST_USED_WRITE_INTERVAL", 0)
+    later = api_key_crud.lookup_by_plaintext(plaintext)
+    assert later.last_used_at > stamp
+
+
+def test_warm_api_key_lookup_is_a_single_select(query_counter):
+    shop_id = make_shop()
+    _, plaintext = make_api_key(shop_id)
+    api_key_crud.lookup_by_plaintext(plaintext)  # first use records last_used_at
+
+    query_counter.clear()
+    assert api_key_crud.lookup_by_plaintext(plaintext) is not None
+    assert len(query_counter) == 1, query_counter
+    assert query_counter[0].lstrip().upper().startswith("SELECT")

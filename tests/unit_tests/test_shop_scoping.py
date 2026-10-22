@@ -20,7 +20,6 @@ import re
 
 import pytest
 from fastapi import FastAPI
-from fastapi.exceptions import ResponseValidationError
 from fastapi.routing import APIRoute
 
 from server.db.models import ShopTable
@@ -38,8 +37,6 @@ PUBLIC_SHOP_ROUTES = {
     ("GET", "/shops/{shop_id}"): "public shop page",
     ("GET", "/shops/config/{shop_id}"): "public storefront config",
     ("GET", "/shops/cache-status/{shop_id}"): "public cache probe",
-    ("GET", "/shops/last-completed-order/{shop_id}"): "public POS poll",
-    ("GET", "/shops/last-pending-order/{shop_id}"): "public POS poll",
     ("GET", "/shops/{shop_id}/prices/"): "public price list",
     ("POST", "/shops/{shop_id}/prices/"): "public price lookup",
     ("GET", "/shops/{shop_id}/products/{product_id}"): "public product page",
@@ -145,14 +142,8 @@ def test_shop_delete_rejects_a_foreign_shop(as_cognito_user):
 
 
 def test_public_shop_config_is_not_caught_by_the_guard(as_cognito_user):
-    """GET /shops/config/{shop_id} is public — only the PUT on that path is guarded.
-
-    Asserted as "not 403" rather than "200": the response model chokes on the
-    factory's ``shop_type="{}"`` string, which is a pre-existing serialisation
-    mismatch unrelated to scoping. Reaching serialisation at all proves the
-    guard let the request through.
-    """
-    other_shop = make_shop(random_shop_name=True)
+    """GET /shops/config/{shop_id} is public — only the PUT on that path is guarded."""
+    other_shop = make_shop(with_config=True, random_shop_name=True)
     client = as_cognito_user([])
-    with pytest.raises(ResponseValidationError):
-        client.get(f"/shops/config/{other_shop}")
+
+    assert client.get(f"/shops/config/{other_shop}").status_code == 200

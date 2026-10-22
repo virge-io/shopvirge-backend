@@ -14,7 +14,7 @@
 from typing import Any, List, Optional
 
 import jinja2
-from pydantic import ValidationInfo, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic.networks import EmailStr
 from pydantic_settings import BaseSettings
 
@@ -105,6 +105,12 @@ class AppSettings(BaseSettings):
     GUI_URI: str = "http://localhost:3000"
     # DB (probably only postgres for now; we use UUID postgres dialect for the ID's)
     DATABASE_URI: str = "postgresql://shop:shop@localhost/shop"
+    DB_POOL_SIZE: int = Field(default=10, ge=1)
+    DB_MAX_OVERFLOW: int = Field(default=5, ge=0)
+    DB_POOL_TIMEOUT: float = Field(default=30.0, gt=0, allow_inf_nan=False)
+    # ``ApiKeyTable.last_used_at`` is bumped at most once per interval per key, so authenticating with a key
+    # is normally one SELECT and no write. 0 bumps on every request.
+    API_KEY_LAST_USED_WRITE_INTERVAL: float = Field(default=300.0, ge=0, allow_inf_nan=False)
 
     MAX_WORKERS: int = 5
     CACHE_HOST: str = "127.0.0.1"
@@ -147,8 +153,6 @@ class AppSettings(BaseSettings):
     EMAIL_TEST_USER: EmailStr = "test@example.com"  # type: ignore
 
     # AWS Lambda settings
-    LAMBDA_ACCESS_KEY_ID: str = "CHANGEME"
-    LAMBDA_SECRET_ACCESS_KEY: str = "CHANGEME"
 
     # TODO: think of better naming convention
     # Production S3 bucket
@@ -208,6 +212,8 @@ class MailSettings(BaseSettings):
     MAIL_STARTTLS: bool = False
     MAIL_SMTP_USERNAME: str = ""
     MAIL_SMTP_PASSWORD: str = ""
+    # Socket timeout for every SMTP step. Without it a stalled mail server blocks the sending thread forever.
+    MAIL_TIMEOUT: float = Field(default=15.0, gt=0, allow_inf_nan=False)
 
     SHOP_MAIL_ENABLED: bool = False
 

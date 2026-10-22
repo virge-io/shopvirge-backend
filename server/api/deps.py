@@ -39,11 +39,16 @@ _SORT_SYNTAX = (
     "The sort will accept parameters like `col:ASC` or `col:DESC` and will split on the `:`. "
     "If it does not find a `:` it will sort ascending on that column."
 )
+# One list request is one pooled DB connection for as long as it runs; an unbounded page keeps that connection
+# (and the worker) busy for a whole catalogue. ``limit=0`` still means "everything" for the admin UI.
+MAX_PAGE_SIZE = 1000
+_SKIP_SYNTAX = "Number of rows to skip."
+_LIMIT_SYNTAX = f"Page size, at most {MAX_PAGE_SIZE}. `0` returns all rows."
 
 
 async def common_parameters(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description=_SKIP_SYNTAX),
+    limit: int = Query(100, ge=0, le=MAX_PAGE_SIZE, description=_LIMIT_SYNTAX),
     filter: List[str] = Query(None, description=_FILTER_SYNTAX),
     sort: List[str] = Query(None, description=_SORT_SYNTAX),
 ) -> Dict[str, Union[List[str], int]]:
@@ -68,8 +73,8 @@ def page_params_for(crud: "CRUDBase[Any, Any, Any]") -> Callable[..., Coroutine[
     """
 
     async def page_params(
-        skip: int = 0,
-        limit: int = 100,
+        skip: int = Query(0, ge=0, description=_SKIP_SYNTAX),
+        limit: int = Query(100, ge=0, le=MAX_PAGE_SIZE, description=_LIMIT_SYNTAX),
         filter: List[str] = Query(None, description=_FILTER_SYNTAX),
         sort: List[str] = Query(None, description=_SORT_SYNTAX),
     ) -> PageParams:

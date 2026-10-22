@@ -73,6 +73,7 @@ authenticated.include_router(orders.router)
 authenticated.include_router(content.router)
 
 admin.include_router(accounts.admin_router)
+admin.include_router(shops.admin_router)
 
 shop_cognito.include_router(categories.shop_router)
 shop_cognito.include_router(images.shop_router)

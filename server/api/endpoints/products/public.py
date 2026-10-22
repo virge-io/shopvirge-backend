@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from server.agent_tags import AgentTag
 from server.api.error_handling import raise_status
-from server.crud.crud_product import product_crud
+from server.crud.crud_product import ATTRIBUTE_GRAPH, product_crud
 from server.schemas.product import (
     ProductWithAttributes,
     ProductWithDefaultPrice,
@@ -29,7 +29,7 @@ router = APIRouter()
 )
 def get_by_id_with_attributes(product_id: UUID, shop_id: UUID) -> ProductWithAttributes:
     """Retrieve a product together with every attribute option currently assigned to it."""
-    product = product_crud.get_id_by_shop_id(shop_id, product_id)
+    product = product_crud.get_id_by_shop_id(shop_id, product_id, options=ATTRIBUTE_GRAPH)
     if not product:
         raise_status(HTTPStatus.NOT_FOUND, f"Product with id {product_id} not found")
 

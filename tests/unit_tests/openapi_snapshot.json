@@ -5545,46 +5545,6 @@
         "title": "ShopIp",
         "type": "object"
       },
-      "ShopLastCompletedOrder": {
-        "properties": {
-          "last_completed_order": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Completed Order"
-          }
-        },
-        "required": [
-          "last_completed_order"
-        ],
-        "title": "ShopLastCompletedOrder",
-        "type": "object"
-      },
-      "ShopLastPendingOrder": {
-        "properties": {
-          "last_pending_order": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Pending Order"
-          }
-        },
-        "required": [
-          "last_pending_order"
-        ],
-        "title": "ShopLastPendingOrder",
-        "type": "object"
-      },
       "ShopSchema": {
         "properties": {
           "description": {
@@ -5712,6 +5672,51 @@
         ],
         "title": "ShopTypeName",
         "type": "string"
+      },
+      "ShopTypeUpdate": {
+        "description": "Body of the admin shop-type route; its own name keeps ``ShopType`` an output-only schema.",
+        "properties": {
+          "max_languages": {
+            "title": "Max Languages",
+            "type": "number"
+          },
+          "max_products": {
+            "title": "Max Products",
+            "type": "number"
+          },
+          "name": {
+            "$ref": "#/components/schemas/ShopTypeName"
+          },
+          "stripe_access": {
+            "title": "Stripe Access",
+            "type": "boolean"
+          },
+          "trial_mode": {
+            "title": "Trial Mode",
+            "type": "boolean"
+          },
+          "trial_started": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Started"
+          }
+        },
+        "required": [
+          "max_languages",
+          "max_products",
+          "stripe_access",
+          "trial_mode",
+          "name"
+        ],
+        "title": "ShopTypeUpdate",
+        "type": "object"
       },
       "ShopUpdate": {
         "properties": {
@@ -6275,7 +6280,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.6.1"
+    "version": "0.9.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6322,21 +6327,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -6807,21 +6819,28 @@
         "operationId": "get_multi_faq__get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -7359,21 +7378,28 @@
         "operationId": "get_multi_licenses_get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -7684,21 +7710,28 @@
         "operationId": "get_multi_orders__get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -7914,21 +7947,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -8020,21 +8060,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -8437,21 +8484,28 @@
         "operationId": "get_multi_shops__get",
         "parameters": [
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -8889,94 +8943,6 @@
         ]
       }
     },
-    "/shops/last-completed-order/{shop_id}": {
-      "get": {
-        "description": "Returns the timestamp of the most recently completed order for the shop. Used to detect new fulfilments.",
-        "operationId": "get_last_completed_order_shops_last_completed_order__shop_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "shop_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Shop Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShopLastCompletedOrder"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get timestamp of last completed order",
-        "tags": [
-          "shops"
-        ]
-      }
-    },
-    "/shops/last-pending-order/{shop_id}": {
-      "get": {
-        "description": "Returns the timestamp of the most recently created pending order for the shop. Used by POS displays to detect new incoming orders.",
-        "operationId": "get_last_pending_order_shops_last_pending_order__shop_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "shop_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Shop Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShopLastPendingOrder"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get timestamp of last pending order",
-        "tags": [
-          "shops"
-        ]
-      }
-    },
     "/shops/my-shops": {
       "get": {
         "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Always call this first \u2014 before saying anything to the user.",
@@ -9007,7 +8973,7 @@
     },
     "/shops/{shop_id}": {
       "delete": {
-        "description": "Permanently remove a shop from the platform.",
+        "description": "Permanently remove a shop from the platform. Requires Admins group membership.",
         "operationId": "delete_shops__shop_id__delete",
         "parameters": [
           {
@@ -9018,6 +8984,18 @@
               "format": "uuid",
               "title": "Shop Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Force delete shop and all related data via cascade.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Force delete shop and all related data via cascade.",
+              "title": "Force",
+              "type": "boolean"
             }
           }
         ],
@@ -9162,21 +9140,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -9662,21 +9647,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -10034,21 +10026,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -10392,21 +10391,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -10849,21 +10855,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -11134,21 +11147,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -11709,21 +11729,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -12277,21 +12304,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -12642,21 +12676,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -13079,21 +13120,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -13307,21 +13355,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
@@ -14236,6 +14291,66 @@
         ]
       }
     },
+    "/shops/{shop_id}/shop-type": {
+      "put": {
+        "description": "Replace the shop's type: the plan name, trial mode, language and product limits and Stripe access. A new shop starts as a one-language trial until this route provisions its plan.",
+        "operationId": "update_shop_type",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShopTypeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopType"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set shop type",
+        "tags": [
+          "shops",
+          "admin"
+        ]
+      }
+    },
     "/shops/{shop_id}/stripe/": {
       "post": {
         "description": "Create a Stripe PaymentIntent for a one-time purchase. Uses the shop's own `stripe_secret_key` and the total saved on the order. Returns a `clientSecret` to complete the payment on the frontend.",
@@ -14414,21 +14529,28 @@
             }
           },
           {
+            "description": "Number of rows to skip.",
             "in": "query",
             "name": "skip",
             "required": false,
             "schema": {
               "default": 0,
+              "description": "Number of rows to skip.",
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
           },
           {
+            "description": "Page size, at most 1000. `0` returns all rows.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "description": "Page size, at most 1000. `0` returns all rows.",
+              "maximum": 1000,
+              "minimum": 0,
               "title": "Limit",
               "type": "integer"
             }
