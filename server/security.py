@@ -46,7 +46,8 @@ class CustomCognitoToken(BaseModel):
     event_id: Optional[str] = None
     token_use: str
     scope: str
-    auth_time: int
+    # Cognito sets it on every token; Cognito emulators omit it on client_credentials tokens
+    auth_time: int | None = None
     iss: HttpUrl
     exp: int
     iat: int

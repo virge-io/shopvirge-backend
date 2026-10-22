@@ -53,6 +53,8 @@ _DEFAULT_SCOPES = ("openid", "email", "profile")
 
 
 def _cognito_issuer() -> str:
+    if app_settings.AWS_COGNITO_ISSUER:
+        return app_settings.AWS_COGNITO_ISSUER.rstrip("/")
     return f"https://cognito-idp.{app_settings.AWS_COGNITO_REGION}.amazonaws.com/{app_settings.AWS_COGNITO_USERPOOL_ID}"
 
 

@@ -53,6 +53,10 @@ class AppSettings(BaseSettings):
     # returns this id verbatim.
     AWS_COGNITO_MCP_CLIENT_ID: str = ""
     AWS_COGNITO_REGION: str = "eu-central-1"
+    # Local development only: the issuer of a Cognito emulator, e.g.
+    # http://host.docker.internal:4566/<userpool-id>. Empty means the AWS issuer.
+    # Token verification also needs AWS_COGNITO_KEYS_URL (read by fastapi-cognito).
+    AWS_COGNITO_ISSUER: str = ""
 
     # Public base URL of the backend, used to build absolute URLs in the OAuth
     # discovery documents (issuer-style fields, registration_endpoint, etc.).
