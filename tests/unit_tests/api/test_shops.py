@@ -496,3 +496,36 @@ def test_shop_delete_requires_admin(test_client):
             test_client.app.dependency_overrides[current_principal] = saved_principal
         else:
             test_client.app.dependency_overrides.pop(current_principal, None)
+
+
+def test_shop_languages_from_config():
+    from server.schemas.shop import ShopLanguages
+
+    langs = ShopLanguages.from_config(
+        {
+            "languages": {
+                "main": {"language_name": "nl"},
+                "alt1": {"language_name": "de"},
+                "alt2": {"language_name": "fr"},
+            },
+            "toggles": {"language_alt1_enabled": True, "language_alt2_enabled": False},
+        }
+    )
+    assert (langs.main.language_name, langs.main.enabled) == ("nl", True)
+    assert (langs.alt1.language_name, langs.alt1.enabled) == ("de", True)
+    assert (langs.alt2.language_name, langs.alt2.enabled) == ("fr", False)
+
+
+def test_shop_languages_from_empty_config():
+    from server.schemas.shop import ShopLanguages
+
+    langs = ShopLanguages.from_config({})
+    assert langs.main.language_name is None
+    assert langs.alt1.enabled is False and langs.alt2.language_name is None
+
+
+def test_my_shops_reports_language_mapping(test_client, shop):
+    response = test_client.get("/shops/my-shops")
+    assert response.status_code == HTTPStatus.OK
+    for s in response.json()["shops"]:
+        assert set(s["languages"]) == {"main", "alt1", "alt2"}

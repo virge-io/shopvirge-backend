@@ -14,4 +14,4 @@ if [ -z "$STRIPE_TEST_PUBLIC_KEY" ] || [ -z "$STRIPE_TEST_SECRET_KEY" ]; then
 fi
 
 # Run the python script
-PYTHONPATH=. python3 update_stripe_keys.py
+PYTHONPATH=. python3 bin/update_stripe_keys.py

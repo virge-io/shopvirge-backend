@@ -2209,6 +2209,86 @@
         "title": "LinkStripeBody",
         "type": "object"
       },
+      "MyShopSchema": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Url"
+          },
+          "languages": {
+            "$ref": "#/components/schemas/ShopLanguages"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "vat_lower_1": {
+            "title": "Vat Lower 1",
+            "type": "number"
+          },
+          "vat_lower_2": {
+            "title": "Vat Lower 2",
+            "type": "number"
+          },
+          "vat_lower_3": {
+            "title": "Vat Lower 3",
+            "type": "number"
+          },
+          "vat_special": {
+            "title": "Vat Special",
+            "type": "number"
+          },
+          "vat_standard": {
+            "title": "Vat Standard",
+            "type": "number"
+          },
+          "vat_zero": {
+            "title": "Vat Zero",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "vat_standard",
+          "vat_lower_1",
+          "vat_lower_2",
+          "vat_lower_3",
+          "vat_special",
+          "vat_zero",
+          "id",
+          "languages"
+        ],
+        "title": "MyShopSchema",
+        "type": "object"
+      },
       "MyShopsResponse": {
         "properties": {
           "can_write": {
@@ -2221,7 +2301,7 @@
           },
           "shops": {
             "items": {
-              "$ref": "#/components/schemas/ShopSchema"
+              "$ref": "#/components/schemas/MyShopSchema"
             },
             "title": "Shops",
             "type": "array"
@@ -3315,6 +3395,26 @@
           "translation"
         ],
         "title": "ProductCreate",
+        "type": "object"
+      },
+      "ProductImageUploadRequest": {
+        "properties": {
+          "content_type": {
+            "description": "MIME type of the file you are going to upload.",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/gif",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_type"
+        ],
+        "title": "ProductImageUploadRequest",
         "type": "object"
       },
       "ProductResponse": {
@@ -5326,6 +5426,60 @@
         "title": "ShippingLine",
         "type": "object"
       },
+      "ShopAbout": {
+        "description": "What a shop says about itself, per translation slot: the markdown of its storefront \"About\" page.",
+        "properties": {
+          "alt1": {
+            "$ref": "#/components/schemas/ShopAboutSlot"
+          },
+          "alt2": {
+            "$ref": "#/components/schemas/ShopAboutSlot"
+          },
+          "main": {
+            "$ref": "#/components/schemas/ShopAboutSlot"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "main",
+          "alt1",
+          "alt2"
+        ],
+        "title": "ShopAbout",
+        "type": "object"
+      },
+      "ShopAboutSlot": {
+        "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About"
+          },
+          "language_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Name"
+          }
+        },
+        "title": "ShopAboutSlot",
+        "type": "object"
+      },
       "ShopCacheStatus": {
         "properties": {
           "modified_at": {
@@ -5543,6 +5697,53 @@
           "ip"
         ],
         "title": "ShopIp",
+        "type": "object"
+      },
+      "ShopLanguageSlot": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "language_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Name"
+          }
+        },
+        "title": "ShopLanguageSlot",
+        "type": "object"
+      },
+      "ShopLanguages": {
+        "description": "Which real language each translation slot (`main_*`, `alt1_*`, `alt2_*`) holds in one shop.",
+        "properties": {
+          "alt1": {
+            "$ref": "#/components/schemas/ShopLanguageSlot",
+            "default": {
+              "enabled": false
+            }
+          },
+          "alt2": {
+            "$ref": "#/components/schemas/ShopLanguageSlot",
+            "default": {
+              "enabled": false
+            }
+          },
+          "main": {
+            "$ref": "#/components/schemas/ShopLanguageSlot",
+            "default": {
+              "enabled": true
+            }
+          }
+        },
+        "title": "ShopLanguages",
         "type": "object"
       },
       "ShopSchema": {
@@ -6280,7 +6481,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.9.0"
+    "version": "0.9.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8945,7 +9146,7 @@
     },
     "/shops/my-shops": {
       "get": {
-        "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Always call this first \u2014 before saying anything to the user.",
+        "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Each shop carries `languages`: which real language its `main`, `alt1` and `alt2` translation slots hold (`language_name`) and whether the alt storefront is `enabled`. Always call this first \u2014 before saying anything to the user.",
         "operationId": "list_my_shops",
         "responses": {
           "200": {
@@ -9121,6 +9322,59 @@
         "summary": "Update shop",
         "tags": [
           "shops"
+        ]
+      }
+    },
+    "/shops/{shop_id}/about": {
+      "get": {
+        "description": "Returns the shop's own About text (markdown) for each translation slot (`main`, `alt1`, `alt2`), with the slot's `language_name`. Use it to learn what the shop sells and how it presents itself, so your answers and any copy you write fit that shop. A slot without a text has `about` null.",
+        "operationId": "get_shop_about",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopAbout"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get what a shop is about",
+        "tags": [
+          "shops",
+          "agent-exposed"
         ]
       }
     },
@@ -13574,7 +13828,7 @@
         ]
       },
       "put": {
-        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object filenames managed by the image-upload flow - do not set them unless explicitly given a filename.",
+        "description": "Partially update a product. Send ONLY the fields you want to change; omitted fields are left untouched. Names and descriptions live in the nested `translation` object and can also be sent partially. `image_1`-`image_6` are S3 object keys: to add or replace a picture call `create_product_image_upload`, upload the file to the returned URL, then set the returned `key` here; send null or an empty string to clear a slot.",
         "operationId": "update_product",
         "parameters": [
           {
@@ -13640,6 +13894,79 @@
         "tags": [
           "shops",
           "products",
+          "agent-exposed"
+        ]
+      }
+    },
+    "/shops/{shop_id}/products/{product_id}/images/upload-url": {
+      "post": {
+        "description": "Step 1 of adding a product picture. Returns `url`, `fields` and the S3 object `key`. Then (2) send the file with `POST url` as multipart/form-data: every entry of `fields` first, the file last in a field named `file`; the `Content-Type` field is already in `fields`, so the file must really be that type. Max 10 MB, valid for 10 minutes. Then (3) call `update_product` with the slot you want (`image_1`-`image_6`; `image_1` is the main image) set to `key`. Nothing is attached to the product until step 3.",
+        "operationId": "create_product_image_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get a signed product image upload",
+        "tags": [
+          "shops",
+          "products",
+          "images",
           "agent-exposed"
         ]
       }

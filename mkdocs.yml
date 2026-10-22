@@ -123,6 +123,7 @@ nav:
       - Email notifications: api/email-notifications.md
   - Development:
       - Setup: development/setup.md
+      - Recorded demos: development/demo.md
       - Testing: development/testing.md
       - Code style: development/code-style.md
       - Writing migrations: development/migrations.md

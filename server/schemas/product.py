@@ -73,6 +73,12 @@ class ProductBase(BoilerplateBaseModel):
     image_6: Union[Optional[dict], Optional[str]] = None
     translation: ProductTranslationBase
 
+    @field_validator("image_1", "image_2", "image_3", "image_4", "image_5", "image_6", mode="before")
+    @classmethod
+    def empty_image_is_none(cls, value):
+        """An empty string clears the slot; store NULL, not ''."""
+        return None if value == "" else value
+
 
 class ProductTranslationCreate(ProductTranslationBase):
     @field_validator("main_name", "main_description", "main_description_short")
