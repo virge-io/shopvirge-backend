@@ -2209,6 +2209,86 @@
         "title": "LinkStripeBody",
         "type": "object"
       },
+      "MyShopSchema": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Url"
+          },
+          "languages": {
+            "$ref": "#/components/schemas/ShopLanguages"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "vat_lower_1": {
+            "title": "Vat Lower 1",
+            "type": "number"
+          },
+          "vat_lower_2": {
+            "title": "Vat Lower 2",
+            "type": "number"
+          },
+          "vat_lower_3": {
+            "title": "Vat Lower 3",
+            "type": "number"
+          },
+          "vat_special": {
+            "title": "Vat Special",
+            "type": "number"
+          },
+          "vat_standard": {
+            "title": "Vat Standard",
+            "type": "number"
+          },
+          "vat_zero": {
+            "title": "Vat Zero",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "vat_standard",
+          "vat_lower_1",
+          "vat_lower_2",
+          "vat_lower_3",
+          "vat_special",
+          "vat_zero",
+          "id",
+          "languages"
+        ],
+        "title": "MyShopSchema",
+        "type": "object"
+      },
       "MyShopsResponse": {
         "properties": {
           "can_write": {
@@ -2221,7 +2301,7 @@
           },
           "shops": {
             "items": {
-              "$ref": "#/components/schemas/ShopSchema"
+              "$ref": "#/components/schemas/MyShopSchema"
             },
             "title": "Shops",
             "type": "array"
@@ -5346,6 +5426,60 @@
         "title": "ShippingLine",
         "type": "object"
       },
+      "ShopAbout": {
+        "description": "What a shop says about itself, per translation slot: the markdown of its storefront \"About\" page.",
+        "properties": {
+          "alt1": {
+            "$ref": "#/components/schemas/ShopAboutSlot"
+          },
+          "alt2": {
+            "$ref": "#/components/schemas/ShopAboutSlot"
+          },
+          "main": {
+            "$ref": "#/components/schemas/ShopAboutSlot"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "main",
+          "alt1",
+          "alt2"
+        ],
+        "title": "ShopAbout",
+        "type": "object"
+      },
+      "ShopAboutSlot": {
+        "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About"
+          },
+          "language_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Name"
+          }
+        },
+        "title": "ShopAboutSlot",
+        "type": "object"
+      },
       "ShopCacheStatus": {
         "properties": {
           "modified_at": {
@@ -5563,6 +5697,53 @@
           "ip"
         ],
         "title": "ShopIp",
+        "type": "object"
+      },
+      "ShopLanguageSlot": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "language_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Name"
+          }
+        },
+        "title": "ShopLanguageSlot",
+        "type": "object"
+      },
+      "ShopLanguages": {
+        "description": "Which real language each translation slot (`main_*`, `alt1_*`, `alt2_*`) holds in one shop.",
+        "properties": {
+          "alt1": {
+            "$ref": "#/components/schemas/ShopLanguageSlot",
+            "default": {
+              "enabled": false
+            }
+          },
+          "alt2": {
+            "$ref": "#/components/schemas/ShopLanguageSlot",
+            "default": {
+              "enabled": false
+            }
+          },
+          "main": {
+            "$ref": "#/components/schemas/ShopLanguageSlot",
+            "default": {
+              "enabled": true
+            }
+          }
+        },
+        "title": "ShopLanguages",
         "type": "object"
       },
       "ShopSchema": {
@@ -6300,7 +6481,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.9.0"
+    "version": "0.9.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8965,7 +9146,7 @@
     },
     "/shops/my-shops": {
       "get": {
-        "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Always call this first \u2014 before saying anything to the user.",
+        "description": "Returns the shops this user can manage, derived from their Cognito groups, plus capability flags the agent should use to tailor its welcome message and behaviour. Admins (group 'Admins') see all shops and have full write access. Tenant users see only the shop(s) whose ID matches one of their Cognito group names; their write access is also scoped to those shops. Each shop carries `languages`: which real language its `main`, `alt1` and `alt2` translation slots hold (`language_name`) and whether the alt storefront is `enabled`. Always call this first \u2014 before saying anything to the user.",
         "operationId": "list_my_shops",
         "responses": {
           "200": {
@@ -9141,6 +9322,59 @@
         "summary": "Update shop",
         "tags": [
           "shops"
+        ]
+      }
+    },
+    "/shops/{shop_id}/about": {
+      "get": {
+        "description": "Returns the shop's own About text (markdown) for each translation slot (`main`, `alt1`, `alt2`), with the slot's `language_name`. Use it to learn what the shop sells and how it presents itself, so your answers and any copy you write fit that shop. A slot without a text has `about` null.",
+        "operationId": "get_shop_about",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shop_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shop Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopAbout"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get what a shop is about",
+        "tags": [
+          "shops",
+          "agent-exposed"
         ]
       }
     },

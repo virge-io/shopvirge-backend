@@ -54,6 +54,7 @@ The MCP surface: a key reaches its own shop, a member their shops, an admin any.
 |---|---|---|---|---|---|---|---|---|
 | GET | `/orders/shop/{shop_id}/complete` | list_complete_orders | – | R own | R own | R any | R own | R own |
 | GET | `/orders/shop/{shop_id}/pending` | list_pending_orders | – | R own | R own | R any | R own | R own |
+| GET | `/shops/{shop_id}/about` | get_shop_about | – | R own | R own | R any | R own | R own |
 | GET | `/shops/{shop_id}/attribute-options/` | list_attribute_options | – | R own | R own | R any | R own | R own |
 | POST | `/shops/{shop_id}/attribute-options/` | create_attribute_option | – | W own | W own | W any | – | W own |
 | GET | `/shops/{shop_id}/attribute-options/{option_id}` | get_attribute_option | – | R own | R own | R any | R own | R own |
