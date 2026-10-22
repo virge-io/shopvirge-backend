@@ -307,21 +307,6 @@ components. Some work is based on, or inspired by, other Open Source projects, l
 [orchestrator-core](https://github.com/workfloworchestrator/orchestrator-core) and
 [nwa-stdlib](https://github.com/workfloworchestrator/nwa-stdlib) on which I collaborated.
 
-
-# Quick launch shop-poc stack
-In bin/launch-shop-poc.sh you can find a script that will launch the whole shop-poc stack with one command.
-Move it to your projects folder and run it.
-You might have to add a .env file to it knows where to find all the projects.
-Assuming your projects folder is called `Projects` you can use:
-```bash
-mkdir -p ~/Projects/.Launch
-cp ~/Projects/shop-backend/bin/launch-shop-poc-stack.sh ~/Projects/.Launch/
-cp ~/Projects/shop-backend/bin/QuickLaunchShop-poc.md ~/Projects/.Launch/
-chmod +x ~/Projects/.Launch/launch-shop-poc-stack.sh
-```
-And then add an alias because might as well: `alias lpoc="~/Projects/.Launch/launch-shop-poc-stack.sh -eu -fl"`
-Also have a look at the QuickLaunchShop-poc.md guide file.
-
 ## Recorded demo backend
 
 See [demo setup and seeding](docs/development/demo.md). After
