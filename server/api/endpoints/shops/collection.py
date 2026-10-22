@@ -12,8 +12,10 @@ from server.api.route_helpers import list_page
 from server.crud.crud_shop import shop_crud
 from server.db.models import ShopTable
 from server.schemas.shop import (
+    MyShopSchema,
     MyShopsResponse,
     ShopCreate,
+    ShopLanguages,
     ShopSchema,
 )
 from server.security import Principal, current_principal, has_admin_group
@@ -47,6 +49,8 @@ def get_multi(response: Response, page: PageParams = Depends(shop_page_params)) 
         "Admins (group 'Admins') see all shops and have full write access. "
         "Tenant users see only the shop(s) whose ID matches one of their Cognito group names; "
         "their write access is also scoped to those shops. "
+        "Each shop carries `languages`: which real language its `main`, `alt1` and `alt2` translation slots hold "
+        "(`language_name`) and whether the alt storefront is `enabled`. "
         "Always call this first — before saying anything to the user."
     ),
 )
@@ -60,7 +64,14 @@ def get_my_shops(
     else:
         accessible_ids = set(principal.groups)
         accessible = [s for s in shops if str(s.id) in accessible_ids]
-    return MyShopsResponse(shops=accessible, is_admin=is_admin, can_write=len(accessible) > 0)
+    return MyShopsResponse(
+        shops=[
+            MyShopSchema(**ShopSchema.model_validate(s).model_dump(), languages=ShopLanguages.from_config(s.config))
+            for s in accessible
+        ],
+        is_admin=is_admin,
+        can_write=len(accessible) > 0,
+    )
 
 
 @router.post(

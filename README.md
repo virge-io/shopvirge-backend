@@ -306,3 +306,18 @@ There is a `licenses` folder that contains more detailed copyright info about th
 components. Some work is based on, or inspired by, other Open Source projects, like
 [orchestrator-core](https://github.com/workfloworchestrator/orchestrator-core) and
 [nwa-stdlib](https://github.com/workfloworchestrator/nwa-stdlib) on which I collaborated.
+
+## Recorded demo backend
+
+See [demo setup and seeding](docs/development/demo.md). After
+`uv sync --dev --locked` and creating the dedicated `shop_demo` database,
+run `./start.sh demo` (optionally followed by the shop's About text).
+This migrates and resets the fixed-ID demo shop and serves on port 8080
+without reload. Every start removes its previous catalog; normal development
+uses `./start.sh dev`. The recorder starts and stops demo mode automatically.
+
+The seed supports `--config`, `--about`, `DEMO_SHOP_ABOUT` and a database-free
+`--check`. Demo resets are limited to `shop_demo` / `shop_demo_*`, cascade
+related and trashed data atomically, and preserve unrelated shops. The same
+reference covers language mappings, `get_shop_about`, shop settings access,
+signed product image uploads and their AWS/CDN requirements.
