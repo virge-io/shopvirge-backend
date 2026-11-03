@@ -78,3 +78,18 @@ def test_long_identifiers_have_wrapping_opportunities_and_stay_escaped(template_
     assert "&lt;" in result
     assert unescape(result).replace("\u200b", "") == value
     assert max(len(part) for part in unescape(result).split("\u200b")) <= 16
+
+
+@pytest.mark.parametrize("language", ["nl", "en"])
+@pytest.mark.parametrize("audience", ["customer", "owner"])
+def test_order_document_language_matches_locale(template_env, order_context, language, audience):
+    html = template_env.get_template(f"{language}/mail_order_confirmation_{audience}.html.j2").render(**order_context)
+    assert f"<html lang='{language}'" in html
+
+
+@pytest.mark.parametrize("language", ["nl", "en"])
+def test_product_info_document_language_matches_locale(template_env, language):
+    html = template_env.get_template(f"{language}/mail_intro_product_info.html.j2").render(
+        contact_names="Example contact", summary="Example summary"
+    )
+    assert f"<html lang='{language}'" in html
