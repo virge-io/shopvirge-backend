@@ -21,6 +21,7 @@
         {% if customer_address %}{{ m.breakable(customer_address) }}<br>{% endif %}
         {% if customer_postal_code or customer_city %}{{ m.breakable(customer_postal_code) }} {{ m.breakable(customer_city) }}<br>{% endif %}
         {% if customer_country %}{{ m.breakable(customer_country) }}<br>{% endif %}
+        {% if customer_btw_number %}VAT number: {{ m.breakable(customer_btw_number) }}<br>{% endif %}
 
     {% endcall %}
 {% endblock %}
@@ -115,7 +116,6 @@
         {% if kvk_number %}{% set _ = contact_details.append('CoC: ' ~ kvk_number) %}{% endif %}
         {% if btw_number %}{% set _ = contact_details.append('VAT: ' ~ btw_number) %}{% endif %}
         {{ contact_details | join(' · ') }}
-        {% if customer_btw_number %}<br>Customer VAT number: {{ m.breakable(customer_btw_number) }}{% endif %}
     </p>
 </div>
 {% endblock %}

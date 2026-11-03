@@ -45,12 +45,12 @@ def order_context():
 
 
 @pytest.mark.parametrize("language", ["nl", "en"])
-def test_customer_vat_is_only_in_footer(template_env, order_context, language):
+def test_customer_vat_is_in_info_box_and_shop_vat_stays_in_footer(template_env, order_context, language):
     html = template_env.get_template(f"{language}/mail_order_confirmation_customer.html.j2").render(**order_context)
     before_footer, separator, footer = html.partition("<hr ")
     assert separator
-    assert "CUSTOMER-VAT-123" not in before_footer
-    assert footer.count("CUSTOMER-VAT-123") == 1
+    assert before_footer.count("CUSTOMER-VAT-123") == 1
+    assert "CUSTOMER-VAT-123" not in footer
     assert "SHOP-VAT-456" in footer
 
 
