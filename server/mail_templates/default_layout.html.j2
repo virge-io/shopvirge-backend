@@ -127,13 +127,14 @@
 
 
         <div id="header" style="line-height: 0;">
-            {{ snippets.banner() }}
-
-            {{ snippets.bar(welcome_text) }}
+            {% block header_content %}
+                {{ snippets.banner() }}
+                {{ snippets.bar(welcome_text) }}
+            {% endblock %}
         </div>
 
 
-        <table><tr><td id="main" style="padding: 40px 50px;">
+        <table width="100%"><tr><td id="main" style="padding: {% block main_padding %}40px 50px{% endblock %};">
             {% block content %}
                 Your template must define a 'content' block
             {% endblock %}

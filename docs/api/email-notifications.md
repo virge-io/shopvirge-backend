@@ -21,6 +21,10 @@ This renders and sends two mails:
 1. **Customer confirmation** — `mail_order_confirmation_customer.html.j2`.
 2. **Shop-owner notification** — `mail_order_confirmation_owner.html.j2`.
 
+Both Dutch and English confirmations show customer address details in a bordered box overlapping the banner and heading strip: on the left for customers and on the right for owners. Customer headings are right-aligned, while owner headings retain their left alignment. At narrow widths the address box stacks below the strip.
+
+Address fields come from `account.details`, accepting `address`/`adres` and `postalcode`/`postal_code`/`zip_code`. Missing address fields are omitted, and the customer greeting falls back to “klant” or “customer”. Owner notifications also include the customer email and order number in the box. Customer confirmations finish with a compact company address and contact/legal footer.
+
 ### Configurable routing (`ConfigurationOrderStatusMails`)
 
 By default the owner notification goes to `shop.config.contact.email`. This can be overridden per shop via `config.order_status_mails`:

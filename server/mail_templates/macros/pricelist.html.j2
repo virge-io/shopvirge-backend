@@ -1,9 +1,9 @@
 {% set primaryColor = "#01689b" %}
 
-{% macro bar(title) -%}
+{% macro bar(title, align="left") -%}
     <table class="horizontal-bar" width='100%' border='0' cellspacing='0' cellpadding='0' role='presentation' style="background-color:{{primaryColor}}; color: #fff; line-height: 1.4;">
         <tr>
-            <td style="padding: 0 50px;" height="50">
+            <td style="padding: 0 50px; text-align: {{ align }};" height="50">
               {{title}}
             </td>
         </tr>

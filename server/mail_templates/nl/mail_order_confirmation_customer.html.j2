@@ -4,28 +4,49 @@
 {% import 'macros.html.j2' as m %}
 {% extends "default_layout.html.j2" %}
 
+{% block main_padding %}60px 50px 40px{% endblock %}
+
+{% block header_content %}
+    <style>
+        @media(max-width: 640px) {
+            #header .customer-address {
+                position: static !important;
+                width: auto !important;
+                max-width: none !important;
+                margin: 20px 20px 0;
+            }
+            .customer-order-lines { font-size: 12px; }
+            .customer-order-lines th, .customer-order-lines td { padding: 5px !important; }
+        }
+    </style>
+    <div style="position: relative;">
+        {{ snippets.banner() }}
+        {{ snippets.bar(welcome_text, align="right") }}
+        <div class="customer-address" style="position: absolute; left: 6.25%; bottom: -30px; width: 29.5%; max-width: 240px; box-sizing: border-box; padding: 8px; background-color: #fff; line-height: 24px;">
+            <table role="presentation" style="width: 100%; border: 1px solid #000; color: #000;">
+                <tr>
+                    <td style="padding: 10px; text-align: left; line-height: 1.5; overflow-wrap: anywhere;">
+                            {% if customer_company_name %}<strong>{{ customer_company_name }}</strong><br>{% endif %}
+                            {% if customer_name %}{{ customer_name }}<br>{% endif %}
+                            {% if customer_address %}{{ customer_address }}<br>{% endif %}
+                            {% if customer_postal_code or customer_city %}{{ customer_postal_code }} {{ customer_city }}<br>{% endif %}
+                            {% if customer_country %}{{ customer_country }}<br>{% endif %}
+                            {% if customer_btw_number %}BTW-nummer: {{ customer_btw_number }}<br>{% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
 {% block content %}
 <div>
-    <p>Beste klant,</p>
+
+    <p style="margin-top: 0;">Beste {{ customer_name or "klant" }},</p>
 
     <p>Bedankt voor je bestelling bij <strong>{{ shop_name }}</strong>. Hieronder vind je een overzicht van je bestelling.</p>
 
-    {% if customer_company_name %}
-    <table style="width: 100%; margin-bottom: 20px;">
-        <tr>
-            <td style="width: 40%; font-weight: bold;">Bedrijfsnaam:</td>
-            <td>{{ customer_company_name }}</td>
-        </tr>
-        {% if customer_btw_number %}
-        <tr>
-            <td style="width: 40%; font-weight: bold;">BTW-nummer:</td>
-            <td>{{ customer_btw_number }}</td>
-        </tr>
-        {% endif %}
-    </table>
-    {% endif %}
-
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+    <table class="customer-order-lines" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
         <thead>
             <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
                 <th style="text-align: left; padding: 10px;">Product</th>
@@ -100,14 +121,14 @@
 
     <hr style="margin-top: 30px; border: none; border-top: 1px solid #ccc;">
 
-    <p style="font-size: 12px; color: #888; margin-top: 20px;">
-        <strong>{{ shop_company }}</strong><br>
-        {{ shop_address }}<br>
-        {{ shop_zip_code }} {{ shop_city }}<br>
-        {% if shop_phone %}Tel: {{ shop_phone }}<br>{% endif %}
-        {% if shop_email %}E-mail: {{ shop_email }}<br>{% endif %}
-        {% if kvk_number %}KVK: {{ kvk_number }}<br>{% endif %}
-        {% if btw_number %}BTW: {{ btw_number }}{% endif %}
+    <p style="font-size: 12px; color: #888; margin-top: 20px; line-height: 1.5;">
+        <strong>{{ shop_company }}</strong> &middot; {{ shop_address }} &middot; {{ shop_zip_code }} {{ shop_city }}<br>
+        {% set contact_details = [] %}
+        {% if shop_phone %}{% set _ = contact_details.append('Tel: ' ~ shop_phone) %}{% endif %}
+        {% if shop_email %}{% set _ = contact_details.append('E-mail: ' ~ shop_email) %}{% endif %}
+        {% if kvk_number %}{% set _ = contact_details.append('KVK: ' ~ kvk_number) %}{% endif %}
+        {% if btw_number %}{% set _ = contact_details.append('BTW: ' ~ btw_number) %}{% endif %}
+        {{ contact_details | join(' · ') }}
     </p>
 </div>
 {% endblock %}

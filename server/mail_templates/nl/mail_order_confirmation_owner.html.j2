@@ -1,39 +1,52 @@
 {% set title = 'Nieuwe bestelling #' ~ customer_order_id %}
-{% set welcome_text = 'Nieuwe bestelling #' ~ customer_order_id %}
+{% set welcome_text = 'Nieuwe bestelling' %}
 
 {% import 'macros.html.j2' as m %}
 {% extends "default_layout.html.j2" %}
 
+{% block main_padding %}16px 50px 40px{% endblock %}
+
+{% block header_content %}
+    <style>
+        @media(max-width: 640px) {
+            .owner-order-lines { font-size: 12px; }
+            .owner-order-lines th, .owner-order-lines td { padding: 5px !important; }
+            #header .owner-information {
+                position: static !important;
+                width: auto !important;
+                max-width: none !important;
+                margin: 20px 20px 0;
+            }
+        }
+    </style>
+    <div style="position: relative;">
+        {{ snippets.banner() }}
+        {{ snippets.bar(welcome_text) }}
+        <div class="owner-information" style="position: absolute; right: 6.25%; bottom: -45px; width: 28.5%; max-width: 230px; line-height: 24px; box-sizing: border-box; padding: 5px; background-color: #fff;">
+                <table role="presentation" style="width: 100%; border: 1px solid #000; background-color: #fff; color: #000;">
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 10px; text-align: left; line-height: 1.5; overflow-wrap: anywhere;">
+                            {% if customer_company_name %}<strong>{{ customer_company_name }}</strong><br>{% endif %}
+                            {% if customer_name %}{{ customer_name }}<br>{% endif %}
+                            {% if customer_address %}{{ customer_address }}<br>{% endif %}
+                            {% if customer_postal_code or customer_city %}{{ customer_postal_code }} {{ customer_city }}<br>{% endif %}
+                            {% if customer_country %}{{ customer_country }}<br>{% endif %}
+                            {% if customer_btw_number %}BTW-nummer: {{ customer_btw_number }}<br>{% endif %}
+                            Klant e-mail: {{ customer_email }}<br>
+                            Bestelnummer: #{{ customer_order_id }}
+                        </td>
+                    </tr>
+                </table>
+        </div>
+    </div>
+{% endblock %}
+
 {% block content %}
 <div>
-    <p>Beste {{ shop_company }},</p>
-
+    <p style="margin: 0 0 20px;">Beste {{ shop_company }},</p>
     <p>Er is een nieuwe bestelling geplaatst in je shop <strong>{{ shop_name }}</strong>.</p>
 
-    <table style="width: 100%; margin-bottom: 20px; background-color: #f9f9f9; padding: 10px;">
-        <tr>
-            <td style="width: 40%; font-weight: bold; padding: 5px;">Klant e-mail:</td>
-            <td style="padding: 5px;">{{ customer_email }}</td>
-        </tr>
-        <tr>
-            <td style="width: 40%; font-weight: bold; padding: 5px;">Bestelnummer:</td>
-            <td style="padding: 5px;">#{{ customer_order_id }}</td>
-        </tr>
-        {% if customer_company_name %}
-        <tr>
-            <td style="width: 40%; font-weight: bold; padding: 5px;">Bedrijfsnaam:</td>
-            <td style="padding: 5px;">{{ customer_company_name }}</td>
-        </tr>
-        {% endif %}
-        {% if customer_btw_number %}
-        <tr>
-            <td style="width: 40%; font-weight: bold; padding: 5px;">BTW-nummer klant:</td>
-            <td style="padding: 5px;">{{ customer_btw_number }}</td>
-        </tr>
-        {% endif %}
-    </table>
-
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+    <table class="owner-order-lines" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
         <thead>
             <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
                 <th style="text-align: left; padding: 10px;">Product</th>
