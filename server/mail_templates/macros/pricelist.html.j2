@@ -13,3 +13,25 @@
 {% macro banner() %}
   <img class="banner-image" width="1248" height="350" style="width: 100%; height: auto;" src='cid:bannerimg' alt="Pricelist banner" border='0'/>
 {% endmacro %}
+
+
+{% macro order_header(title, audience) %}
+    <div class="order-header">
+        {{ banner() }}
+        {{ bar(title, align="right" if audience == "customer" else "left") }}
+        {# Normal-flow table is the baseline when styles or positioning are stripped. #}
+        <table class="address-layout {{ 'customer-address' if audience == 'customer' else 'owner-information' }}" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width: 100%; table-layout: fixed; border-collapse: collapse; line-height: 24px;">
+            <tr>
+                <td class="address-inset" style="padding: 20px;">
+                    <table class="address-box" role="presentation" align="{{ 'left' if audience == 'customer' else 'right' }}" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width: 100%; max-width: 300px; table-layout: fixed; border-collapse: collapse; border: 1px solid #000; background-color: #fff; color: #000;">
+                        <tr>
+                            <td style="padding: 10px; text-align: left; line-height: 1.5; word-wrap: break-word; overflow-wrap: anywhere;">
+                                {{ caller() }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+{% endmacro %}

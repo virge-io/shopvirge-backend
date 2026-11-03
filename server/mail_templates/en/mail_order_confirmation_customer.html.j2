@@ -4,39 +4,25 @@
 {% import 'macros.html.j2' as m %}
 {% extends "default_layout.html.j2" %}
 
-{% block main_padding %}60px 50px 40px{% endblock %}
+{% block main_padding %}20px{% endblock %}
+
+{% block extra_styles %}
+    {% set mail_audience = "customer" %}
+    {# Long details stay in normal flow so the box cannot grow above the banner. #}
+    {% set address_length = (customer_company_name ~ customer_name ~ customer_address ~ customer_postal_code ~ customer_city ~ customer_country ~ customer_btw_number ~ customer_email)|length %}
+    {% set enable_overlap = address_length <= 160 %}
+    {% include 'order_confirmation_styles.css.j2' %}
+{% endblock %}
 
 {% block header_content %}
-    <style>
-        @media(max-width: 640px) {
-            #header .customer-address {
-                position: static !important;
-                width: auto !important;
-                max-width: none !important;
-                margin: 20px 20px 0;
-            }
-            .customer-order-lines { font-size: 12px; }
-            .customer-order-lines th, .customer-order-lines td { padding: 5px !important; }
-        }
-    </style>
-    <div style="position: relative;">
-        {{ snippets.banner() }}
-        {{ snippets.bar(welcome_text, align="right") }}
-        <div class="customer-address" style="position: absolute; left: 6.25%; bottom: -30px; width: 29.5%; max-width: 240px; box-sizing: border-box; padding: 8px; background-color: #fff; line-height: 24px;">
-            <table role="presentation" style="width: 100%; border: 1px solid #000; color: #000;">
-                <tr>
-                    <td style="padding: 10px; text-align: left; line-height: 1.5; overflow-wrap: anywhere;">
-                            {% if customer_company_name %}<strong>{{ customer_company_name }}</strong><br>{% endif %}
-                            {% if customer_name %}{{ customer_name }}<br>{% endif %}
-                            {% if customer_address %}{{ customer_address }}<br>{% endif %}
-                            {% if customer_postal_code or customer_city %}{{ customer_postal_code }} {{ customer_city }}<br>{% endif %}
-                            {% if customer_country %}{{ customer_country }}<br>{% endif %}
-                            {% if customer_btw_number %}VAT number: {{ customer_btw_number }}<br>{% endif %}
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
+    {% call snippets.order_header(welcome_text, "customer") %}
+        {% if customer_company_name %}<strong>{{ m.breakable(customer_company_name) }}</strong><br>{% endif %}
+        {% if customer_name %}{{ m.breakable(customer_name) }}<br>{% endif %}
+        {% if customer_address %}{{ m.breakable(customer_address) }}<br>{% endif %}
+        {% if customer_postal_code or customer_city %}{{ m.breakable(customer_postal_code) }} {{ m.breakable(customer_city) }}<br>{% endif %}
+        {% if customer_country %}{{ m.breakable(customer_country) }}<br>{% endif %}
+
+    {% endcall %}
 {% endblock %}
 
 {% block content %}
@@ -46,21 +32,21 @@
 
     <p>Thank you for your order at <strong>{{ shop_name }}</strong>. Below you will find a summary of your order.</p>
 
-    <table class="customer-order-lines" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+    <table class="customer-order-lines" style="font-size: 14px; width: 100%; border-collapse: collapse; margin-top: 20px;">
         <thead>
             <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
-                <th style="text-align: left; padding: 10px;">Product</th>
-                <th style="text-align: right; padding: 10px;">Qty</th>
-                <th style="text-align: right; padding: 10px;">Price ex VAT</th>
-                <th style="text-align: right; padding: 10px;">VAT %</th>
-                <th style="text-align: right; padding: 10px;">Price inc VAT</th>
-                <th style="text-align: right; padding: 10px;">Total</th>
+                <th style="text-align: left; padding: 6px;">Product</th>
+                <th style="text-align: right; padding: 6px;">Qty</th>
+                <th style="text-align: right; padding: 6px;">Price ex VAT</th>
+                <th style="text-align: right; padding: 6px;">VAT %</th>
+                <th style="text-align: right; padding: 6px;">Price inc VAT</th>
+                <th style="text-align: right; padding: 6px;">Total</th>
             </tr>
         </thead>
         <tbody>
             {% for line in order_lines %}
             <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 10px;">
+                <td style="padding: 6px;">
                     <strong>{{ line.product_name }}</strong>
                     {% if line.description %}
                     <br><small style="color: #666;">{{ line.description }}</small>
@@ -72,11 +58,11 @@
                     {% endfor %}
                     {% endif %}
                 </td>
-                <td style="text-align: right; padding: 10px;">{{ line.quantity }}</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(line.price_ex_btw) }}</td>
-                <td style="text-align: right; padding: 10px;">{{ "%.0f"|format(line.btw_rate) }}%</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(line.price_inc_btw) }}</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(line.line_total_inc_btw) }}</td>
+                <td style="text-align: right; padding: 6px;">{{ line.quantity }}</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(line.price_ex_btw) }}</td>
+                <td style="text-align: right; padding: 6px;">{{ "%.0f"|format(line.btw_rate) }}%</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(line.price_inc_btw) }}</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(line.line_total_inc_btw) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -84,35 +70,35 @@
             {% if shipping_lines %}
             {% for s in shipping_lines %}
             <tr style="border-top: 2px solid #ddd;">
-                <td colspan="2" style="padding: 10px;"><strong>Shipping</strong></td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_ex_btw) }}</td>
-                <td style="text-align: right; padding: 10px;">{{ "%.0f"|format(s.btw_rate) }}%</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_inc_btw) }}</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_inc_btw) }}</td>
+                <td colspan="2" style="padding: 6px;"><strong>Shipping</strong></td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_ex_btw) }}</td>
+                <td style="text-align: right; padding: 6px;">{{ "%.0f"|format(s.btw_rate) }}%</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_inc_btw) }}</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(s.amount_inc_btw) }}</td>
             </tr>
             {% endfor %}
             {% elif shipping_fee_inc_btw is not none and shipping_fee_inc_btw > 0 %}
             <tr style="border-top: 2px solid #ddd;">
-                <td colspan="5" style="text-align: right; padding: 10px;"><strong>Shipping:</strong></td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(shipping_fee_inc_btw) }}</td>
+                <td colspan="5" style="text-align: right; padding: 6px;"><strong>Shipping:</strong></td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(shipping_fee_inc_btw) }}</td>
             </tr>
             {% elif shipping_fee_inc_btw is not none and shipping_fee_inc_btw == 0 %}
             <tr style="border-top: 2px solid #ddd;">
-                <td colspan="5" style="text-align: right; padding: 10px;"><strong>Shipping:</strong></td>
-                <td style="text-align: right; padding: 10px;">Free</td>
+                <td colspan="5" style="text-align: right; padding: 6px;"><strong>Shipping:</strong></td>
+                <td style="text-align: right; padding: 6px;">Free</td>
             </tr>
             {% endif %}
             <tr style="border-top: 2px solid #ddd;">
-                <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold;">Total ex VAT:</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(total_ex_btw) }}</td>
+                <td colspan="5" style="text-align: right; padding: 6px; font-weight: bold;">Total ex VAT:</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(total_ex_btw) }}</td>
             </tr>
             <tr>
-                <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold;">VAT:</td>
-                <td style="text-align: right; padding: 10px;">&euro;&nbsp;{{ "%.2f"|format(total_btw) }}</td>
+                <td colspan="5" style="text-align: right; padding: 6px; font-weight: bold;">VAT:</td>
+                <td style="text-align: right; padding: 6px;">&euro;&nbsp;{{ "%.2f"|format(total_btw) }}</td>
             </tr>
             <tr style="border-top: 1px solid #ddd;">
-                <td colspan="5" style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">Total inc VAT:</td>
-                <td style="text-align: right; padding: 10px; font-weight: bold; font-size: 18px;">&euro;&nbsp;{{ "%.2f"|format(total_inc_btw) }}</td>
+                <td colspan="5" style="text-align: right; padding: 6px; font-weight: bold; font-size: 18px;">Total inc VAT:</td>
+                <td style="text-align: right; padding: 6px; font-weight: bold; font-size: 18px;">&euro;&nbsp;{{ "%.2f"|format(total_inc_btw) }}</td>
             </tr>
         </tfoot>
     </table>
@@ -129,6 +115,7 @@
         {% if kvk_number %}{% set _ = contact_details.append('CoC: ' ~ kvk_number) %}{% endif %}
         {% if btw_number %}{% set _ = contact_details.append('VAT: ' ~ btw_number) %}{% endif %}
         {{ contact_details | join(' · ') }}
+        {% if customer_btw_number %}<br>Customer VAT number: {{ m.breakable(customer_btw_number) }}{% endif %}
     </p>
 </div>
 {% endblock %}

@@ -151,7 +151,7 @@ known-first-party = ["migrations", "server", "tests"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests/unit_tests"]
+testpaths = ["tests/unit_tests", "tests/mail_templates"]
 norecursedirs = [
     ".cache",
     ".git",

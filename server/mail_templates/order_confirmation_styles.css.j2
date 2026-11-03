@@ -1,0 +1,42 @@
+/* The inline table layout remains usable if a client removes all head CSS. */
+@media(max-width: 640px) {
+    .customer-order-lines, .owner-order-lines { font-size: 12px !important; }
+    .customer-order-lines th, .customer-order-lines td,
+    .owner-order-lines th, .owner-order-lines td { padding: 5px !important; }
+}
+@media(min-width: 641px) {
+    .customer-order-lines, .owner-order-lines { font-size: 16px !important; }
+    #main { padding: 40px 50px !important; }
+    .customer-order-lines th, .customer-order-lines td,
+    .owner-order-lines th, .owner-order-lines td { padding: 10px !important; }
+}
+/* Gmail/classic Outlook discard feature queries and keep the normal-flow box.
+   Clients which preserve and support positioning can opt into the overlap. */
+{% if enable_overlap %}
+@supports (position: absolute) {
+    @media(min-width: 641px) {
+        .order-header { position: relative; }
+        .order-header .address-layout {
+            position: absolute;
+            width: 28.5% !important;
+            max-width: 230px;
+            background-color: #fff;
+        }
+        .order-header .customer-address {
+            left: 6.25%;
+            bottom: -30px;
+            width: 29.5% !important;
+            max-width: 240px;
+        }
+        .order-header .owner-information { right: 6.25%; bottom: -45px; }
+        .order-header .address-box { max-width: none !important; }
+        .order-header .customer-address .address-inset { padding: 8px !important; }
+        .order-header .owner-information .address-inset { padding: 5px !important; }
+        {% if mail_audience == 'customer' %}
+        #main { padding-top: 60px !important; }
+        {% else %}
+        #main { padding-top: 16px !important; }
+        {% endif %}
+    }
+}
+{% endif %}
