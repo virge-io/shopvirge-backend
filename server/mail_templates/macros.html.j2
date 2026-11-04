@@ -27,3 +27,16 @@ ShopVirge<br>
 {%- macro subscription_id(subscription) -%}
 {{ subscription.subscription_id|string()|truncate(8, False, "") }}
 {%- endmacro -%}
+
+
+{# Escape each fragment normally; zero-width spaces let long identifiers wrap
+   even in clients that ignore CSS word wrapping (including classic Outlook). #}
+{%- macro breakable(value) -%}
+    {%- for word in (value|string).split(' ') -%}
+        {%- if not loop.first %} {% endif -%}
+        {%- for offset in range(0, word|length, 16) -%}
+            {{- word[offset:offset + 16] -}}
+            {%- if offset + 16 < word|length %}&#8203;{% endif -%}
+        {%- endfor -%}
+    {%- endfor -%}
+{%- endmacro -%}

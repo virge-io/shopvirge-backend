@@ -1,7 +1,7 @@
 {% set color_bodybg = "#e6e6e6" %}
 {% import 'macros/pricelist.html.j2' as snippets %}
 <!DOCTYPE html>
-<html lang='nl' xmlns='http://www.w3.org/1999/xhtml' xmlns:v='urn:schemas-microsoft-com:vml' xmlns:o='urn:schemas-microsoft-com:office:office'>
+<html lang='{% block document_language %}nl{% endblock %}' xmlns='http://www.w3.org/1999/xhtml' xmlns:v='urn:schemas-microsoft-com:vml' xmlns:o='urn:schemas-microsoft-com:office:office'>
 <head>
     <meta name='emailTemplateType' content='ShopVirge template'/>
     <meta name='emailTemplateVersion' content='1.1'/>
@@ -117,6 +117,7 @@
 
         }
 
+        {% block extra_styles %}{% endblock %}
     </style>
 
 </head>
@@ -127,13 +128,14 @@
 
 
         <div id="header" style="line-height: 0;">
-            {{ snippets.banner() }}
-
-            {{ snippets.bar(welcome_text) }}
+            {% block header_content %}
+                {{ snippets.banner() }}
+                {{ snippets.bar(welcome_text) }}
+            {% endblock %}
         </div>
 
 
-        <table><tr><td id="main" style="padding: 40px 50px;">
+        <table width="100%"><tr><td id="main" style="padding: {% block main_padding %}40px 50px{% endblock %};">
             {% block content %}
                 Your template must define a 'content' block
             {% endblock %}

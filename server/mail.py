@@ -516,6 +516,16 @@ def build_order_confirmation_mails(order: Any, shop: Any, account: Any) -> list[
     template_vars = {
         "customer_order_id": order.customer_order_id,
         "customer_email": account.name,
+        "customer_name": account_details.get("name") or "",
+        "customer_address": account_details.get("address") or account_details.get("adres") or "",
+        "customer_postal_code": (
+            account_details.get("postalcode")
+            or account_details.get("postal_code")
+            or account_details.get("zip_code")
+            or ""
+        ),
+        "customer_city": account_details.get("city") or "",
+        "customer_country": account_details.get("country") or "",
         "order_lines": order_lines,
         "shipping_lines": shipping_lines,
         "shipping_fee_inc_btw": shipping_fee_inc_btw,
