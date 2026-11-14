@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import stripe
+from structlog.testing import capture_logs
 
 from server import mail
 from server.db import db
@@ -18,6 +19,18 @@ from tests.unit_tests.factories.product import make_product
 from tests.unit_tests.factories.shop import make_shop_with_shipping
 
 SHIPPING = make_shipping_address()
+
+
+def _payment_log(logs, event, checkout, level):
+    entry = next(log for log in logs if log["event"] == event)
+    assert entry["log_level"] == level
+    assert entry["order_id"] == str(checkout["order_id"])
+    assert entry["shop_id"] == str(checkout["shop_id"])
+    assert entry["payment_intent_id"] == "pi_offline"
+    assert not {"shipping", "shipping_address", "api_key", "client_secret"}.intersection(entry)
+    for sensitive in ("Alex Example", "Example street 1", "1234 AB", "sk_test_offline", "pi_offline_secret"):
+        assert sensitive not in repr(entry)
+    return entry
 
 
 @pytest.fixture()
@@ -72,8 +85,12 @@ def checkout(test_client, monkeypatch):
 
 
 def test_checkout_shipping_populates_both_confirmation_emails(checkout, test_client):
-    response = test_client.patch(f"/orders/{checkout['order_id']}", json={"status": "complete"})
+    with capture_logs() as logs:
+        response = test_client.patch(f"/orders/{checkout['order_id']}", json={"status": "complete"})
     assert response.status_code == 201, response.json()
+    entry = _payment_log(logs, "Order status updated", checkout, "info")
+    assert entry["has_shipping_address"] is True
+    assert entry["new_status"] == "complete"
     assert len(checkout["sent"]) == 2
     for message in checkout["sent"]:
         for expected in ("Alex Example", "Example street 1", "Unit 2", "1234 AB", "Amsterdam", "NL"):
@@ -120,8 +137,11 @@ def test_order_address_survives_account_changes_and_repeat_completion(checkout, 
 )
 def test_invalid_payment_does_not_complete_or_send_mail(checkout, test_client, field, value):
     checkout["payment"][field] = value
-    response = test_client.patch(f"/orders/{checkout['order_id']}", json={"status": "complete"})
+    with capture_logs() as logs:
+        response = test_client.patch(f"/orders/{checkout['order_id']}", json={"status": "complete"})
     assert response.status_code == 409, response.json()
+    entry = _payment_log(logs, "Order payment verification rejected", checkout, "warning")
+    assert entry["error"].startswith("The linked Stripe payment")
     db.session.expire_all()
     order = db.session.get(OrderTable, checkout["order_id"])
     assert order.status == "pending"
@@ -134,7 +154,9 @@ def test_invalid_payment_does_not_complete_or_send_mail(checkout, test_client, f
 def test_stripe_outage_can_be_retried_without_losing_the_order(checkout, test_client):
     url = f"/orders/{checkout['order_id']}"
     checkout["retrieve"].side_effect = stripe.error.APIConnectionError("Offline")
-    assert test_client.patch(url, json={"status": "complete"}).status_code == 502
+    with capture_logs() as logs:
+        assert test_client.patch(url, json={"status": "complete"}).status_code == 502
+    _payment_log(logs, "Failed to verify order payment", checkout, "error")
     assert checkout["sent"] == []
     db.session.expire_all()
     assert db.session.get(OrderTable, checkout["order_id"]).status == "pending"
@@ -156,5 +178,17 @@ def test_digital_payment_does_not_require_a_shipping_address(checkout, test_clie
 def test_cancel_does_not_contact_stripe(checkout, test_client):
     response = test_client.patch(f"/orders/{checkout['order_id']}", json={"status": "cancelled"})
     assert response.status_code == 201, response.json()
+    checkout["retrieve"].assert_not_called()
+    assert checkout["sent"] == []
+
+
+def test_missing_stripe_configuration_logs_order_context_without_secrets(checkout, test_client):
+    shop = db.session.get(ShopTable, checkout["shop_id"])
+    shop.stripe_secret_key = None
+    db.session.commit()
+    with capture_logs() as logs:
+        response = test_client.patch(f"/orders/{checkout['order_id']}", json={"status": "complete"})
+    assert response.status_code == 502, response.json()
+    _payment_log(logs, "Stripe is not configured for order payment verification", checkout, "error")
     checkout["retrieve"].assert_not_called()
     assert checkout["sent"] == []

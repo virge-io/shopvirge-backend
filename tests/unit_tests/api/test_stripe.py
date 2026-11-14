@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import stripe
+from structlog.testing import capture_logs
 
 from server.api.endpoints.checkout import stripe as stripe_endpoint
 from server.db import db
@@ -191,7 +192,17 @@ def test_repeated_checkout_reuses_the_linked_payment(test_client, monkeypatch):
     )
     url = f"/shops/{shop_id}/stripe/?order_id={order_id}"
     assert test_client.post(url).status_code == 201
-    assert test_client.post(url).status_code == 201
+    with capture_logs() as logs:
+        assert test_client.post(url).status_code == 201
+    entry = next(log for log in logs if log["event"] == "Resumed checkout with linked payment intent")
+    assert entry == {
+        "event": "Resumed checkout with linked payment intent",
+        "log_level": "info",
+        "order_id": str(order_id),
+        "shop_id": str(shop_id),
+        "payment_intent_id": "pi_same",
+        "subscription_id": None,
+    }
     assert len(requests) == 1
     assert requests[0]["idempotency_key"] == f"order-{order_id}-cus_test_123"
     retrieve.assert_called_once_with("pi_same", api_key=None)

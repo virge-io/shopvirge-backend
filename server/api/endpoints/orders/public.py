@@ -259,7 +259,12 @@ def patch(
 
     # Early exit if status of request is the same as in db, as or right now there is you cant cancel or complete an order again
     if item_in.status and order.status == item_in.status:
-        logger.info(f"Order status is already set to {item_in.status}")
+        logger.info(
+            "Order status is already set",
+            order_id=str(order_id),
+            shop_id=str(order.shop_id),
+            status=item_in.status,
+        )
         return order_updated(order)
 
     shop_id = order.shop_id
@@ -267,6 +272,13 @@ def patch(
 
     if item_in.status == "complete" and order.stripe_payment_intent_id:
         if payment is None:
+            logger.warning(
+                "Order payment verification rejected",
+                order_id=str(order_id),
+                shop_id=str(shop_id),
+                payment_intent_id=order.stripe_payment_intent_id,
+                error="The order's payment changed during verification",
+            )
             raise_status(HTTPStatus.CONFLICT, "The order's payment changed; retry completion")
         products = product_crud.get_many_by_shop_id(order.shop_id, (line["product_id"] for line in order.order_info))
         try:
@@ -278,6 +290,13 @@ def patch(
                 requires_shipping=any(product.shippable for product in products.values()),
             )
         except (OrderPaymentMismatch, stripe_client.StripeCustomerMissing) as exc:
+            logger.warning(
+                "Order payment verification rejected",
+                order_id=str(order_id),
+                shop_id=str(shop_id),
+                payment_intent_id=order.stripe_payment_intent_id,
+                error=str(exc),
+            )
             raise_status(HTTPStatus.CONFLICT, str(exc))
         if order.shipping_address is None:
             order.shipping_address = shipping_address
@@ -293,8 +312,17 @@ def patch(
     if item_in.status == "complete" and shop.config["toggles"]["enable_stock_on_products"]:
         _deduct_stock(order)
 
+    payment_intent_id = order.stripe_payment_intent_id
+    has_shipping_address = bool(order.shipping_address)
     db.session.commit()
-    logger.info("Order status updated", order_id=str(order_id), shop_id=str(shop_id), new_status=item_in.status)
+    logger.info(
+        "Order status updated",
+        order_id=str(order_id),
+        shop_id=str(shop_id),
+        new_status=item_in.status,
+        payment_intent_id=payment_intent_id,
+        has_shipping_address=has_shipping_address,
+    )
 
     updated_order = order_updated(order)
 
@@ -343,14 +371,26 @@ def _fetch_completion_payment(order_id: UUID) -> dict | None:
         return None
     payment_intent_id = order.stripe_payment_intent_id
     shop = get_or_404(shop_crud.get(order.shop_id), "Shop not found")
+    shop_id = str(shop.id)
     if not shop.stripe_secret_key:
+        logger.error(
+            "Stripe is not configured for order payment verification",
+            order_id=str(order_id),
+            shop_id=shop_id,
+            payment_intent_id=payment_intent_id,
+        )
         raise_status(HTTPStatus.BAD_GATEWAY, "Stripe is not configured for this order's shop")
     api_key = shop.stripe_secret_key
     db.release_connection()
     try:
         return fetch_payment_intent(payment_intent_id, api_key=api_key)
     except stripe.error.StripeError:
-        logger.exception("Unable to verify order payment", order_id=str(order_id))
+        logger.exception(
+            "Failed to verify order payment",
+            order_id=str(order_id),
+            shop_id=shop_id,
+            payment_intent_id=payment_intent_id,
+        )
         raise_status(HTTPStatus.BAD_GATEWAY, "Unable to verify order payment; retry completion")
 
 

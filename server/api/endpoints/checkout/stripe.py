@@ -21,6 +21,8 @@ def _resume_checkout(order: OrderTable, shop: ShopTable, *, subscription: bool =
     """Reuse an already-linked payment, even after Stripe's idempotency-key retention expires."""
     if not order.stripe_payment_intent_id:
         return None
+    order_id = str(order.id)
+    shop_id = str(shop.id)
     payment_intent_id = order.stripe_payment_intent_id
     api_key = shop.stripe_secret_key
     db.release_connection()
@@ -33,6 +35,13 @@ def _resume_checkout(order: OrderTable, shop: ShopTable, *, subscription: bool =
         result["subscriptionId"] = (
             linked_subscription if isinstance(linked_subscription, str) else str(linked_subscription["id"])
         )
+    logger.info(
+        "Resumed checkout with linked payment intent",
+        order_id=order_id,
+        shop_id=shop_id,
+        payment_intent_id=payment_intent_id,
+        subscription_id=result.get("subscriptionId"),
+    )
     return result
 
 
@@ -127,7 +136,12 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
             customer_id = replace_missing_customer(account_id, shop_id)
-            logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
+            logger.warning(
+                "Replaced missing Stripe customer",
+                order_id=str(order_id),
+                shop_id=str(shop_id),
+                customer_id=customer_id,
+            )
             db.release_connection()
             intent = stripe.PaymentIntent.create(
                 **(intent_args | {"customer": customer_id, "idempotency_key": f"order-{order_id}-{customer_id}"})
@@ -138,6 +152,7 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             order_id=str(order_id),
             shop_id=str(shop_id),
             customer_id=customer_id,
+            payment_intent_id=str(intent["id"]),
             amount=intent_args["amount"],
         )
         return {"clientSecret": str(intent["client_secret"])}
@@ -202,7 +217,12 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
             customer_id = replace_missing_customer(account_id, shop_id)
-            logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
+            logger.warning(
+                "Replaced missing Stripe customer",
+                order_id=str(order_id),
+                shop_id=str(shop_id),
+                customer_id=customer_id,
+            )
             db.release_connection()
             subscription = stripe.Subscription.create(
                 **(
@@ -220,6 +240,7 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             shop_id=str(shop_id),
             subscription_id=str(subscription.id),
             customer_id=customer_id,
+            payment_intent_id=str(subscription.latest_invoice.payment_intent.id),
         )
         return {
             "clientSecret": str(subscription.latest_invoice.payment_intent.client_secret),
