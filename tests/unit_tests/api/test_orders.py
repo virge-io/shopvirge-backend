@@ -17,7 +17,7 @@ from server.settings import mail_settings
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.api_key import make_api_key
 from tests.unit_tests.factories.categories import make_category
-from tests.unit_tests.factories.order import make_pending_order
+from tests.unit_tests.factories.order import make_pending_order, make_shipping_address
 from tests.unit_tests.factories.product import make_product
 from tests.unit_tests.factories.shop import make_shop_with_shipping
 
@@ -603,3 +603,104 @@ def test_concurrent_patch_order_complete_deducts_stock_and_mails_once(test_clien
     assert _stock(ids["p1"]) == 4
     assert _stock(ids["p2"]) == 4
     assert len(sent) == 1
+
+
+def _link_offline_payment(ids):
+    order = db.session.get(OrderTable, ids["order_id"])
+    order.stripe_payment_intent_id = "pi_linked"
+    order.account.details = {"stripe_customer_id": "cus_linked"}
+    shop = db.session.get(ShopTable, ids["shop_id"])
+    shop.stripe_secret_key = "sk_test_offline"
+    payment = {
+        "id": "pi_linked",
+        "status": "succeeded",
+        "customer": "cus_linked",
+        "currency": "eur",
+        "amount_received": int(order.total * 100),
+        "shipping": make_shipping_address(),
+    }
+    db.session.commit()
+    return payment
+
+
+def test_concurrent_linked_payment_completes_once_without_holding_a_connection(test_client, monkeypatch, real_db):
+    ids = _shop_with_stocked_order(cleanup=real_db)
+    payment = _link_offline_payment(ids)
+    sent = _capture_confirmation_emails(monkeypatch)
+    # Both requests must finish reading Stripe before either takes the completion lock.
+    fetched = threading.Barrier(2)
+
+    def retrieve(payment_id, **kwargs):
+        assert payment_id == "pi_linked"
+        assert kwargs == {"api_key": "sk_test_offline"}
+        assert not db.session.in_transaction()
+        fetched.wait(timeout=10)
+        return payment
+
+    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", retrieve)
+    responses = []
+    threads = [
+        threading.Thread(
+            target=lambda: responses.append(
+                test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
+            )
+        )
+        for _ in range(2)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=20)
+    assert [response.status_code for response in responses] == [201, 201]
+    assert _stock(ids["p1"]) == 4
+    assert _stock(ids["p2"]) == 4
+    assert len(sent) == 1
+    assert db.session.get(OrderTable, ids["order_id"]).shipping_address == make_shipping_address()
+
+
+def test_payment_relinked_during_stripe_read_is_rejected(test_client, monkeypatch, real_db):
+    ids = _shop_with_stocked_order(cleanup=real_db)
+    payment = _link_offline_payment(ids)
+    sent = _capture_confirmation_emails(monkeypatch)
+
+    def retrieve(*args, **kwargs):
+        assert not db.session.in_transaction()
+        with db.wrapped_database.engine.begin() as conn:
+            conn.execute(
+                text("UPDATE orders SET stripe_payment_intent_id = 'pi_new' WHERE id = :id"),
+                {"id": str(ids["order_id"])},
+            )
+        return payment
+
+    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", retrieve)
+    response = test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
+    assert response.status_code == 409, response.json()
+    db.session.expire_all()
+    order = db.session.get(OrderTable, ids["order_id"])
+    assert order.status == "pending"
+    assert order.shipping_address is None
+    assert _stock(ids["p1"]) == 5
+    assert sent == []
+
+
+def test_failed_stock_deduction_also_rolls_back_delivery_snapshot(test_client, monkeypatch, real_db):
+    ids = _shop_with_stocked_order(cleanup=real_db)
+    payment = _link_offline_payment(ids)
+    sent = _capture_confirmation_emails(monkeypatch)
+    order = db.session.get(OrderTable, ids["order_id"])
+    order.order_info = [
+        *order.order_info[:1],
+        {**order.order_info[1], "product_id": "ffffffff-ffff-4fff-8fff-ffffffffffff"},
+    ]
+    db.session.commit()
+    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", lambda *args, **kwargs: payment)
+
+    response = test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
+    assert response.status_code == 404, response.json()
+    db.session.expire_all()
+    order = db.session.get(OrderTable, ids["order_id"])
+    assert order.status == "pending"
+    assert order.shipping_address is None
+    assert order.completed_at is None
+    assert _stock(ids["p1"]) == 5
+    assert sent == []

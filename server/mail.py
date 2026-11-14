@@ -513,19 +513,33 @@ def build_order_confirmation_mails(order: Any, shop: Any, account: Any) -> list[
         completed_at_str = completed_at_dt.strftime("%d-%m-%Y %H:%M")
 
     # Common template variables
+    # Prefer the order's immutable shipping snapshot. Legacy/non-shipping orders
+    # without one keep the account-details fallback; business details stay on the account.
+    shipping = getattr(order, "shipping_address", None)
+    if shipping:
+        address = shipping.get("address") or {}
+        customer_details = {
+            "name": shipping.get("name"),
+            "address": " ".join(part for part in (address.get("line1"), address.get("line2")) if part),
+            "postal_code": address.get("postal_code"),
+            "city": address.get("city"),
+            "country": address.get("country"),
+        }
+    else:
+        customer_details = account_details
     template_vars = {
         "customer_order_id": order.customer_order_id,
         "customer_email": account.name,
-        "customer_name": account_details.get("name") or "",
-        "customer_address": account_details.get("address") or account_details.get("adres") or "",
+        "customer_name": customer_details.get("name") or "",
+        "customer_address": customer_details.get("address") or customer_details.get("adres") or "",
         "customer_postal_code": (
-            account_details.get("postalcode")
-            or account_details.get("postal_code")
-            or account_details.get("zip_code")
+            customer_details.get("postalcode")
+            or customer_details.get("postal_code")
+            or customer_details.get("zip_code")
             or ""
         ),
-        "customer_city": account_details.get("city") or "",
-        "customer_country": account_details.get("country") or "",
+        "customer_city": customer_details.get("city") or "",
+        "customer_country": customer_details.get("country") or "",
         "order_lines": order_lines,
         "shipping_lines": shipping_lines,
         "shipping_fee_inc_btw": shipping_fee_inc_btw,

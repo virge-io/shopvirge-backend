@@ -9,12 +9,43 @@ from fastapi import APIRouter, HTTPException
 from server.api.error_handling import raise_status
 from server.crud.crud_shop import shop_crud
 from server.db import db
-from server.db.models import Account, OrderTable
+from server.db.models import Account, OrderTable, ShopTable
 from server.schemas.base import quantize_money
 from server.services import stripe_client
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
+
+
+def _resume_checkout(order: OrderTable, shop: ShopTable, *, subscription: bool = False) -> dict[str, str] | None:
+    """Reuse an already-linked payment, even after Stripe's idempotency-key retention expires."""
+    if not order.stripe_payment_intent_id:
+        return None
+    payment_intent_id = order.stripe_payment_intent_id
+    api_key = shop.stripe_secret_key
+    db.release_connection()
+    intent = stripe.PaymentIntent.retrieve(
+        payment_intent_id, api_key=api_key, **({"expand": ["invoice.subscription"]} if subscription else {})
+    )
+    result = {"clientSecret": str(intent["client_secret"])}
+    if subscription:
+        linked_subscription = intent["invoice"]["subscription"]
+        result["subscriptionId"] = (
+            linked_subscription if isinstance(linked_subscription, str) else str(linked_subscription["id"])
+        )
+    return result
+
+
+def _save_payment_intent(order_id: UUID, payment_intent_id: str) -> None:
+    # The remote call ran without a DB connection. Re-lock before linking so an
+    # overlapping completion cannot have its payment or delivery snapshot replaced.
+    order = OrderTable.query.filter(OrderTable.id == order_id).with_for_update().populate_existing().one()
+    if order.status != "pending":
+        raise HTTPException(HTTPStatus.CONFLICT, "Only pending orders can create payments")
+    if order.stripe_payment_intent_id and order.stripe_payment_intent_id != payment_intent_id:
+        raise HTTPException(HTTPStatus.CONFLICT, "A payment is already linked; reload checkout")
+    order.stripe_payment_intent_id = payment_intent_id
+    db.session.commit()
 
 
 def get_stripe_customer(account_id: UUID, shop_id: UUID):
@@ -63,6 +94,8 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     order = OrderTable.query.filter(OrderTable.id == order_id, OrderTable.shop_id == shop_id).first()
     if not order:
         raise_status(HTTPStatus.NOT_FOUND, f"Order with id {order_id} not found")
+    if order.status != "pending":
+        raise_status(HTTPStatus.CONFLICT, "Only pending orders can create payments")
     if order.total is None or order.total <= 0:
         raise_status(HTTPStatus.UNPROCESSABLE_ENTITY, f"Order with id {order_id} has no payable total")
     if any(item.get("plan") not in {None, "onetime"} for item in order.order_info):
@@ -71,6 +104,9 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
+        existing = _resume_checkout(order, shop)
+        if existing:
+            return existing
         account_id = order.account_id
         customer_id = get_stripe_customer(account_id, shop_id)
 
@@ -80,6 +116,8 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             "payment_method_types": ["card", "ideal"],
             "setup_future_usage": "off_session",
             "customer": customer_id,
+            "metadata": {"order_id": str(order_id), "shop_id": str(shop_id)},
+            "idempotency_key": f"order-{order_id}-{customer_id}",
         }
         # Everything Stripe needs is in plain values now: give the pooled connection back for the remote call.
         db.release_connection()
@@ -90,7 +128,11 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
                 raise
             customer_id = replace_missing_customer(account_id, shop_id)
             logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
-            intent = stripe.PaymentIntent.create(**(intent_args | {"customer": customer_id}))
+            db.release_connection()
+            intent = stripe.PaymentIntent.create(
+                **(intent_args | {"customer": customer_id, "idempotency_key": f"order-{order_id}-{customer_id}"})
+            )
+        _save_payment_intent(order_id, str(intent["id"]))
         logger.info(
             "PaymentIntent created successfully",
             order_id=str(order_id),
@@ -99,6 +141,8 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             amount=intent_args["amount"],
         )
         return {"clientSecret": str(intent["client_secret"])}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("Failed to create payment intent", order_id=str(order_id), shop_id=str(shop_id))
         raise HTTPException(HTTPStatus.BAD_GATEWAY, "Unable to create payment intent") from exc
@@ -118,6 +162,8 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     order = OrderTable.query.filter(OrderTable.id == order_id, OrderTable.shop_id == shop_id).first()
     if not order:
         raise_status(HTTPStatus.NOT_FOUND, f"Order with id {order_id} not found")
+    if order.status != "pending":
+        raise_status(HTTPStatus.CONFLICT, "Only pending orders can create payments")
 
     plans = {item.get("plan") for item in order.order_info}
     if len(plans) == 1 and plans <= {"monthly", "yearly"}:
@@ -128,6 +174,9 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
+        existing = _resume_checkout(order, shop, subscription=True)
+        if existing:
+            return existing
         account_id = order.account_id
         order_info = order.order_info
         customer_id = get_stripe_customer(account_id, shop_id)
@@ -144,6 +193,8 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             },
             "customer": customer_id,
             "expand": ["latest_invoice.payment_intent"],
+            "metadata": {"order_id": str(order_id), "shop_id": str(shop_id)},
+            "idempotency_key": f"subscription-order-{order_id}-{customer_id}",
         }
         try:
             subscription = stripe.Subscription.create(**subscription_args)
@@ -152,7 +203,17 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
                 raise
             customer_id = replace_missing_customer(account_id, shop_id)
             logger.warning("Replaced missing Stripe customer", order_id=str(order_id), customer_id=customer_id)
-            subscription = stripe.Subscription.create(**(subscription_args | {"customer": customer_id}))
+            db.release_connection()
+            subscription = stripe.Subscription.create(
+                **(
+                    subscription_args
+                    | {
+                        "customer": customer_id,
+                        "idempotency_key": f"subscription-order-{order_id}-{customer_id}",
+                    }
+                )
+            )
+        _save_payment_intent(order_id, str(subscription.latest_invoice.payment_intent.id))
         logger.info(
             "Subscription created successfully",
             order_id=str(order_id),
@@ -164,6 +225,8 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             "clientSecret": str(subscription.latest_invoice.payment_intent.client_secret),
             "subscriptionId": str(subscription.id),
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("Failed to create subscription", order_id=str(order_id), shop_id=str(shop_id))
         raise HTTPException(HTTPStatus.BAD_GATEWAY, "Unable to create subscription") from exc

@@ -33,6 +33,7 @@ from server.schemas.order import (
     OrderUpdated,
 )
 from server.services import stripe_client
+from server.services.order_payment import OrderPaymentMismatch, fetch_payment_intent, verified_shipping_address
 from server.services.stripe_client import StripeNotConfigured
 from server.settings import mail_settings
 from server.utils.discord.discord import post_discord_order_complete
@@ -250,6 +251,7 @@ def patch(
     order_id: UUID,
     item_in: OrderStatusUpdate,
 ) -> OrderUpdated:
+    payment = _fetch_completion_payment(order_id) if item_in.status == "complete" else None
     # Row lock: a second update for the same order (double submit, retry, Stripe
     # redirect) blocks here until the first one commits, then re-reads the committed
     # status and takes the early exit below instead of repeating the side effects.
@@ -262,6 +264,23 @@ def patch(
 
     shop_id = order.shop_id
     shop = get_or_404(shop_crud.get(shop_id), f"Shop with ID {shop_id} not found")
+
+    if item_in.status == "complete" and order.stripe_payment_intent_id:
+        if payment is None:
+            raise_status(HTTPStatus.CONFLICT, "The order's payment changed; retry completion")
+        products = product_crud.get_many_by_shop_id(order.shop_id, (line["product_id"] for line in order.order_info))
+        try:
+            shipping_address = verified_shipping_address(
+                payment,
+                payment_intent_id=order.stripe_payment_intent_id,
+                customer_id=stripe_client.get_customer_id(order.account),
+                total=order.total,
+                requires_shipping=any(product.shippable for product in products.values()),
+            )
+        except (OrderPaymentMismatch, stripe_client.StripeCustomerMissing) as exc:
+            raise_status(HTTPStatus.CONFLICT, str(exc))
+        if order.shipping_address is None:
+            order.shipping_address = shipping_address
 
     if item_in.status in {"complete", "cancelled"} and not order.completed_at:
         mark_completed(order)
@@ -309,6 +328,30 @@ def patch(
         logger.error("Failed to post to Discord: ", error=str(e))
 
     return updated_order
+
+
+def _fetch_completion_payment(order_id: UUID) -> dict | None:
+    """Read Stripe before taking the completion lock, without holding a DB connection.
+
+    Completion re-reads and verifies the linked ID under its lock; a concurrent
+    completion takes the existing idempotent exit without changing the snapshot.
+    Legacy/non-Stripe orders retain their previous completion behavior.
+    """
+    order = get_or_404(order_crud.get(order_id), "Order not found")
+    if order.status == "complete" or not order.stripe_payment_intent_id:
+        db.release_connection()
+        return None
+    payment_intent_id = order.stripe_payment_intent_id
+    shop = get_or_404(shop_crud.get(order.shop_id), "Shop not found")
+    if not shop.stripe_secret_key:
+        raise_status(HTTPStatus.BAD_GATEWAY, "Stripe is not configured for this order's shop")
+    api_key = shop.stripe_secret_key
+    db.release_connection()
+    try:
+        return fetch_payment_intent(payment_intent_id, api_key=api_key)
+    except stripe.error.StripeError:
+        logger.exception("Unable to verify order payment", order_id=str(order_id))
+        raise_status(HTTPStatus.BAD_GATEWAY, "Unable to verify order payment; retry completion")
 
 
 @router.get(
