@@ -254,6 +254,7 @@ class OrderTable(BaseModel):
     shipping_fee_inc_btw = Column(Numeric(12, 2), nullable=True)
     # Internal checkout linkage and immutable delivery snapshot; never exposed by the public order schemas.
     stripe_payment_intent_id = Column(String(255), nullable=True)
+    stripe_payment_customer_id = Column(String(255), nullable=True)
     shipping_address = Column(postgresql.JSONB(), nullable=True)
     status = Column(String(), default="pending")
     created_at = Column(DateTime, server_default=func.now())

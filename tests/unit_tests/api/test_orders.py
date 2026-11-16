@@ -1,17 +1,14 @@
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import cast
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.orm import scoped_session, sessionmaker
 
 from server.api.endpoints.orders import public
 from server.crud.crud_shop import shop_crud
 from server.db import db
-from server.db.database import SESSION_ARGUMENTS, BaseModel, SearchQuery
 from server.db.models import OrderTable, ProductTable, ShopTable
 from server.settings import mail_settings
 from tests.unit_tests.factories.account import make_account
@@ -450,54 +447,6 @@ def test_delete_order_as_admin(pending_order, test_client):
 
 
 # --- PATCH /orders/{order_id} must be atomic and safe against double submits (shop-poc#349) ---
-
-
-@pytest.fixture()
-def real_db(db_session):
-    """Sessions on their own pooled connections, committing for real.
-
-    The ``db_session`` fixture binds every session to one connection inside an
-    outer transaction. That serializes concurrent requests by itself, and a request
-    session that is closed there cannot roll back either (SQLAlchemy joins the
-    outer transaction in "rollback_only" mode). Tests that need either behaviour
-    use this fixture and register the shops they create, so their rows can be
-    deleted afterwards, which the outer rollback can't do for them.
-    """
-    wrapped = db.wrapped_database
-    original_factory, original_scoped = wrapped.session_factory, wrapped.scoped_session
-    wrapped.session_factory = sessionmaker(**SESSION_ARGUMENTS, bind=wrapped.engine)
-    wrapped.scoped_session = scoped_session(wrapped.session_factory, wrapped._scopefunc)
-    BaseModel.set_query(cast(SearchQuery, wrapped.scoped_session.query_property()))
-
-    shop_ids: list = []
-    try:
-        yield shop_ids
-    finally:
-        wrapped.scoped_session.remove()
-        with wrapped.engine.begin() as conn:
-            for shop_id in shop_ids:
-                params = {"s": str(shop_id)}
-                conn.execute(text("DELETE FROM orders WHERE shop_id = :s"), params)
-                conn.execute(text("DELETE FROM accounts WHERE shop_id = :s"), params)
-                conn.execute(
-                    text(
-                        "DELETE FROM product_translations "
-                        "WHERE product_id IN (SELECT id FROM products WHERE shop_id = :s)"
-                    ),
-                    params,
-                )
-                conn.execute(text("DELETE FROM products WHERE shop_id = :s"), params)
-                conn.execute(
-                    text(
-                        "DELETE FROM category_translations "
-                        "WHERE category_id IN (SELECT id FROM categories WHERE shop_id = :s)"
-                    ),
-                    params,
-                )
-                conn.execute(text("DELETE FROM categories WHERE shop_id = :s"), params)
-                conn.execute(text("DELETE FROM shops WHERE id = :s"), params)
-        wrapped.session_factory, wrapped.scoped_session = original_factory, original_scoped
-        BaseModel.set_query(cast(SearchQuery, original_scoped.query_property()))
 
 
 def _shop_with_stocked_order(stock: int = 5, cleanup: list | None = None) -> dict:

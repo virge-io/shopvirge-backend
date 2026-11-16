@@ -512,3 +512,51 @@ def pending_order(shop):
     product_1 = make_product(shop_id=shop, category_id=category)
     product_2 = make_product(shop_id=shop, category_id=category)
     return make_pending_order(shop_id=shop, account_id=account, product_id_1=product_1, product_id_2=product_2)
+
+
+@pytest.fixture()
+def real_db(db_session):
+    """Sessions on their own pooled connections, committing for real.
+
+    The ``db_session`` fixture binds every session to one connection inside an
+    outer transaction. That serializes concurrent requests by itself, and a request
+    session that is closed there cannot roll back either (SQLAlchemy joins the
+    outer transaction in "rollback_only" mode). Tests that need either behaviour
+    use this fixture and register the shops they create, so their rows can be
+    deleted afterwards, which the outer rollback can't do for them.
+    """
+    wrapped = db.wrapped_database
+    original_factory, original_scoped = wrapped.session_factory, wrapped.scoped_session
+    wrapped.session_factory = sessionmaker(**SESSION_ARGUMENTS, bind=wrapped.engine)
+    wrapped.scoped_session = scoped_session(wrapped.session_factory, wrapped._scopefunc)
+    BaseModel.set_query(cast(SearchQuery, wrapped.scoped_session.query_property()))
+
+    shop_ids: list = []
+    try:
+        yield shop_ids
+    finally:
+        wrapped.scoped_session.remove()
+        with wrapped.engine.begin() as conn:
+            for shop_id in shop_ids:
+                params = {"s": str(shop_id)}
+                conn.execute(text("DELETE FROM orders WHERE shop_id = :s"), params)
+                conn.execute(text("DELETE FROM accounts WHERE shop_id = :s"), params)
+                conn.execute(
+                    text(
+                        "DELETE FROM product_translations "
+                        "WHERE product_id IN (SELECT id FROM products WHERE shop_id = :s)"
+                    ),
+                    params,
+                )
+                conn.execute(text("DELETE FROM products WHERE shop_id = :s"), params)
+                conn.execute(
+                    text(
+                        "DELETE FROM category_translations "
+                        "WHERE category_id IN (SELECT id FROM categories WHERE shop_id = :s)"
+                    ),
+                    params,
+                )
+                conn.execute(text("DELETE FROM categories WHERE shop_id = :s"), params)
+                conn.execute(text("DELETE FROM shops WHERE id = :s"), params)
+        wrapped.session_factory, wrapped.scoped_session = original_factory, original_scoped
+        BaseModel.set_query(cast(SearchQuery, original_scoped.query_property()))

@@ -285,7 +285,7 @@ def patch(
             shipping_address = verified_shipping_address(
                 payment,
                 payment_intent_id=order.stripe_payment_intent_id,
-                customer_id=stripe_client.get_customer_id(order.account),
+                customer_id=order.stripe_payment_customer_id or stripe_client.get_customer_id(order.account),
                 total=order.total,
                 requires_shipping=any(product.shippable for product in products.values()),
             )

@@ -103,6 +103,7 @@ def test_checkout_shipping_populates_both_confirmation_emails(checkout, test_cli
     public_order = test_client.get(f"/orders/{checkout['order_id']}").json()
     assert "shipping_address" not in public_order
     assert "stripe_payment_intent_id" not in public_order
+    assert "stripe_payment_customer_id" not in public_order
 
 
 def test_order_address_survives_account_changes_and_repeat_completion(checkout, test_client):

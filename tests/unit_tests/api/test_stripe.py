@@ -79,7 +79,9 @@ def test_payment_intent_replaces_a_customer_missing_from_the_shop_stripe_account
 
     assert response.status_code == 201, response.json()
     assert [intent["customer"] for intent in intents] == ["cus_stale", "cus_replacement"]
-    assert customer_create == {"email": "Test Account"}
+    assert customer_create["email"] == "Test Account"
+    assert customer_create["idempotency_key"].startswith("replace-customer-")
+    assert "api_key" in customer_create
     db.session.expire_all()
     assert db.session.get(Account, account_id).details["stripe_customer_id"] == "cus_replacement"
     assert db.session.get(OrderTable, order.id).stripe_payment_intent_id == "pi_replacement"
