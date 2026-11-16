@@ -92,7 +92,16 @@ def replace_missing_customer(account_id: UUID, shop_id: UUID, failed_customer_id
         .first()
     )
     if not account:
-        raise_status(HTTPStatus.NOT_FOUND, f"Account with id {account_id} not found")
+        logger.error(
+            "Account disappeared during Stripe customer replacement",
+            account_id=str(account_id),
+            shop_id=str(shop_id),
+            replacement_customer_id=replacement_id,
+        )
+        raise_status(
+            HTTPStatus.NOT_FOUND,
+            "Account disappeared during Stripe customer replacement; the replacement customer could not be linked",
+        )
     current_id = stripe_client.get_customer_id(account)
     if current_id == failed_customer_id:
         account.details = {**(account.details or {}), "stripe_customer_id": replacement_id}

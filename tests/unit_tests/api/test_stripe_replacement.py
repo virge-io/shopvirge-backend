@@ -323,3 +323,35 @@ def test_explicit_shop_key_survives_process_global_key_change(replacement_checko
     monkeypatch.setattr(stripe.PaymentIntent, "create", retry_payment)
     monkeypatch.setattr(stripe.Customer, "create", create_customer)
     assert test_client.post(f"/shops/{ids['shop']}/stripe/?order_id={ids['order']}").status_code == 201
+
+
+def test_account_removed_during_replacement_reports_unlinked_stripe_customer(replacement_checkout, monkeypatch):
+    from structlog.testing import capture_logs
+
+    from server.api.endpoints.checkout.stripe import replace_missing_customer
+    from server.api.error_handling import ProblemDetailException
+
+    ids = replacement_checkout
+
+    def create_customer(**kwargs):
+        assert not db.session.in_transaction()
+        with db.wrapped_database.engine.begin() as conn:
+            conn.execute(text("DELETE FROM accounts WHERE id = :id"), {"id": str(ids["account"])})
+        return SimpleNamespace(id="cus_unlinked")
+
+    monkeypatch.setattr(stripe.Customer, "create", create_customer)
+    with capture_logs() as logs, pytest.raises(ProblemDetailException) as exc:
+        replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
+    assert exc.value.status_code == 404
+    assert exc.value.detail == (
+        "Account disappeared during Stripe customer replacement; the replacement customer could not be linked"
+    )
+    assert logs == [
+        {
+            "event": "Account disappeared during Stripe customer replacement",
+            "log_level": "error",
+            "account_id": str(ids["account"]),
+            "shop_id": str(ids["shop"]),
+            "replacement_customer_id": "cus_unlinked",
+        }
+    ]
