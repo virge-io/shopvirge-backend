@@ -1,4 +1,4 @@
-"""Bind one-time payment ownership to the order, independent of account relinking."""
+"""Bind payment ownership to the order, independent of account relinking."""
 
 from alembic import op
 import sqlalchemy as sa

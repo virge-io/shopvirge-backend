@@ -49,11 +49,16 @@ def replacement_checkout(real_db, monkeypatch):
     return {"shop": shop_id, "account": account_id, "product": product_id, "order": order.id, "sent": sent}
 
 
+@pytest.mark.parametrize("plan", [None, "monthly", "yearly"])
 @pytest.mark.parametrize("separate_orders", [False, True])
 def test_overlapping_missing_customer_requests_share_payment_and_complete(
-    replacement_checkout, test_client, monkeypatch, separate_orders
+    replacement_checkout, test_client, monkeypatch, separate_orders, plan
 ):
     ids = replacement_checkout
+    if plan:
+        order = db.session.get(OrderTable, ids["order"])
+        order.order_info = [{**line, "plan": plan} for line in order.order_info]
+        db.session.commit()
     order_ids = [ids["order"]] * 4
     if separate_orders:
         original = db.session.get(OrderTable, ids["order"])
@@ -106,6 +111,27 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
 
     monkeypatch.setattr(stripe.Customer, "create", create_customer)
     monkeypatch.setattr(stripe.PaymentIntent, "create", create_payment)
+
+    def list_prices(**kwargs):
+        assert kwargs["api_key"] == "sk_test_385"
+        assert not db.session.in_transaction()
+        return SimpleNamespace(
+            data=[SimpleNamespace(lookup_key=key, id=f"price_{key}") for key in kwargs["lookup_keys"]]
+        )
+
+    def create_subscription(**kwargs):
+        payment = create_payment(**kwargs)
+        return SimpleNamespace(
+            id=f"sub_{payment['id']}",
+            latest_invoice=SimpleNamespace(
+                payment_intent=SimpleNamespace(id=payment["id"], client_secret=payment["client_secret"])
+            ),
+        )
+
+    monkeypatch.setattr(stripe.Price, "list", list_prices)
+    monkeypatch.setattr(stripe.Subscription, "create", create_subscription)
+    suffix = "subscription" if plan else ""
+
     monkeypatch.setattr(
         stripe.PaymentIntent,
         "retrieve",
@@ -114,7 +140,8 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
     with ThreadPoolExecutor(max_workers=4) as workers:
         responses = list(
             workers.map(
-                lambda order_id: test_client.post(f"/shops/{ids['shop']}/stripe/?order_id={order_id}"), order_ids
+                lambda order_id: test_client.post(f"/shops/{ids['shop']}/stripe/{suffix}?order_id={order_id}"),
+                order_ids,
             )
         )
     assert [r.status_code for r in responses] == [201] * 4, [r.json() for r in responses]
@@ -158,7 +185,7 @@ def test_linked_payment_survives_later_account_customer_change(replacement_check
 
 @pytest.mark.parametrize("winner", [None, "cus_other_worker"])
 def test_replacement_refreshes_details_and_reuses_committed_winner(replacement_checkout, monkeypatch, winner):
-    from server.api.endpoints.checkout.stripe import replace_missing_onetime_customer
+    from server.api.endpoints.checkout.stripe import replace_missing_customer
 
     ids = replacement_checkout
 
@@ -175,7 +202,7 @@ def test_replacement_refreshes_details_and_reuses_committed_winner(replacement_c
         return SimpleNamespace(id="cus_candidate")
 
     monkeypatch.setattr(stripe.Customer, "create", create_customer)
-    result = replace_missing_onetime_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
+    result = replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
     assert result == (winner or "cus_candidate")
     db.session.expire_all()
     assert db.session.get(Account, ids["account"]).details == {
@@ -184,7 +211,7 @@ def test_replacement_refreshes_details_and_reuses_committed_winner(replacement_c
     }
     # A delayed old request should skip remote customer creation altogether.
     monkeypatch.setattr(stripe.Customer, "create", lambda **k: pytest.fail("Must reuse the committed customer"))
-    assert replace_missing_onetime_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385") == result
+    assert replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385") == result
 
 
 @pytest.mark.parametrize("failure", ["remote", "commit"])
@@ -255,7 +282,7 @@ def test_payment_customer_pair_cannot_be_overwritten(replacement_checkout):
 
 
 def test_replacement_retry_reuses_remote_idempotency_key(replacement_checkout, monkeypatch):
-    from server.api.endpoints.checkout.stripe import replace_missing_onetime_customer
+    from server.api.endpoints.checkout.stripe import replace_missing_customer
 
     ids = replacement_checkout
     calls = []
@@ -269,11 +296,8 @@ def test_replacement_retry_reuses_remote_idempotency_key(replacement_checkout, m
 
     monkeypatch.setattr(stripe.Customer, "create", customer_create)
     with pytest.raises(stripe.error.APIConnectionError):
-        replace_missing_onetime_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
-    assert (
-        replace_missing_onetime_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
-        == "cus_retried"
-    )
+        replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
+    assert replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385") == "cus_retried"
     assert calls[0] == calls[1]
 
 

@@ -46,7 +46,7 @@ def _resume_checkout(order: OrderTable, shop: ShopTable, *, subscription: bool =
     return result
 
 
-def _save_payment_intent(order_id: UUID, payment_intent_id: str, customer_id: str | None = None) -> None:
+def _save_payment_intent(order_id: UUID, payment_intent_id: str, customer_id: str) -> None:
     # The remote call ran without a DB connection. Re-lock before linking so an
     # overlapping completion cannot have its payment or delivery snapshot replaced.
     order = OrderTable.query.filter(OrderTable.id == order_id).with_for_update().populate_existing().one()
@@ -54,10 +54,9 @@ def _save_payment_intent(order_id: UUID, payment_intent_id: str, customer_id: st
         raise HTTPException(HTTPStatus.CONFLICT, "Only pending orders can create payments")
     if order.stripe_payment_intent_id and order.stripe_payment_intent_id != payment_intent_id:
         raise HTTPException(HTTPStatus.CONFLICT, "A payment is already linked; reload checkout")
-    if customer_id is not None:
-        if order.stripe_payment_customer_id and order.stripe_payment_customer_id != customer_id:
-            raise HTTPException(HTTPStatus.CONFLICT, "A different payment customer is already linked")
-        order.stripe_payment_customer_id = customer_id
+    if order.stripe_payment_customer_id and order.stripe_payment_customer_id != customer_id:
+        raise HTTPException(HTTPStatus.CONFLICT, "A different payment customer is already linked")
+    order.stripe_payment_customer_id = customer_id
     order.stripe_payment_intent_id = payment_intent_id
     db.session.commit()
 
@@ -67,20 +66,7 @@ def get_stripe_customer(account_id: UUID, shop_id: UUID):
     return stripe_client.get_customer_id(account)
 
 
-def replace_missing_customer(account_id: UUID, shop_id: UUID) -> str:
-    account = Account.query.filter(Account.id == account_id, Account.shop_id == shop_id).first()
-    if not account:
-        raise_status(HTTPStatus.NOT_FOUND, f"Account with id {account_id} not found")
-
-    customer = stripe.Customer.create(email=account.name)
-    customer_id = str(customer.id)
-    account.details = {**(account.details or {}), "stripe_customer_id": customer_id}
-    db.session.add(account)
-    db.session.commit()
-    return customer_id
-
-
-def replace_missing_onetime_customer(account_id: UUID, shop_id: UUID, failed_customer_id: str, *, api_key: str) -> str:
+def replace_missing_customer(account_id: UUID, shop_id: UUID, failed_customer_id: str, *, api_key: str) -> str:
     """Resolve a missing customer without overwriting a concurrent replacement.
 
     Stripe idempotency coordinates remote creation across workers. A fresh locked
@@ -115,10 +101,12 @@ def replace_missing_onetime_customer(account_id: UUID, shop_id: UUID, failed_cus
     return current_id
 
 
-def get_stripe_prices(order_info: list[dict[str, Any]], yearly: bool) -> list[dict[str, Any]]:
+def get_stripe_prices(
+    order_info: list[dict[str, Any]], yearly: bool, *, api_key: str | None = None
+) -> list[dict[str, Any]]:
     lookup_keys = [f"{'yearly' if yearly else 'monthly'}-{item['product_id']}" for item in order_info]
 
-    prices = stripe.Price.list(lookup_keys=lookup_keys)
+    prices = stripe.Price.list(lookup_keys=lookup_keys, api_key=api_key)
     prices_by_lookup_key = {price.lookup_key: price.id for price in prices.data}
     return [
         {
@@ -177,7 +165,7 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
         except stripe.error.InvalidRequestError as exc:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
-            customer_id = replace_missing_onetime_customer(account_id, shop_id, customer_id, api_key=api_key)
+            customer_id = replace_missing_customer(account_id, shop_id, customer_id, api_key=api_key)
             logger.warning(
                 "Replaced missing Stripe customer",
                 order_id=str(order_id),
@@ -231,6 +219,7 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
     try:
         shop = shop_crud.get(shop_id)
         stripe_client.configure_for_shop(shop)
+        api_key = shop.stripe_secret_key
         existing = _resume_checkout(order, shop, subscription=True)
         if existing:
             return existing
@@ -239,9 +228,10 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
         customer_id = get_stripe_customer(account_id, shop_id)
         # Two remote calls follow; nothing below reads the ORM objects, so return the pooled connection first.
         db.release_connection()
-        prices = get_stripe_prices(order_info, yearly)
+        prices = get_stripe_prices(order_info, yearly, api_key=api_key)
 
         subscription_args = {
+            "api_key": api_key,
             "items": prices,
             "payment_behavior": "default_incomplete",
             "payment_settings": {
@@ -258,7 +248,7 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
         except stripe.error.InvalidRequestError as exc:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
-            customer_id = replace_missing_customer(account_id, shop_id)
+            customer_id = replace_missing_customer(account_id, shop_id, customer_id, api_key=api_key)
             logger.warning(
                 "Replaced missing Stripe customer",
                 order_id=str(order_id),
@@ -275,7 +265,7 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
                     }
                 )
             )
-        _save_payment_intent(order_id, str(subscription.latest_invoice.payment_intent.id))
+        _save_payment_intent(order_id, str(subscription.latest_invoice.payment_intent.id), customer_id)
         logger.info(
             "Subscription created successfully",
             order_id=str(order_id),
