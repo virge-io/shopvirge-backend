@@ -137,7 +137,7 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
         else:
             details = {}
             try:
-                stripe_client.configure_for_shop(shop)
+                client = stripe_client.get_client(shop)
             except StripeNotConfigured:
                 # Shop has no Stripe key configured — proceed without
                 # creating a Stripe customer (matches prior behavior).
@@ -150,7 +150,7 @@ def create(request: Request, data: OrderCreate = Body(...)) -> OrderCreated:
                 # Stripe is remote and slow, and nothing needs the database until the account insert below:
                 # give the pooled connection back for the duration of the call.
                 db.release_connection()
-                customer = stripe.Customer.create(email=data.account_name)
+                customer = client.customers.create({"email": data.account_name})
                 details["stripe_customer_id"] = customer.id
 
             account_data = AccountCreate(shop_id=data.shop_id, name=data.account_name, details=details)
@@ -372,7 +372,9 @@ def _fetch_completion_payment(order_id: UUID) -> dict | None:
     payment_intent_id = order.stripe_payment_intent_id
     shop = get_or_404(shop_crud.get(order.shop_id), "Shop not found")
     shop_id = str(shop.id)
-    if not shop.stripe_secret_key:
+    try:
+        client = stripe_client.get_client(shop)
+    except StripeNotConfigured:
         logger.error(
             "Stripe is not configured for order payment verification",
             order_id=str(order_id),
@@ -380,10 +382,9 @@ def _fetch_completion_payment(order_id: UUID) -> dict | None:
             payment_intent_id=payment_intent_id,
         )
         raise_status(HTTPStatus.BAD_GATEWAY, "Stripe is not configured for this order's shop")
-    api_key = shop.stripe_secret_key
     db.release_connection()
     try:
-        return fetch_payment_intent(payment_intent_id, api_key=api_key)
+        return fetch_payment_intent(payment_intent_id, client=client)
     except stripe.error.StripeError:
         logger.exception(
             "Failed to verify order payment",

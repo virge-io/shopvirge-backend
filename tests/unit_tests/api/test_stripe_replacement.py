@@ -1,5 +1,6 @@
 """Issue #385: real concurrent persistence, offline Stripe and notification delivery."""
 
+import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -13,6 +14,7 @@ from sqlalchemy import text
 from server import mail
 from server.db import db
 from server.db.models import Account, OrderTable, ProductTable, ShopTable
+from server.services import stripe_client
 from server.settings import mail_settings
 from tests.unit_tests.factories.account import make_account_with_stripe
 from tests.unit_tests.factories.categories import make_category
@@ -46,7 +48,14 @@ def replacement_checkout(real_db, monkeypatch):
     sent = []
     monkeypatch.setattr(mail_settings, "SHOP_MAIL_ENABLED", True)
     monkeypatch.setattr(mail, "send_mail", lambda message: sent.append(message))
-    return {"shop": shop_id, "account": account_id, "product": product_id, "order": order.id, "sent": sent}
+    return {
+        "shop": shop_id,
+        "account": account_id,
+        "product": product_id,
+        "order": order.id,
+        "sent": sent,
+        "client": stripe_client.get_client(shop),
+    }
 
 
 @pytest.mark.parametrize("plan", [None, "monthly", "yearly"])
@@ -75,12 +84,11 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
     stale_calls = threading.Barrier(4)
     replacements = threading.Barrier(4)
     lock = threading.Lock()
-    customers, payments, remote_transactions, keys = {}, {}, [], []
+    customers, payments, remote_transactions = {}, {}, []
 
     def create_customer(**kwargs):
         with lock:
             remote_transactions.append(db.session.in_transaction())
-            keys.append(kwargs.get("api_key"))
             # Faithful idempotency: no key creates a distinct remote customer.
             key = kwargs.get("idempotency_key") or str(threading.get_ident())
             customer = customers.setdefault(key, f"cus_new_{len(customers)}")
@@ -92,7 +100,6 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
             stale_calls.wait(timeout=10)
             raise stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
         with lock:
-            keys.append(kwargs.get("api_key"))
             remote_transactions.append(db.session.in_transaction())
             return deepcopy(
                 payments.setdefault(
@@ -109,11 +116,18 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
                 )
             )
 
-    monkeypatch.setattr(stripe.Customer, "create", create_customer)
-    monkeypatch.setattr(stripe.PaymentIntent, "create", create_payment)
+    monkeypatch.setattr(
+        stripe.CustomerService,
+        "create",
+        lambda self, params, options=None: create_customer(**params, **(options or {})),
+    )
+    monkeypatch.setattr(
+        stripe.PaymentIntentService,
+        "create",
+        lambda self, params, options=None: create_payment(**params, **(options or {})),
+    )
 
     def list_prices(**kwargs):
-        assert kwargs["api_key"] == "sk_test_385"
         assert not db.session.in_transaction()
         return SimpleNamespace(
             data=[SimpleNamespace(lookup_key=key, id=f"price_{key}") for key in kwargs["lookup_keys"]]
@@ -128,14 +142,22 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
             ),
         )
 
-    monkeypatch.setattr(stripe.Price, "list", list_prices)
-    monkeypatch.setattr(stripe.Subscription, "create", create_subscription)
+    monkeypatch.setattr(
+        stripe.PriceService, "list", lambda self, params, options=None: list_prices(**params, **(options or {}))
+    )
+    monkeypatch.setattr(
+        stripe.SubscriptionService,
+        "create",
+        lambda self, params, options=None: create_subscription(**params, **(options or {})),
+    )
     suffix = "subscription" if plan else ""
 
     monkeypatch.setattr(
-        stripe.PaymentIntent,
+        stripe.PaymentIntentService,
         "retrieve",
-        lambda intent_id, **k: deepcopy(next(p for p in payments.values() if p["id"] == intent_id)),
+        lambda self, resource_id, params=None, options=None: deepcopy(
+            next((p for p in payments.values() if p["id"] == resource_id))
+        ),
     )
     with ThreadPoolExecutor(max_workers=4) as workers:
         responses = list(
@@ -148,7 +170,6 @@ def test_overlapping_missing_customer_requests_share_payment_and_complete(
     assert len(customers) == 1
     assert len(payments) == len({r.json()["clientSecret"] for r in responses}) == len(set(order_ids))
     assert not any(remote_transactions)
-    assert set(keys) == {"sk_test_385"}
     db.session.expire_all()
     order = db.session.get(OrderTable, ids["order"])
     assert order.stripe_payment_customer_id == order.account.details["stripe_customer_id"]
@@ -173,8 +194,16 @@ def test_linked_payment_survives_later_account_customer_change(replacement_check
         "amount_received": 1210,
         "shipping": make_shipping_address(),
     }
-    monkeypatch.setattr(stripe.PaymentIntent, "create", lambda **k: deepcopy(payment))
-    monkeypatch.setattr(stripe.PaymentIntent, "retrieve", lambda *a, **k: deepcopy(payment))
+    monkeypatch.setattr(
+        stripe.PaymentIntentService,
+        "create",
+        lambda self, params, options=None: deepcopy(payment),
+    )
+    monkeypatch.setattr(
+        stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: deepcopy(payment),
+    )
     assert test_client.post(f"/shops/{ids['shop']}/stripe/?order_id={ids['order']}").status_code == 201
     account = db.session.get(Account, ids["account"])
     account.details = {"stripe_customer_id": "cus_later"}
@@ -201,8 +230,12 @@ def test_replacement_refreshes_details_and_reuses_committed_winner(replacement_c
             )
         return SimpleNamespace(id="cus_candidate")
 
-    monkeypatch.setattr(stripe.Customer, "create", create_customer)
-    result = replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
+    monkeypatch.setattr(
+        stripe.CustomerService,
+        "create",
+        lambda self, params, options=None: create_customer(**params, **(options or {})),
+    )
+    result = replace_missing_customer(ids["account"], ids["shop"], "cus_stale", client=ids["client"])
     assert result == (winner or "cus_candidate")
     db.session.expire_all()
     assert db.session.get(Account, ids["account"]).details == {
@@ -210,8 +243,12 @@ def test_replacement_refreshes_details_and_reuses_committed_winner(replacement_c
         "stripe_customer_id": result,
     }
     # A delayed old request should skip remote customer creation altogether.
-    monkeypatch.setattr(stripe.Customer, "create", lambda **k: pytest.fail("Must reuse the committed customer"))
-    assert replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385") == result
+    monkeypatch.setattr(
+        stripe.CustomerService,
+        "create",
+        lambda self, params, options=None: pytest.fail("Must reuse the committed customer"),
+    )
+    assert replace_missing_customer(ids["account"], ids["shop"], "cus_stale", client=ids["client"]) == result
 
 
 @pytest.mark.parametrize("failure", ["remote", "commit"])
@@ -226,7 +263,11 @@ def test_failed_setup_does_not_persist_a_partial_payment_link(replacement_checko
         monkeypatch.setattr(db.session, "commit", lambda: (_ for _ in ()).throw(RuntimeError("Commit failed")))
         return {"id": "pi_failed_commit", "client_secret": "secret"}
 
-    monkeypatch.setattr(stripe.PaymentIntent, "create", create_payment)
+    monkeypatch.setattr(
+        stripe.PaymentIntentService,
+        "create",
+        lambda self, params, options=None: create_payment(**params, **(options or {})),
+    )
     response = test_client.post(f"/shops/{ids['shop']}/stripe/?order_id={ids['order']}")
     assert response.status_code == 502
     db.session.expire_all()
@@ -247,9 +288,9 @@ def test_customer_mismatches_remain_rejected_with_snapshot_and_legacy_orders(
     order.stripe_payment_customer_id = snapshot
     db.session.commit()
     monkeypatch.setattr(
-        stripe.PaymentIntent,
+        stripe.PaymentIntentService,
         "retrieve",
-        lambda *a, **k: {
+        lambda self, resource_id, params=None, options=None: {
             "id": "pi_mismatch",
             "customer": "cus_wrong",
             "status": "succeeded",
@@ -294,35 +335,59 @@ def test_replacement_retry_reuses_remote_idempotency_key(replacement_checkout, m
             raise stripe.error.APIConnectionError("Response lost")
         return SimpleNamespace(id="cus_retried")
 
-    monkeypatch.setattr(stripe.Customer, "create", customer_create)
+    monkeypatch.setattr(
+        stripe.CustomerService,
+        "create",
+        lambda self, params, options=None: customer_create(**params, **(options or {})),
+    )
     with pytest.raises(stripe.error.APIConnectionError):
-        replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
-    assert replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385") == "cus_retried"
+        replace_missing_customer(ids["account"], ids["shop"], "cus_stale", client=ids["client"])
+    assert replace_missing_customer(ids["account"], ids["shop"], "cus_stale", client=ids["client"]) == "cus_retried"
     assert calls[0] == calls[1]
 
 
 def test_explicit_shop_key_survives_process_global_key_change(replacement_checkout, test_client, monkeypatch):
+    """Exercise real SDK authentication while another shop changes its global key."""
     ids = replacement_checkout
+    requests = []
+    monkeypatch.setattr(stripe, "api_key", "sk_test_385")
 
-    def create_payment(**kwargs):
-        stripe.api_key = "sk_test_another_shop"
-        assert kwargs["api_key"] == "sk_test_385"
-        raise stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
-
-    def create_customer(**kwargs):
-        assert kwargs["api_key"] == "sk_test_385"
+    def request(method, url, headers, post_data=None):
+        requests.append((method, url, headers["Authorization"]))
         assert not db.session.in_transaction()
-        return SimpleNamespace(id="cus_replaced")
+        if len(requests) == 1:
+            # Deterministic interleaving: shop B configures Stripe while shop A
+            # is waiting for its first payment response, before customer replacement.
+            stripe_client.get_client(SimpleNamespace(id="other-shop", stripe_secret_key="sk_test_another_shop"))
+            stripe.api_key = "sk_test_another_shop"
+            return (
+                json.dumps(
+                    {
+                        "error": {
+                            "type": "invalid_request_error",
+                            "message": "No such customer",
+                            "param": "customer",
+                            "code": "resource_missing",
+                        }
+                    }
+                ),
+                400,
+                {},
+            )
+        if url.endswith("/customers"):
+            return json.dumps({"id": "cus_replaced", "object": "customer"}), 200, {}
+        return json.dumps({"id": "pi_correct_shop", "object": "payment_intent", "client_secret": "secret"}), 200, {}
 
-    def retry_payment(**kwargs):
-        if kwargs["customer"] == "cus_stale":
-            return create_payment(**kwargs)
-        assert kwargs["api_key"] == "sk_test_385"
-        return {"id": "pi_correct_shop", "client_secret": "secret"}
-
-    monkeypatch.setattr(stripe.PaymentIntent, "create", retry_payment)
-    monkeypatch.setattr(stripe.Customer, "create", create_customer)
-    assert test_client.post(f"/shops/{ids['shop']}/stripe/?order_id={ids['order']}").status_code == 201
+    # Only replace HTTP transport: SDK option resolution and auth headers are real.
+    monkeypatch.setattr(stripe.RequestsClient, "request", lambda self, *args, **kwargs: request(*args, **kwargs))
+    response = test_client.post(f"/shops/{ids['shop']}/stripe/?order_id={ids['order']}")
+    assert response.status_code == 201, response.json()
+    assert requests == [
+        ("post", "https://api.stripe.com/v1/payment_intents", "Bearer sk_test_385"),
+        ("post", "https://api.stripe.com/v1/customers", "Bearer sk_test_385"),
+        ("post", "https://api.stripe.com/v1/payment_intents", "Bearer sk_test_385"),
+    ]
+    assert stripe.api_key == "sk_test_another_shop"
 
 
 def test_account_removed_during_replacement_reports_unlinked_stripe_customer(replacement_checkout, monkeypatch):
@@ -339,9 +404,13 @@ def test_account_removed_during_replacement_reports_unlinked_stripe_customer(rep
             conn.execute(text("DELETE FROM accounts WHERE id = :id"), {"id": str(ids["account"])})
         return SimpleNamespace(id="cus_unlinked")
 
-    monkeypatch.setattr(stripe.Customer, "create", create_customer)
+    monkeypatch.setattr(
+        stripe.CustomerService,
+        "create",
+        lambda self, params, options=None: create_customer(**params, **(options or {})),
+    )
     with capture_logs() as logs, pytest.raises(ProblemDetailException) as exc:
-        replace_missing_customer(ids["account"], ids["shop"], "cus_stale", api_key="sk_test_385")
+        replace_missing_customer(ids["account"], ids["shop"], "cus_stale", client=ids["client"])
     assert exc.value.status_code == 404
     assert exc.value.detail == (
         "Account disappeared during Stripe customer replacement; the replacement customer could not be linked"

@@ -1,9 +1,11 @@
 from copy import deepcopy
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 import stripe
 
+from server.services import stripe_client
 from server.services.order_payment import OrderPaymentMismatch, fetch_payment_intent, verified_shipping_address
 
 
@@ -33,7 +35,7 @@ def verify(payment, requires_shipping=True):
     )
 
 
-def test_sdk_payment_object_is_fetched_with_the_explicit_shop_key(payment, monkeypatch):
+def test_sdk_payment_object_is_fetched_with_the_shop_client(payment, monkeypatch):
     captured = {}
     sdk_payment = stripe.PaymentIntent.construct_from(payment, "sk_test_offline")
 
@@ -41,9 +43,14 @@ def test_sdk_payment_object_is_fetched_with_the_explicit_shop_key(payment, monke
         captured.update(intent_id=intent_id, **kwargs)
         return sdk_payment
 
-    monkeypatch.setattr(stripe.PaymentIntent, "retrieve", retrieve)
-    result = fetch_payment_intent("pi_order", api_key="sk_test_shop")
-    assert captured == {"intent_id": "pi_order", "api_key": "sk_test_shop"}
+    monkeypatch.setattr(
+        stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: retrieve(resource_id, **(params or {})),
+    )
+    client = stripe_client.get_client(SimpleNamespace(stripe_secret_key="sk_test_shop"))
+    result = fetch_payment_intent("pi_order", client=client)
+    assert captured == {"intent_id": "pi_order"}
     assert result == payment
     assert verify(result) == payment["shipping"]
 

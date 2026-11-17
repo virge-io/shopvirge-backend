@@ -10,18 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Centralized helper for resolving the right Stripe API key per shop.
+"""Build shop-scoped Stripe clients without changing process-global credentials."""
 
-Each :class:`server.db.models.ShopTable` row carries its own
-``stripe_secret_key``. Historically callers set ``stripe.api_key`` inline
-right before issuing a Stripe call, which scattered the key-resolution
-logic across endpoints. These helpers consolidate that pattern so new
-code (admin tooling, sync jobs) and the existing checkout/payment
-endpoints share one path.
-"""
-
-from types import ModuleType
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import stripe
 
@@ -31,8 +22,6 @@ from server.db.models import Account, ShopTable
 # slow Stripe keep a worker thread busy long after the customer gave up; bound it and retry once on network
 # errors.
 STRIPE_TIMEOUT_SECONDS = 20
-stripe.max_network_retries = 1
-stripe.default_http_client = stripe.http_client.new_default_http_client(timeout=STRIPE_TIMEOUT_SECONDS)
 
 
 class StripeNotConfigured(Exception):
@@ -52,21 +41,25 @@ def is_missing_customer_error(exc: Exception) -> bool:
     )
 
 
-def configure_for_shop(shop: ShopTable) -> ModuleType:
-    """Set ``stripe.api_key`` from the shop's secret key.
+def get_api_key(shop: ShopTable | None) -> str:
+    """Return the shop's validated secret key without changing Stripe globals.
 
-    Returns the ``stripe`` module so callers can do
-    ``stripe_mod = configure_for_shop(shop); stripe_mod.X.create(...)``
-    if they prefer a single name. Most callers can ignore the return
-    value and import ``stripe`` directly.
-
-    Raises :class:`StripeNotConfigured` when the shop is ``None`` or its
-    ``stripe_secret_key`` is empty.
+    Raises:
+        StripeNotConfigured: If the shop is missing or has no secret key.
     """
-    if shop is None or not getattr(shop, "stripe_secret_key", None):
+    api_key = getattr(shop, "stripe_secret_key", None)
+    if not api_key:
         raise StripeNotConfigured(f"Shop {getattr(shop, 'id', None)!s} has no stripe_secret_key configured")
-    stripe.api_key = shop.stripe_secret_key
-    return stripe
+    return cast(str, api_key)
+
+
+def get_client(shop: ShopTable | None) -> stripe.StripeClient:
+    """Return a client with this shop's credentials, timeout and retry policy."""
+    return stripe.StripeClient(
+        get_api_key(shop),
+        max_network_retries=1,
+        http_client=stripe.new_default_http_client(timeout=STRIPE_TIMEOUT_SECONDS),
+    )
 
 
 def get_customer_id(account: Account) -> str:
@@ -83,13 +76,12 @@ def get_customer_id(account: Account) -> str:
 
 
 def fetch_customer(shop: ShopTable, customer_id: str) -> Dict[str, Any]:
-    """Configure for the shop and retrieve the Stripe customer as a dict.
+    """Retrieve the Stripe customer using the shop's own client, returning a dict.
 
     ``stripe.error.StripeError`` (and subclasses) propagate to the
     caller — the admin endpoint translates them into HTTP 502.
     """
-    configure_for_shop(shop)
-    customer = stripe.Customer.retrieve(customer_id)
+    customer = get_client(shop).customers.retrieve(customer_id)
     # SDK objects offer ``to_dict_recursive`` in current versions; keep a
     # fallback for SDK subminors that name it differently.
     if hasattr(customer, "to_dict_recursive"):

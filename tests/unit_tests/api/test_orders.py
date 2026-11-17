@@ -581,12 +581,16 @@ def test_concurrent_linked_payment_completes_once_without_holding_a_connection(t
 
     def retrieve(payment_id, **kwargs):
         assert payment_id == "pi_linked"
-        assert kwargs == {"api_key": "sk_test_offline"}
+        assert kwargs == {}
         assert not db.session.in_transaction()
         fetched.wait(timeout=10)
         return payment
 
-    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", retrieve)
+    monkeypatch.setattr(
+        public.stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: retrieve(resource_id, **(params or {})),
+    )
     responses = []
     threads = [
         threading.Thread(
@@ -621,7 +625,11 @@ def test_payment_relinked_during_stripe_read_is_rejected(test_client, monkeypatc
             )
         return payment
 
-    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", retrieve)
+    monkeypatch.setattr(
+        public.stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: retrieve(resource_id, **(params or {})),
+    )
     response = test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
     assert response.status_code == 409, response.json()
     db.session.expire_all()
@@ -642,7 +650,11 @@ def test_failed_stock_deduction_also_rolls_back_delivery_snapshot(test_client, m
         {**order.order_info[1], "product_id": "ffffffff-ffff-4fff-8fff-ffffffffffff"},
     ]
     db.session.commit()
-    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", lambda *args, **kwargs: payment)
+    monkeypatch.setattr(
+        public.stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: payment,
+    )
 
     response = test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
     assert response.status_code == 404, response.json()
