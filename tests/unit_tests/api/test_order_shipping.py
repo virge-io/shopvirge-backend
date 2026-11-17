@@ -64,8 +64,14 @@ def checkout(test_client, monkeypatch):
     }
     create = MagicMock(return_value=deepcopy(payment))
     retrieve = MagicMock(side_effect=lambda *args, **kwargs: deepcopy(payment))
-    monkeypatch.setattr(stripe.PaymentIntent, "create", create)
-    monkeypatch.setattr(stripe.PaymentIntent, "retrieve", retrieve)
+    monkeypatch.setattr(
+        stripe.PaymentIntentService, "create", lambda self, params, options=None: create(**params, **(options or {}))
+    )
+    monkeypatch.setattr(
+        stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: retrieve(resource_id, **(params or {})),
+    )
     monkeypatch.setattr(mail_settings, "SHOP_MAIL_ENABLED", True)
     sent = []
     monkeypatch.setattr(mail, "send_mail", lambda message: sent.append(message))

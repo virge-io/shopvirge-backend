@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -7,7 +8,7 @@ from structlog.testing import capture_logs
 
 from server.api.endpoints.checkout import stripe as stripe_endpoint
 from server.db import db
-from server.db.models import Account, OrderTable
+from server.db.models import Account, OrderTable, ShopTable
 from server.services import stripe_client
 from tests.unit_tests.factories.account import make_account_with_stripe
 from tests.unit_tests.factories.shop import make_shop
@@ -27,11 +28,13 @@ def test_payment_intent_uses_persisted_order_total(test_client, monkeypatch):
     db.session.commit()
 
     captured = {}
-    monkeypatch.setattr(stripe_client, "configure_for_shop", lambda shop: None)
+    monkeypatch.setattr(stripe_client, "get_api_key", lambda shop: "sk_test_resolved")
     monkeypatch.setattr(
-        stripe_endpoint.stripe.PaymentIntent,
+        stripe_endpoint.stripe.PaymentIntentService,
         "create",
-        lambda **kwargs: captured.update(kwargs) or {"id": "pi_test", "client_secret": "secret"},
+        lambda self, params, options=None: (
+            captured.update(params | (options or {})) or {"id": "pi_test", "client_secret": "secret"}
+        ),
     )
 
     response = test_client.post(f"/shops/{shop_id}/stripe/?order_id={order.id}")
@@ -59,12 +62,14 @@ def test_payment_intent_replaces_a_customer_missing_from_the_shop_stripe_account
     db.session.commit()
 
     intents = []
-    monkeypatch.setattr(stripe_client, "configure_for_shop", lambda shop: None)
+    monkeypatch.setattr(stripe_client, "get_api_key", lambda shop: "sk_test_resolved")
     customer_create = {}
     monkeypatch.setattr(
-        stripe_endpoint.stripe.Customer,
+        stripe_endpoint.stripe.CustomerService,
         "create",
-        lambda **kwargs: customer_create.update(kwargs) or SimpleNamespace(id="cus_replacement"),
+        lambda self, params, options=None: (
+            customer_create.update(params | (options or {})) or SimpleNamespace(id="cus_replacement")
+        ),
     )
 
     def create_intent(**kwargs):
@@ -73,7 +78,11 @@ def test_payment_intent_replaces_a_customer_missing_from_the_shop_stripe_account
             raise stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
         return {"id": "pi_replacement", "client_secret": "secret"}
 
-    monkeypatch.setattr(stripe_endpoint.stripe.PaymentIntent, "create", create_intent)
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.PaymentIntentService,
+        "create",
+        lambda self, params, options=None: create_intent(**params, **(options or {})),
+    )
 
     response = test_client.post(f"/shops/{shop_id}/stripe/?order_id={order.id}")
 
@@ -81,7 +90,6 @@ def test_payment_intent_replaces_a_customer_missing_from_the_shop_stripe_account
     assert [intent["customer"] for intent in intents] == ["cus_stale", "cus_replacement"]
     assert customer_create["email"] == "Test Account"
     assert customer_create["idempotency_key"].startswith("replace-customer-")
-    assert "api_key" in customer_create
     db.session.expire_all()
     assert db.session.get(Account, account_id).details["stripe_customer_id"] == "cus_replacement"
     assert db.session.get(OrderTable, order.id).stripe_payment_intent_id == "pi_replacement"
@@ -101,16 +109,18 @@ def test_subscription_replaces_a_customer_missing_from_the_shop_stripe_account(t
     db.session.commit()
 
     subscriptions = []
-    monkeypatch.setattr(stripe_client, "configure_for_shop", lambda shop: None)
+    monkeypatch.setattr(stripe_client, "get_api_key", lambda shop: "sk_test_resolved")
     monkeypatch.setattr(
-        stripe_endpoint.stripe.Customer,
+        stripe_endpoint.stripe.CustomerService,
         "create",
-        lambda **_: SimpleNamespace(id="cus_replacement"),
+        lambda self, params, options=None: SimpleNamespace(id="cus_replacement"),
     )
     monkeypatch.setattr(
-        stripe_endpoint.stripe.Price,
+        stripe_endpoint.stripe.PriceService,
         "list",
-        lambda **_: SimpleNamespace(data=[SimpleNamespace(lookup_key="monthly-product-1", id="price_1")]),
+        lambda self, params, options=None: SimpleNamespace(
+            data=[SimpleNamespace(lookup_key="monthly-product-1", id="price_1")]
+        ),
     )
 
     def create_subscription(**kwargs):
@@ -124,7 +134,11 @@ def test_subscription_replaces_a_customer_missing_from_the_shop_stripe_account(t
             ),
         )
 
-    monkeypatch.setattr(stripe_endpoint.stripe.Subscription, "create", create_subscription)
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.SubscriptionService,
+        "create",
+        lambda self, params, options=None: create_subscription(**params, **(options or {})),
+    )
 
     response = test_client.post(f"/shops/{shop_id}/stripe/subscription?order_id={order.id}")
 
@@ -155,9 +169,9 @@ def test_payment_intent_rejects_recurring_orders(test_client):
 
 def test_subscription_items_keep_ordered_quantities(monkeypatch):
     monkeypatch.setattr(
-        stripe_endpoint.stripe.Price,
+        stripe_endpoint.stripe.PriceService,
         "list",
-        lambda **_: SimpleNamespace(
+        lambda self, params, options=None: SimpleNamespace(
             data=[
                 SimpleNamespace(lookup_key="monthly-product-1", id="price_1"),
                 SimpleNamespace(lookup_key="monthly-product-2", id="price_2"),
@@ -171,6 +185,7 @@ def test_subscription_items_keep_ordered_quantities(monkeypatch):
             {"product_id": "product-2", "quantity": 2},
         ],
         yearly=False,
+        client=stripe_client.get_client(SimpleNamespace(stripe_secret_key="sk_test_offline")),
     )
 
     assert items == [{"price": "price_1", "quantity": 3}, {"price": "price_2", "quantity": 2}]
@@ -185,12 +200,18 @@ def test_repeated_checkout_reuses_the_linked_payment(test_client, monkeypatch):
     order_id = order.id
     requests = []
     retrieve = MagicMock(return_value={"id": "pi_same", "client_secret": "secret"})
-    monkeypatch.setattr(stripe_endpoint.stripe.PaymentIntent, "retrieve", retrieve)
-    monkeypatch.setattr(stripe_client, "configure_for_shop", lambda shop: None)
     monkeypatch.setattr(
-        stripe_endpoint.stripe.PaymentIntent,
+        stripe_endpoint.stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: retrieve(resource_id, **(params or {})),
+    )
+    monkeypatch.setattr(stripe_client, "get_api_key", lambda shop: "sk_test_resolved")
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.PaymentIntentService,
         "create",
-        lambda **kwargs: requests.append(kwargs) or {"id": "pi_same", "client_secret": "secret"},
+        lambda self, params, options=None: (
+            requests.append(params | (options or {})) or {"id": "pi_same", "client_secret": "secret"}
+        ),
     )
     url = f"/shops/{shop_id}/stripe/?order_id={order_id}"
     assert test_client.post(url).status_code == 201
@@ -207,7 +228,7 @@ def test_repeated_checkout_reuses_the_linked_payment(test_client, monkeypatch):
     }
     assert len(requests) == 1
     assert requests[0]["idempotency_key"] == f"order-{order_id}-cus_test_123"
-    retrieve.assert_called_once_with("pi_same", api_key=None)
+    retrieve.assert_called_once_with("pi_same")
 
 
 def test_repeated_subscription_checkout_reuses_its_initial_payment(test_client, monkeypatch):
@@ -222,21 +243,29 @@ def test_repeated_subscription_checkout_reuses_its_initial_payment(test_client, 
     )
     db.session.add(order)
     db.session.commit()
-    monkeypatch.setattr(stripe_client, "configure_for_shop", lambda shop: None)
+    monkeypatch.setattr(stripe_client, "get_api_key", lambda shop: "sk_test_resolved")
     retrieve = MagicMock(
         return_value={
             "client_secret": "existing_secret",
             "invoice": {"subscription": {"id": "sub_existing"}},
         }
     )
-    monkeypatch.setattr(stripe_endpoint.stripe.PaymentIntent, "retrieve", retrieve)
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.PaymentIntentService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: retrieve(resource_id, **(params or {})),
+    )
     create = MagicMock(side_effect=AssertionError("Must reuse the subscription"))
-    monkeypatch.setattr(stripe_endpoint.stripe.Subscription, "create", create)
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.SubscriptionService,
+        "create",
+        lambda self, params, options=None: create(**params, **(options or {})),
+    )
     response = test_client.post(f"/shops/{shop_id}/stripe/subscription?order_id={order.id}")
     assert response.status_code == 201, response.json()
     assert response.json() == {"clientSecret": "existing_secret", "subscriptionId": "sub_existing"}
     create.assert_not_called()
-    retrieve.assert_called_once_with("pi_existing_subscription", api_key=None, expand=["invoice.subscription"])
+    retrieve.assert_called_once_with("pi_existing_subscription", expand=["invoice.subscription"])
 
 
 def test_completed_order_cannot_replace_its_payment(test_client, monkeypatch):
@@ -256,6 +285,31 @@ def test_completed_order_cannot_replace_its_payment(test_client, monkeypatch):
     def unexpected_call(**kwargs):
         raise AssertionError("Completed orders must not contact Stripe")
 
-    monkeypatch.setattr(stripe_endpoint.stripe.PaymentIntent, "create", unexpected_call)
+    monkeypatch.setattr(
+        stripe_endpoint.stripe.PaymentIntentService,
+        "create",
+        lambda self, params, options=None: unexpected_call(**params, **(options or {})),
+    )
     assert test_client.post(f"/shops/{shop_id}/stripe/?order_id={order.id}").status_code == 409
     assert order.stripe_payment_intent_id == "pi_original"
+
+
+def test_subscription_cancellation_uses_shop_client_without_a_database_connection(test_client, monkeypatch, real_db):
+    shop_id = make_shop()
+    real_db.append(shop_id)
+    shop = db.session.get(ShopTable, shop_id)
+    shop.stripe_secret_key = "sk_test_cancel"
+    db.session.commit()
+    monkeypatch.setattr(stripe, "api_key", "sk_test_other_shop")
+    requests = []
+
+    def request(self, method, url, headers, post_data=None):
+        assert not db.session.in_transaction()
+        requests.append((method, url, headers["Authorization"]))
+        return json.dumps({"id": "sub_cancelled", "object": "subscription", "status": "canceled"}), 200, {}
+
+    monkeypatch.setattr(stripe.RequestsClient, "request", request)
+    response = test_client.delete(f"/shops/{shop_id}/stripe/subscription/sub_cancelled")
+    assert response.status_code == 204, response.text
+    assert requests == [("delete", "https://api.stripe.com/v1/subscriptions/sub_cancelled", "Bearer sk_test_cancel")]
+    assert stripe.api_key == "sk_test_other_shop"

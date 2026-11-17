@@ -12,11 +12,8 @@
 # limitations under the License.
 """Tests for the cross-shop admin accounts endpoints.
 
-Stripe API calls are intercepted with ``monkeypatch.setattr`` against
-``server.services.stripe_client.stripe.Customer.retrieve``. The helper
-imports ``stripe`` at module scope so that path is the right injection
-point — patching ``stripe.Customer.retrieve`` directly would also work
-but bleeds across tests.
+Stripe customer calls are intercepted on ``stripe.CustomerService.retrieve``;
+the service still constructs a real shop-scoped Stripe client.
 """
 
 from datetime import datetime
@@ -156,9 +153,9 @@ def test_admin_accounts_sync_stripe_success(test_client, account_with_stripe, mo
         "name": "Synced Customer",
     }
     monkeypatch.setattr(
-        stripe_client.stripe.Customer,
+        stripe_client.stripe.CustomerService,
         "retrieve",
-        lambda customer_id: _stripe_customer_obj(fake_payload),
+        lambda self, resource_id, params=None, options=None: _stripe_customer_obj(fake_payload),
     )
 
     response = test_client.post(f"/admin/accounts/{account_with_stripe}/sync-stripe")
@@ -194,7 +191,11 @@ def test_admin_accounts_sync_stripe_stripe_error(test_client, account_with_strip
     def _raise(customer_id):
         raise stripe.error.InvalidRequestError("no such customer", "id")
 
-    monkeypatch.setattr(stripe_client.stripe.Customer, "retrieve", _raise)
+    monkeypatch.setattr(
+        stripe_client.stripe.CustomerService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: _raise(resource_id, **(params or {})),
+    )
     response = test_client.post(f"/admin/accounts/{account_with_stripe}/sync-stripe")
     assert response.status_code == 502
     assert "stripe" in response.json()["detail"].lower()
@@ -213,9 +214,9 @@ def test_admin_accounts_sync_stripe_account_not_found(test_client):
 def test_admin_accounts_stripe_customer_readthrough(test_client, account_with_stripe, monkeypatch):
     fake_payload = {"id": "cus_test_123", "email": "readonly@example.com"}
     monkeypatch.setattr(
-        stripe_client.stripe.Customer,
+        stripe_client.stripe.CustomerService,
         "retrieve",
-        lambda customer_id: _stripe_customer_obj(fake_payload),
+        lambda self, resource_id, params=None, options=None: _stripe_customer_obj(fake_payload),
     )
 
     response = test_client.get(f"/admin/accounts/{account_with_stripe}/stripe-customer")
@@ -248,7 +249,11 @@ def test_admin_accounts_stripe_customer_missing_from_stripe_returns_not_found(
     def _raise(customer_id):
         raise stripe.error.InvalidRequestError("No such customer", "customer", code="resource_missing")
 
-    monkeypatch.setattr(stripe_client.stripe.Customer, "retrieve", _raise)
+    monkeypatch.setattr(
+        stripe_client.stripe.CustomerService,
+        "retrieve",
+        lambda self, resource_id, params=None, options=None: _raise(resource_id, **(params or {})),
+    )
 
     response = test_client.get(f"/admin/accounts/{account_with_stripe}/stripe-customer")
 

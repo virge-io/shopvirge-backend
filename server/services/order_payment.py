@@ -13,13 +13,13 @@ class OrderPaymentMismatch(ValueError):
     """The linked payment is not a successful payment for this order."""
 
 
-def fetch_payment_intent(payment_intent_id: str, *, api_key: str) -> dict[str, Any]:
-    """Retrieve using this shop's key explicitly, not Stripe's process-global key.
+def fetch_payment_intent(payment_intent_id: str, *, client: stripe.StripeClient) -> dict[str, Any]:
+    """Retrieve using this shop's client, independent of process-global credentials.
 
     The caller must release its database connection before this network call.
     Stripe errors propagate so completion can be retried without changing the order.
     """
-    intent = stripe.PaymentIntent.retrieve(payment_intent_id, api_key=api_key)
+    intent = client.payment_intents.retrieve(payment_intent_id)
     return intent.to_dict_recursive() if hasattr(intent, "to_dict_recursive") else dict(intent)
 
 

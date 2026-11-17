@@ -18,17 +18,18 @@ router = APIRouter()
 logger = structlog.get_logger(__name__)
 
 
-def _resume_checkout(order: OrderTable, shop: ShopTable, *, subscription: bool = False) -> dict[str, str] | None:
+def _resume_checkout(
+    order: OrderTable, shop: ShopTable, *, client: stripe.StripeClient, subscription: bool = False
+) -> dict[str, str] | None:
     """Reuse an already-linked payment, even after Stripe's idempotency-key retention expires."""
     if not order.stripe_payment_intent_id:
         return None
     order_id = str(order.id)
     shop_id = str(shop.id)
-    payment_intent_id = order.stripe_payment_intent_id
-    api_key = shop.stripe_secret_key
+    payment_intent_id = str(order.stripe_payment_intent_id)
     db.release_connection()
-    intent = stripe.PaymentIntent.retrieve(
-        payment_intent_id, api_key=api_key, **({"expand": ["invoice.subscription"]} if subscription else {})
+    intent = client.payment_intents.retrieve(
+        payment_intent_id, params={"expand": ["invoice.subscription"]} if subscription else {}
     )
     result = {"clientSecret": str(intent["client_secret"])}
     if subscription:
@@ -66,7 +67,9 @@ def get_stripe_customer(account_id: UUID, shop_id: UUID):
     return stripe_client.get_customer_id(account)
 
 
-def replace_missing_customer(account_id: UUID, shop_id: UUID, failed_customer_id: str, *, api_key: str) -> str:
+def replace_missing_customer(
+    account_id: UUID, shop_id: UUID, failed_customer_id: str, *, client: stripe.StripeClient
+) -> str:
     """Resolve a missing customer without overwriting a concurrent replacement.
 
     Stripe idempotency coordinates remote creation across workers. A fresh locked
@@ -83,7 +86,7 @@ def replace_missing_customer(account_id: UUID, shop_id: UUID, failed_customer_id
     identity = f"{shop_id}:{account_id}:{failed_customer_id}".encode()
     idempotency_key = f"replace-customer-{sha256(identity).hexdigest()}"
     db.release_connection()
-    customer = stripe.Customer.create(email=email, api_key=api_key, idempotency_key=idempotency_key)
+    customer = client.customers.create({"email": email}, options={"idempotency_key": idempotency_key})
     replacement_id = str(customer.id)
     account = (
         Account.query.filter(Account.id == account_id, Account.shop_id == shop_id)
@@ -111,11 +114,11 @@ def replace_missing_customer(account_id: UUID, shop_id: UUID, failed_customer_id
 
 
 def get_stripe_prices(
-    order_info: list[dict[str, Any]], yearly: bool, *, api_key: str | None = None
-) -> list[dict[str, Any]]:
+    order_info: list[dict[str, Any]], yearly: bool, *, client: stripe.StripeClient
+) -> list[stripe.SubscriptionService.CreateParamsItem]:
     lookup_keys = [f"{'yearly' if yearly else 'monthly'}-{item['product_id']}" for item in order_info]
 
-    prices = stripe.Price.list(lookup_keys=lookup_keys, api_key=api_key)
+    prices = client.prices.list({"lookup_keys": lookup_keys})
     prices_by_lookup_key = {price.lookup_key: price.id for price in prices.data}
     return [
         {
@@ -149,32 +152,31 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
 
     try:
         shop = shop_crud.get(shop_id)
-        stripe_client.configure_for_shop(shop)
-        api_key = shop.stripe_secret_key
-        existing = _resume_checkout(order, shop)
+        client = stripe_client.get_client(shop)
+        existing = _resume_checkout(order, shop, client=client)
         if existing:
             return existing
         account_id = order.account_id
         customer_id = get_stripe_customer(account_id, shop_id)
 
-        intent_args = {
-            "api_key": api_key,
+        intent_args: stripe.PaymentIntentService.CreateParams = {
             "amount": int(quantize_money(order.total) * 100),
             "currency": "eur",
             "payment_method_types": ["card", "ideal"],
             "setup_future_usage": "off_session",
             "customer": customer_id,
             "metadata": {"order_id": str(order_id), "shop_id": str(shop_id)},
-            "idempotency_key": f"order-{order_id}-{customer_id}",
         }
         # Everything Stripe needs is in plain values now: give the pooled connection back for the remote call.
         db.release_connection()
         try:
-            intent = stripe.PaymentIntent.create(**intent_args)
+            intent = client.payment_intents.create(
+                intent_args, options={"idempotency_key": f"order-{order_id}-{customer_id}"}
+            )
         except stripe.error.InvalidRequestError as exc:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
-            customer_id = replace_missing_customer(account_id, shop_id, customer_id, api_key=api_key)
+            customer_id = replace_missing_customer(account_id, shop_id, customer_id, client=client)
             logger.warning(
                 "Replaced missing Stripe customer",
                 order_id=str(order_id),
@@ -182,8 +184,10 @@ def create_payment_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
                 customer_id=customer_id,
             )
             db.release_connection()
-            intent = stripe.PaymentIntent.create(
-                **(intent_args | {"customer": customer_id, "idempotency_key": f"order-{order_id}-{customer_id}"})
+            intent_args["customer"] = customer_id
+            intent = client.payment_intents.create(
+                intent_args,
+                options={"idempotency_key": f"order-{order_id}-{customer_id}"},
             )
         _save_payment_intent(order_id, str(intent["id"]), customer_id)
         logger.info(
@@ -227,9 +231,8 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
 
     try:
         shop = shop_crud.get(shop_id)
-        stripe_client.configure_for_shop(shop)
-        api_key = shop.stripe_secret_key
-        existing = _resume_checkout(order, shop, subscription=True)
+        client = stripe_client.get_client(shop)
+        existing = _resume_checkout(order, shop, client=client, subscription=True)
         if existing:
             return existing
         account_id = order.account_id
@@ -237,10 +240,9 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
         customer_id = get_stripe_customer(account_id, shop_id)
         # Two remote calls follow; nothing below reads the ORM objects, so return the pooled connection first.
         db.release_connection()
-        prices = get_stripe_prices(order_info, yearly, api_key=api_key)
+        prices = get_stripe_prices(order_info, yearly, client=client)
 
-        subscription_args = {
-            "api_key": api_key,
+        subscription_args: stripe.SubscriptionService.CreateParams = {
             "items": prices,
             "payment_behavior": "default_incomplete",
             "payment_settings": {
@@ -250,14 +252,15 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
             "customer": customer_id,
             "expand": ["latest_invoice.payment_intent"],
             "metadata": {"order_id": str(order_id), "shop_id": str(shop_id)},
-            "idempotency_key": f"subscription-order-{order_id}-{customer_id}",
         }
         try:
-            subscription = stripe.Subscription.create(**subscription_args)
+            subscription = client.subscriptions.create(
+                subscription_args, options={"idempotency_key": f"subscription-order-{order_id}-{customer_id}"}
+            )
         except stripe.error.InvalidRequestError as exc:
             if not stripe_client.is_missing_customer_error(exc):
                 raise
-            customer_id = replace_missing_customer(account_id, shop_id, customer_id, api_key=api_key)
+            customer_id = replace_missing_customer(account_id, shop_id, customer_id, client=client)
             logger.warning(
                 "Replaced missing Stripe customer",
                 order_id=str(order_id),
@@ -265,14 +268,10 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
                 customer_id=customer_id,
             )
             db.release_connection()
-            subscription = stripe.Subscription.create(
-                **(
-                    subscription_args
-                    | {
-                        "customer": customer_id,
-                        "idempotency_key": f"subscription-order-{order_id}-{customer_id}",
-                    }
-                )
+            subscription_args["customer"] = customer_id
+            subscription = client.subscriptions.create(
+                subscription_args,
+                options={"idempotency_key": f"subscription-order-{order_id}-{customer_id}"},
             )
         _save_payment_intent(order_id, str(subscription.latest_invoice.payment_intent.id), customer_id)
         logger.info(
@@ -304,9 +303,9 @@ def create_subscription_intent(shop_id: UUID, order_id: UUID) -> dict[str, str]:
 def cancel_subscription(shop_id: UUID, subscription_id: str):
     try:
         shop = shop_crud.get(shop_id)
-        stripe_client.configure_for_shop(shop)
+        client = stripe_client.get_client(shop)
         db.release_connection()
-        stripe.Subscription.cancel(subscription_id)
+        client.subscriptions.cancel(subscription_id)
         logger.info("Subscription cancelled successfully", subscription_id=subscription_id, shop_id=str(shop_id))
         return 204
     except Exception as e:
