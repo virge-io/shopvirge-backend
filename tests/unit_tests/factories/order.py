@@ -8,6 +8,22 @@ from server.db.models import OrderTable
 logger = structlog.getLogger(__name__)
 
 
+def make_shipping_address() -> dict:
+    """Synthetic Stripe shipping payload, freshly allocated for each test."""
+    return {
+        "name": "Alex Example",
+        "phone": "+31612345678",
+        "address": {
+            "line1": "Example street 1",
+            "line2": "Unit 2",
+            "postal_code": "1234 AB",
+            "city": "Amsterdam",
+            "state": None,
+            "country": "NL",
+        },
+    }
+
+
 def make_pending_order(
     shop_id: UUID,
     account_id: UUID,

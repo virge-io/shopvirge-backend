@@ -23,7 +23,9 @@ This renders and sends two mails:
 
 Both Dutch and English confirmations show customer address details in a bordered box: on the left for customers and on the right for owners. Customer headings are right-aligned, while owner headings retain their left alignment. The inline table layout places the box below the heading strip, including when a client strips head styles. At widths of 800px and above, clients that support `@supports` and absolute positioning enhance this to overlap the banner and strip. Long address details stay in normal flow so the box cannot grow above the banner.
 
-Address fields come from `account.details`, accepting `address`/`adres` and `postalcode`/`postal_code`/`zip_code`. Missing address fields are omitted, and the customer greeting falls back to “klant” or “customer”. Owner notifications also include the customer email, VAT number and order number in the box. Customer confirmations include the customer VAT number in the address box; the shop VAT number stays in the company contact/legal footer.
+For newly linked Stripe checkouts, address fields come from the order's persisted `shipping_address`, copied from the verified `PaymentIntent.shipping`. Both address lines, name, postcode/city and country are displayed. Later changes to the account or Stripe customer do not alter this delivery snapshot. The shipping snapshot and Stripe PaymentIntent ID are internal fields and are not returned by the publicly readable order endpoints.
+
+Legacy and non-shipping orders without a snapshot fall back to `account.details`, accepting `address`/`adres` and `postalcode`/`postal_code`/`zip_code`. Missing address fields are omitted, and the customer greeting falls back to “klant” or “customer”. Company/VAT information still comes from `account.details`. Owner notifications also include the customer email, VAT number and order number in the box. Customer confirmations include the customer VAT number in the address box; the shop VAT number stays in the company contact/legal footer.
 
 English templates declare `lang="en"`; Dutch templates retain `lang="nl"`. Order-specific styles are included in the document head. Long identifiers in the address box receive zero-width wrapping opportunities, with HTML escaping preserved, as a fallback for clients that ignore CSS word wrapping. Render-only regressions can run without PostgreSQL using `uv run pytest tests/mail_templates`.
 
@@ -65,6 +67,22 @@ sequenceDiagram
 ```
 
 The call site wraps the send in try/except and logs failures rather than aborting the request — a delivery error must not undo a successful order completion.
+
+### Payment verification and delivery capture
+
+The one-time and subscription checkout endpoints persist the newly created PaymentIntent ID on the order **before** returning its client secret. Subsequent checkout loads reuse the linked payment (and initial subscription) rather than creating another. Stable per-order/customer idempotency keys also protect concurrent creation/retries before the linkage is saved. Only pending orders can create/link payments.
+
+On `PATCH /orders/{order_id}` with `status=complete`, orders with a stored PaymentIntent ID are verified server-side:
+
+- Stripe is queried using the order shop's explicit secret key, before taking the completion lock and without holding a database connection.
+- Under the order lock, the returned intent must match the stored ID, account customer ID, `succeeded` status, EUR currency, and exact order total in `amount_received`.
+- If the catalogue contains shippable order products, a complete shipping name, street, postcode, city and country are required. Billing details are not a substitute for a delivery address. Non-shipping purchases can omit shipping data.
+- The delivery snapshot, completed status and stock changes commit in the same transaction. Notifications run only after that commit. Duplicate completion requests neither overwrite the snapshot nor resend the emails.
+- A missing/mismatched payment or incomplete shipping address returns **409** without completing the order, deducting stock or sending emails. Stripe retrieval/configuration failures return **502** and can be retried by completing the order again. This is not automatic webhook-based recovery; the existing frontend redirect remains the trigger.
+
+Migration `e7f8a9b0c1d2` adds nullable `stripe_payment_intent_id` and `shipping_address` columns. Apply it before running the new backend (normal startup migrations handle this). It makes no remote calls and sends no mail. Already-completed orders, including the reported order #41, are **not** backfilled or resent. Pending Stripe checkouts created before deployment have no stored linkage unless their checkout creates/reuses an intent through the updated backend; they retain the legacy completion behavior. Non-Stripe orders and the separate authenticated manual status-update route retain their previous behavior.
+
+No frontend/client-package change is required for the normal shipping checkout: Stripe's Address Element already sends shipping details to `PaymentIntent.shipping` when it shares the Payment Element's `Elements` instance. Full Stripe/browser integration and Gmail/Outlook inbox rendering still require separate acceptance testing.
 
 ## Price and VAT convention
 

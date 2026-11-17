@@ -1,23 +1,20 @@
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import cast
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.orm import scoped_session, sessionmaker
 
 from server.api.endpoints.orders import public
 from server.crud.crud_shop import shop_crud
 from server.db import db
-from server.db.database import SESSION_ARGUMENTS, BaseModel, SearchQuery
 from server.db.models import OrderTable, ProductTable, ShopTable
 from server.settings import mail_settings
 from tests.unit_tests.factories.account import make_account
 from tests.unit_tests.factories.api_key import make_api_key
 from tests.unit_tests.factories.categories import make_category
-from tests.unit_tests.factories.order import make_pending_order
+from tests.unit_tests.factories.order import make_pending_order, make_shipping_address
 from tests.unit_tests.factories.product import make_product
 from tests.unit_tests.factories.shop import make_shop_with_shipping
 
@@ -452,54 +449,6 @@ def test_delete_order_as_admin(pending_order, test_client):
 # --- PATCH /orders/{order_id} must be atomic and safe against double submits (shop-poc#349) ---
 
 
-@pytest.fixture()
-def real_db(db_session):
-    """Sessions on their own pooled connections, committing for real.
-
-    The ``db_session`` fixture binds every session to one connection inside an
-    outer transaction. That serializes concurrent requests by itself, and a request
-    session that is closed there cannot roll back either (SQLAlchemy joins the
-    outer transaction in "rollback_only" mode). Tests that need either behaviour
-    use this fixture and register the shops they create, so their rows can be
-    deleted afterwards, which the outer rollback can't do for them.
-    """
-    wrapped = db.wrapped_database
-    original_factory, original_scoped = wrapped.session_factory, wrapped.scoped_session
-    wrapped.session_factory = sessionmaker(**SESSION_ARGUMENTS, bind=wrapped.engine)
-    wrapped.scoped_session = scoped_session(wrapped.session_factory, wrapped._scopefunc)
-    BaseModel.set_query(cast(SearchQuery, wrapped.scoped_session.query_property()))
-
-    shop_ids: list = []
-    try:
-        yield shop_ids
-    finally:
-        wrapped.scoped_session.remove()
-        with wrapped.engine.begin() as conn:
-            for shop_id in shop_ids:
-                params = {"s": str(shop_id)}
-                conn.execute(text("DELETE FROM orders WHERE shop_id = :s"), params)
-                conn.execute(text("DELETE FROM accounts WHERE shop_id = :s"), params)
-                conn.execute(
-                    text(
-                        "DELETE FROM product_translations "
-                        "WHERE product_id IN (SELECT id FROM products WHERE shop_id = :s)"
-                    ),
-                    params,
-                )
-                conn.execute(text("DELETE FROM products WHERE shop_id = :s"), params)
-                conn.execute(
-                    text(
-                        "DELETE FROM category_translations "
-                        "WHERE category_id IN (SELECT id FROM categories WHERE shop_id = :s)"
-                    ),
-                    params,
-                )
-                conn.execute(text("DELETE FROM categories WHERE shop_id = :s"), params)
-                conn.execute(text("DELETE FROM shops WHERE id = :s"), params)
-        wrapped.session_factory, wrapped.scoped_session = original_factory, original_scoped
-        BaseModel.set_query(cast(SearchQuery, original_scoped.query_property()))
-
-
 def _shop_with_stocked_order(stock: int = 5, cleanup: list | None = None) -> dict:
     """A shop with stock tracking on, two products and one pending order for one of each."""
     shop_id = make_shop_with_shipping(enabled=False)
@@ -603,3 +552,104 @@ def test_concurrent_patch_order_complete_deducts_stock_and_mails_once(test_clien
     assert _stock(ids["p1"]) == 4
     assert _stock(ids["p2"]) == 4
     assert len(sent) == 1
+
+
+def _link_offline_payment(ids):
+    order = db.session.get(OrderTable, ids["order_id"])
+    order.stripe_payment_intent_id = "pi_linked"
+    order.account.details = {"stripe_customer_id": "cus_linked"}
+    shop = db.session.get(ShopTable, ids["shop_id"])
+    shop.stripe_secret_key = "sk_test_offline"
+    payment = {
+        "id": "pi_linked",
+        "status": "succeeded",
+        "customer": "cus_linked",
+        "currency": "eur",
+        "amount_received": int(order.total * 100),
+        "shipping": make_shipping_address(),
+    }
+    db.session.commit()
+    return payment
+
+
+def test_concurrent_linked_payment_completes_once_without_holding_a_connection(test_client, monkeypatch, real_db):
+    ids = _shop_with_stocked_order(cleanup=real_db)
+    payment = _link_offline_payment(ids)
+    sent = _capture_confirmation_emails(monkeypatch)
+    # Both requests must finish reading Stripe before either takes the completion lock.
+    fetched = threading.Barrier(2)
+
+    def retrieve(payment_id, **kwargs):
+        assert payment_id == "pi_linked"
+        assert kwargs == {"api_key": "sk_test_offline"}
+        assert not db.session.in_transaction()
+        fetched.wait(timeout=10)
+        return payment
+
+    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", retrieve)
+    responses = []
+    threads = [
+        threading.Thread(
+            target=lambda: responses.append(
+                test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
+            )
+        )
+        for _ in range(2)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=20)
+    assert [response.status_code for response in responses] == [201, 201]
+    assert _stock(ids["p1"]) == 4
+    assert _stock(ids["p2"]) == 4
+    assert len(sent) == 1
+    assert db.session.get(OrderTable, ids["order_id"]).shipping_address == make_shipping_address()
+
+
+def test_payment_relinked_during_stripe_read_is_rejected(test_client, monkeypatch, real_db):
+    ids = _shop_with_stocked_order(cleanup=real_db)
+    payment = _link_offline_payment(ids)
+    sent = _capture_confirmation_emails(monkeypatch)
+
+    def retrieve(*args, **kwargs):
+        assert not db.session.in_transaction()
+        with db.wrapped_database.engine.begin() as conn:
+            conn.execute(
+                text("UPDATE orders SET stripe_payment_intent_id = 'pi_new' WHERE id = :id"),
+                {"id": str(ids["order_id"])},
+            )
+        return payment
+
+    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", retrieve)
+    response = test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
+    assert response.status_code == 409, response.json()
+    db.session.expire_all()
+    order = db.session.get(OrderTable, ids["order_id"])
+    assert order.status == "pending"
+    assert order.shipping_address is None
+    assert _stock(ids["p1"]) == 5
+    assert sent == []
+
+
+def test_failed_stock_deduction_also_rolls_back_delivery_snapshot(test_client, monkeypatch, real_db):
+    ids = _shop_with_stocked_order(cleanup=real_db)
+    payment = _link_offline_payment(ids)
+    sent = _capture_confirmation_emails(monkeypatch)
+    order = db.session.get(OrderTable, ids["order_id"])
+    order.order_info = [
+        *order.order_info[:1],
+        {**order.order_info[1], "product_id": "ffffffff-ffff-4fff-8fff-ffffffffffff"},
+    ]
+    db.session.commit()
+    monkeypatch.setattr(public.stripe.PaymentIntent, "retrieve", lambda *args, **kwargs: payment)
+
+    response = test_client.patch(f"/orders/{ids['order_id']}", json={"status": "complete"})
+    assert response.status_code == 404, response.json()
+    db.session.expire_all()
+    order = db.session.get(OrderTable, ids["order_id"])
+    assert order.status == "pending"
+    assert order.shipping_address is None
+    assert order.completed_at is None
+    assert _stock(ids["p1"]) == 5
+    assert sent == []
