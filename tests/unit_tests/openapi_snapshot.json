@@ -344,6 +344,16 @@
             "title": "Attribute Id",
             "type": "string"
           },
+          "translation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttributeOptionTranslationBase"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "value_key": {
             "title": "Value Key",
             "type": "string"
@@ -368,6 +378,16 @@
             "title": "Id",
             "type": "string"
           },
+          "translation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttributeOptionTranslationBase"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "value_key": {
             "title": "Value Key",
             "type": "string"
@@ -381,8 +401,53 @@
         "title": "AttributeOptionSchema",
         "type": "object"
       },
+      "AttributeOptionTranslationBase": {
+        "properties": {
+          "alt1_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt1 Name"
+          },
+          "alt2_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt2 Name"
+          },
+          "main_name": {
+            "title": "Main Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "main_name"
+        ],
+        "title": "AttributeOptionTranslationBase",
+        "type": "object"
+      },
       "AttributeOptionUpdate": {
         "properties": {
+          "translation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttributeOptionTranslationBase"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "value_key": {
             "title": "Value Key",
             "type": "string"
@@ -625,6 +690,16 @@
           "product_count": {
             "title": "Product Count",
             "type": "integer"
+          },
+          "translation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttributeOptionTranslationBase"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "value_key": {
             "title": "Value Key",
@@ -6481,7 +6556,7 @@
   "info": {
     "description": "Backend for ShopVirge Shops.",
     "title": "ShopVirge API",
-    "version": "0.9.1"
+    "version": "0.9.2"
   },
   "openapi": "3.1.0",
   "paths": {

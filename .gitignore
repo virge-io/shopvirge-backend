@@ -146,3 +146,7 @@ config.env
 shop.psql
 # ruff
 .ruff_cache/
+
+#infiscal configuration
+.infisical.yaml
+.infisical.*
