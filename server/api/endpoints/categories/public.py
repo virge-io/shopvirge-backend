@@ -18,6 +18,7 @@ from server.crud.crud_shop import shop_crud
 from server.db import db
 from server.db.models import (
     AttributeOptionTable,
+    AttributeOptionTranslationTable,
     AttributeTable,
     AttributeTranslationTable,
     ProductAttributeValueTable,
@@ -28,6 +29,7 @@ from server.schemas.attribute import (
     AvailableAttributeSchema,
     AvailableOptionSchema,
 )
+from server.schemas.attribute_option import AttributeOptionTranslationBase
 from server.schemas.product import (
     AttributeFilters,
     ProductWithAttributes,
@@ -110,6 +112,15 @@ def get_available_attributes(
     )
     trans_by_attr = {t.attribute_id: t for t in translations}
 
+    # Batch-load translations for the distinct option IDs
+    option_ids = list({r.option_id for r in results})
+    option_translations = (
+        db.session.query(AttributeOptionTranslationTable)
+        .filter(AttributeOptionTranslationTable.option_id.in_(option_ids))
+        .all()
+    )
+    trans_by_option = {t.option_id: t for t in option_translations}
+
     # Assemble nested response grouped by attribute
     attrs_dict: dict[UUID, AvailableAttributeSchema] = {}
     for row in results:
@@ -131,11 +142,23 @@ def get_available_attributes(
                 translation=translation,
                 options=[],
             )
+
+        trans_opt = trans_by_option.get(row.option_id)
+        option_translation = (
+            AttributeOptionTranslationBase(
+                main_name=trans_opt.main_name,
+                alt1_name=trans_opt.alt1_name,
+                alt2_name=trans_opt.alt2_name,
+            )
+            if trans_opt
+            else None
+        )
         attrs_dict[row.attribute_id].options.append(
             AvailableOptionSchema(
                 id=row.option_id,
                 value_key=row.option_value_key,
                 product_count=row.product_count,
+                translation=option_translation,
             )
         )
 

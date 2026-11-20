@@ -13,7 +13,7 @@
 from typing import Optional
 from uuid import UUID
 
-from server.schemas.attribute_option import AttributeOptionSchema
+from server.schemas.attribute_option import AttributeOptionSchema, AttributeOptionTranslationBase
 from server.schemas.base import BoilerplateBaseModel
 
 
@@ -62,6 +62,7 @@ class AvailableOptionSchema(BoilerplateBaseModel):
     id: UUID
     value_key: str
     product_count: int
+    translation: Optional[AttributeOptionTranslationBase] = None
 
 
 class AvailableAttributeSchema(BoilerplateBaseModel):

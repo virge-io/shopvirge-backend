@@ -103,13 +103,13 @@ def test_category_products_statement_count_is_flat(query_counter, test_client):
         shop = _catalogue(*size)
         url = f"/shops/{shop['shop_id']}/categories/{shop['category_ids'][0]}/products"
         counts[size] = _count(query_counter, test_client, "get", url)
-    _assert_flat(counts, budget=9)
+    _assert_flat(counts, budget=10)
 
 
 def test_single_product_with_attributes_is_a_handful_of_statements(query_counter, test_client):
     shop = _catalogue(*SMALL)
     url = f"/shops/{shop['shop_id']}/products/{shop['product_ids'][0]}/with_attributes"
-    assert _count(query_counter, test_client, "get", url) <= 6
+    assert _count(query_counter, test_client, "get", url) <= 7
 
 
 def test_order_quote_statement_count_is_flat(query_counter, test_client):

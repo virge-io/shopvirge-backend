@@ -2,7 +2,7 @@ from http import HTTPStatus
 from uuid import uuid4
 
 from server.db import db
-from server.db.models import AttributeOptionTable
+from server.db.models import AttributeOptionTable, AttributeOptionTranslationTable
 
 
 def test_list_all_attribute_options_for_shop(test_client, shop_with_products_and_attributes):
@@ -32,6 +32,56 @@ def test_get_attribute_option_v2(test_client, shop_with_products_and_attributes)
     assert data["id"] == str(option_id)
 
 
+def test_get_attribute_option_v2_with_translation(test_client, shop_with_products_and_attributes):
+    ids = shop_with_products_and_attributes
+    shop_id = ids["shop_id"]
+    option_id = ids["opt2a_id"]
+
+    resp = test_client.get(f"/shops/{shop_id}/attribute-options/{option_id}")
+    assert resp.status_code == HTTPStatus.OK
+    data = resp.json()
+    assert data["id"] == str(option_id)
+    assert "translation" in data
+    translation = data["translation"]
+    assert translation is not None
+    assert "main_name" in translation
+    assert translation["main_name"] == "Red"
+
+
+def test_get_attribute_option_v2_with_translation_no_main_name(test_client, shop_with_products_and_attributes):
+    ids = shop_with_products_and_attributes
+    shop_id = ids["shop_id"]
+    option_id = ids["opt2b_id"]
+
+    resp = test_client.get(f"/shops/{shop_id}/attribute-options/{option_id}")
+    assert resp.status_code == HTTPStatus.OK
+    data = resp.json()
+    assert data["id"] == str(option_id)
+    assert "translation" in data
+    translation = data["translation"]
+    assert translation is not None
+    assert "main_name" in translation
+    assert translation["main_name"] == "BLUE"
+
+
+def test_get_attribute_option_v2_with_translation_alt_names(test_client, shop_with_products_and_attributes):
+    ids = shop_with_products_and_attributes
+    shop_id = ids["shop_id"]
+    option_id = ids["opt2a_id"]
+
+    resp = test_client.get(f"/shops/{shop_id}/attribute-options/{option_id}")
+    assert resp.status_code == HTTPStatus.OK
+    data = resp.json()
+    assert data["id"] == str(option_id)
+    assert "translation" in data
+    translation = data["translation"]
+    assert translation is not None
+    assert "alt1_name" in translation
+    assert translation["alt1_name"] == "Rood"
+    assert "alt2_name" in translation
+    assert translation["alt2_name"] == "Rot"
+
+
 def test_get_attribute_option_v2_not_found(test_client, shop_with_products_and_attributes):
     ids = shop_with_products_and_attributes
     shop_id = ids["shop_id"]
@@ -59,6 +109,28 @@ def test_create_attribute_option_v2(test_client, shop_with_products_and_attribut
     assert option.value_key == "NewOptionV2"
 
 
+def test_create_attribute_option_v2_with_translation(test_client, shop_with_products_and_attributes):
+    ids = shop_with_products_and_attributes
+    shop_id = ids["shop_id"]
+    attr_id = ids["attr1_id"]
+
+    new_option = {
+        "attribute_id": str(attr_id),
+        "value_key": "NewOptionV2",
+        "translation": {"main_name": "NewOptionV2", "alt1_name": "Alt1Name", "alt2_name": "Alt2Name"},
+    }
+    resp = test_client.post(f"/shops/{shop_id}/attribute-options/", json=new_option)
+    assert resp.status_code == HTTPStatus.CREATED
+    data = resp.json()
+    assert data["value_key"] == "NewOptionV2"
+    assert data["attribute_id"] == str(attr_id)
+
+    # Verify in DB
+    option = db.session.query(AttributeOptionTable).filter_by(id=data["id"]).first()
+    assert option is not None
+    assert option.value_key == "NewOptionV2"
+
+
 def test_update_attribute_option_v2(test_client, shop_with_products_and_attributes):
     ids = shop_with_products_and_attributes
     shop_id = ids["shop_id"]
@@ -74,6 +146,45 @@ def test_update_attribute_option_v2(test_client, shop_with_products_and_attribut
     # Verify in DB
     option = db.session.query(AttributeOptionTable).filter_by(id=option_id).first()
     assert option.value_key == "UpdatedValueV2"
+
+
+def test_update_attribute_option_v2_with_translation(test_client, shop_with_products_and_attributes):
+    ids = shop_with_products_and_attributes
+    shop_id = ids["shop_id"]
+    attr_id = ids["attr1_id"]
+    option_id = ids["opt2a_id"]
+
+    update_data = {
+        "attribute_id": str(attr_id),
+        "value_key": "UpdatedValueV2",
+        "translation": {"main_name": "UpdatedMainName", "alt1_name": "UpdatedAlt1", "alt2_name": "UpdatedAlt2"},
+    }
+    resp = test_client.put(f"/shops/{shop_id}/attribute-options/{option_id}", json=update_data)
+    assert resp.status_code == HTTPStatus.OK
+    data = resp.json()
+    assert data["value_key"] == "UpdatedValueV2"
+
+    # Verify in DB
+    option = db.session.query(AttributeOptionTable).filter_by(id=option_id).first()
+    assert option.value_key == "UpdatedValueV2"
+
+
+def test_update_attribute_option_v2_updates_existing_translation(test_client, shop_with_products_and_attributes):
+    ids = shop_with_products_and_attributes
+    shop_id = ids["shop_id"]
+    option_id = ids["opt2a_id"]
+
+    update_data = {
+        "value_key": "RED",
+        "translation": {"main_name": "Crimson", "alt1_name": "", "alt2_name": "Rouge"},
+    }
+    resp = test_client.put(f"/shops/{shop_id}/attribute-options/{option_id}", json=update_data)
+    assert resp.status_code == HTTPStatus.OK
+
+    translation = db.session.query(AttributeOptionTranslationTable).filter_by(option_id=option_id).one()
+    assert translation.main_name == "Crimson"
+    assert translation.alt1_name == ""
+    assert translation.alt2_name == "Rouge"
 
 
 def test_delete_attribute_option_v2(test_client, shop_with_products_and_attributes):

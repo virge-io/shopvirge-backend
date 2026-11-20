@@ -533,7 +533,28 @@ class AttributeOptionTable(SoftDeleteMixin, BaseModel):
         passive_deletes=True,
     )
 
+    translation = relationship(
+        "AttributeOptionTranslationTable",
+        back_populates="option",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+        lazy="selectin",
+    )
+
     __table_args__ = (sqlalchemy.UniqueConstraint("attribute_id", "value_key", name="uq_attribute_option_key"),)
+
+
+class AttributeOptionTranslationTable(BaseModel):
+    __tablename__ = "attribute_option_translations"
+
+    id = Column(UUIDType, server_default=text("uuid_generate_v4()"), primary_key=True, index=True)
+    option_id = Column("option_id", UUIDType, ForeignKey("attribute_options.id"))
+    main_name = Column(String(TAG_LENGTH), index=True, nullable=False)
+    alt1_name = Column(String(TAG_LENGTH), index=True, nullable=True)
+    alt2_name = Column(String(TAG_LENGTH), index=True, nullable=True)
+
+    option = relationship("AttributeOptionTable", back_populates="translation")
 
 
 class ProductAttributeValueTable(BaseModel):

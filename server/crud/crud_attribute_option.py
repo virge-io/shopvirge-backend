@@ -13,6 +13,7 @@
 from typing import Optional
 
 from server.crud.base import CRUDBase
+from server.db import db
 from server.db.models import AttributeOptionTable
 from server.schemas.attribute_option import AttributeOptionCreate, AttributeOptionUpdate
 
@@ -24,6 +25,29 @@ class CRUDAttributeOption(CRUDBase[AttributeOptionTable, AttributeOptionCreate, 
             .filter(AttributeOptionTable.value_key == value_key)
             .first()
         )
+
+    def update(
+        self, *, db_obj: AttributeOptionTable, obj_in: AttributeOptionUpdate, commit: bool = True
+    ) -> AttributeOptionTable:
+
+        update_data = obj_in.model_dump(exclude_unset=True)
+
+        translation_data = update_data.pop("translation", None)
+
+        if translation_data is not None:
+            for field, value in translation_data.items():
+                setattr(db_obj.translation, field, value)
+
+        for field, value in update_data.items():
+            if field in db_obj.__table__.columns and field != "id":
+                setattr(db_obj, field, value)
+
+        db.session.add(db_obj)
+
+        if commit:
+            db.session.commit()
+
+        return db_obj
 
 
 attribute_option_crud = CRUDAttributeOption(AttributeOptionTable)

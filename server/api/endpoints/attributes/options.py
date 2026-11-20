@@ -15,7 +15,7 @@ from server.api.error_handling import raise_status
 from server.crud.crud_attribute import attribute_crud
 from server.crud.crud_attribute_option import attribute_option_crud
 from server.db import db
-from server.db.models import AttributeOptionTable, AttributeTable
+from server.db.models import AttributeOptionTable, AttributeOptionTranslationTable, AttributeTable
 from server.schemas.attribute_option import (
     AttributeOptionCreate,
     AttributeOptionSchema,
@@ -100,8 +100,14 @@ def create_option_v2(
 
     logger.info("Saving attribute option", attribute_id=str(data.attribute_id), value_key=data.value_key)
 
+    if data.translation is None:
+        translation_data = AttributeOptionTranslationTable(main_name=data.value_key)
+    else:
+        translation_data = AttributeOptionTranslationTable(**data.translation.model_dump())
+
+    option = AttributeOptionTable(**data.model_dump(exclude={"translation"}), translation=translation_data)
+
     ensure_baseline_attribute_revision(attribute)
-    option = AttributeOptionTable(**data.model_dump())
     db.session.add(option)
     try:
         record_attribute_revision(attribute, action="update", created_by=principal.label, source=principal.via)

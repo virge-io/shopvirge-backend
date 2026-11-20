@@ -52,7 +52,13 @@ from server.exception_handlers.generic_exception_handlers import problem_detail_
 from server.security import CustomCognitoToken, Principal, current_principal
 from server.settings import app_settings
 from tests.unit_tests.factories.account import make_account
-from tests.unit_tests.factories.attribute import make_attribute, make_attribute_with_translation, make_option, make_pav
+from tests.unit_tests.factories.attribute import (
+    make_attribute,
+    make_attribute_with_translation,
+    make_option,
+    make_option_with_translation,
+    make_pav,
+)
 from tests.unit_tests.factories.categories import make_category, make_category_translated
 from tests.unit_tests.factories.order import make_pending_order
 from tests.unit_tests.factories.product import make_product, make_translated_product
@@ -390,7 +396,8 @@ def shop_with_products_and_attributes(shop_with_products):
     opt1b_id = make_option(attr1_id, "M")
 
     attr2_id = make_attribute(main_shop_id, name="color")
-    opt2a_id = make_option(attr2_id, "RED")
+    opt2a_id = make_option_with_translation(attr2_id, "RED", main_name="Red", alt1_name="Rood", alt2_name="Rot")
+    opt2b_id = make_option_with_translation(attr2_id, "BLUE", alt1_name="Blauw", alt2_name="Blau")
 
     # Create a second shop with its own attribute/option to test scoping
     other_shop_id = shop  # empty shop id (no products for now)
@@ -405,6 +412,7 @@ def shop_with_products_and_attributes(shop_with_products):
         "opt1b_id": opt1b_id,
         "attr2_id": attr2_id,
         "opt2a_id": opt2a_id,
+        "opt2b_id": opt2b_id,
         "other_shop_id": other_shop_id,
         "other_attr_id": other_attr_id,
         "other_opt_id": other_opt_id,
@@ -473,8 +481,8 @@ def shop_with_category_attributes():
 
     # Attribute: color (with translation)
     color_attr_id = make_attribute_with_translation(shop_id, name="color", main_name="Kleur", alt1_name="Color")
-    color_red_id = make_option(color_attr_id, "RED")
-    color_blue_id = make_option(color_attr_id, "BLUE")
+    color_red_id = make_option_with_translation(color_attr_id, "RED")
+    color_blue_id = make_option_with_translation(color_attr_id, "BLUE")
 
     # PAVs for category 1 products
     # prod1: size S, color RED
