@@ -100,7 +100,7 @@ def create_option_v2(
 
     logger.info("Saving attribute option", attribute_id=str(data.attribute_id), value_key=data.value_key)
 
-    if data.translation is None or data.translation.main_name is None:
+    if data.translation is None:
         translation_data = AttributeOptionTranslationTable(main_name=data.value_key)
     else:
         translation_data = AttributeOptionTranslationTable(**data.translation.model_dump())

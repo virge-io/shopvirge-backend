@@ -14,7 +14,7 @@ from typing import Optional
 
 from server.crud.base import CRUDBase
 from server.db import db
-from server.db.models import AttributeOptionTable, AttributeOptionTranslationTable
+from server.db.models import AttributeOptionTable
 from server.schemas.attribute_option import AttributeOptionCreate, AttributeOptionUpdate
 
 
@@ -35,14 +35,8 @@ class CRUDAttributeOption(CRUDBase[AttributeOptionTable, AttributeOptionCreate, 
         translation_data = update_data.pop("translation", None)
 
         if translation_data is not None:
-            translation = db_obj.translation
-
-            if translation is None:
-                translation = AttributeOptionTranslationTable(**translation_data)
-                db_obj.translation = translation
-            else:
-                for field, value in translation_data.items():
-                    setattr(translation, field, value)
+            for field, value in translation_data.items():
+                setattr(db_obj.translation, field, value)
 
         for field, value in update_data.items():
             if field in db_obj.__table__.columns and field != "id":

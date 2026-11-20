@@ -152,7 +152,7 @@ def test_update_attribute_option_v2_with_translation(test_client, shop_with_prod
     ids = shop_with_products_and_attributes
     shop_id = ids["shop_id"]
     attr_id = ids["attr1_id"]
-    option_id = ids["opt1a_id"]
+    option_id = ids["opt2a_id"]
 
     update_data = {
         "attribute_id": str(attr_id),
